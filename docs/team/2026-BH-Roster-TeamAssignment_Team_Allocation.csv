@@ -1,0 +1,1000 @@
+Agentic AI Workflows to Discover Pediatric-Specific INO80/SWR1/SRCAP Chromatin Remodeler Subunits and Adaptors for Cancer Dependencies,AI-Assisted Chat Interface for Clinical Data,AI-Enabled Structuring of ARIA Guide Clinical Recommendations,AI/ML-Driven Sequencing Run Planner for NGS Core Operations,AnTelOpe: An LLM-Powered Web Platform for Nextflow Pipeline Orchestration and Monitoring,AutoCAB: Turning Everyday Scientific Workflows into Reusable AI Agent Skills,"CLEAR: Clinician-Led, Easy-to-read, Accessible Reaffirmed Instructions",Counting every cell in the human brain: 3D localization of cell nuclei in a human brain,CureCheck: An R Shiny Application for Evaluating Cure Model Appropriateness,Establishing a Sample-Based Quantum Diagonalization (SQD) Workflow for Iron-Sulfur Cluster Electronic Structure,FAIR Harmonization and Automated LabKey Integration of Legacy Sequencing Metadata,Genomic Scars Pipeline: Assessment and Visualization Shiny,GRIN3D: From Linear Sequence to 3D Protein Hotspots,Multimodal Sleep Disordered Breathing (SDB) Event Classification,Resource-Aware Multi-Project Workflow Orchestrator for Scalable Single-Cell Analysis,SCOGS-Scribe: Automated Severity Grading for Sickle Cell Disease from Clinical Notes,Where Healing Happens: Mapping Mental Health in Childhood Cancer,Cell Identity in Spatial OMICs Imaging Platforms: Cluster-Based vs Cell-Based Annotation,Integrating Molecular and Clinical Trial Data to Predict AML Patient Outcomes for Novel Therapies,St. Jude AI and Data Learning Assistant: Personalized Guidance Using The Turing Way and Institutional Knowledge,QC Compass: Interactive Data Quality Guidance for Clinical Research Platforms
+"PROJECT LEAD(S)
+Vinesh Vinayachandran and Pandurang Kolekar","PROJECT LEAD(S)
+Sedigheh Mirzaei and Sri Sivani Charan","PROJECT LEAD(S)
+Monica Key (virtual), Darrell Gentry, and Mayuri Makan","PROJECT LEAD(S)
+Daniel Darnell","PROJECT LEAD(S)
+Haidong Yi","PROJECT LEAD(S)
+Niu Beifang","PROJECT LEAD(S)
+Matt Davis","PROJECT LEAD(S)
+Caitlin Freeman","PROJECT LEAD(S)
+Durbadal Ghosh","PROJECT LEAD(S)
+Amandeep Bhatia","PROJECT LEAD(S)
+Cody Ramirez","PROJECT LEAD(S)
+Evan Savage","PROJECT LEAD(S)
+Abdelrahman Elsayed","PROJECT LEAD(S)
+Lu Xie","PROJECT LEAD(S)
+Antonia Chroni","PROJECT LEAD(S)
+Joe Wardell","PROJECT LEAD(S)
+Sylwia Feibelman","PROJECT LEAD(S)
+Maycon Marção","PROJECT LEAD(S)
+Nobel Makonnen","PROJECT LEAD(S)
+Ty Michael and Saikat Nandy","PROJECT LEAD(S)
+Yichen Chen"
+"Vinesh Vinayachandran | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD - NOT REGISTERED
+PREFERENCE: NOT RANKED","Sri Sivani Charan Yalamanchi | In person
+Technical Contributor
+sri.yalamanchi@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Darrell Gentry | In person
+Domain Expert, Product Designer
+darrell.gentry@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Daniel Darnell | In person
+Technical Contributor, Data Explorer
+daniel.darnell@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Haidong Yi | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD - NOT REGISTERED
+PREFERENCE: NOT RANKED","Niu Beifang | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD - NOT REGISTERED
+PREFERENCE: NOT RANKED","Matt Davis | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD - NOT REGISTERED
+PREFERENCE: NOT RANKED","Caitlin Freeman | In person
+Technical Contributor, Data Explorer
+caitlin.freeman@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Durbadal Ghosh | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD - NOT REGISTERED
+PREFERENCE: NOT RANKED","Amandeep Bhatia | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD - NOT REGISTERED
+PREFERENCE: NOT RANKED","Cody Ramirez | In person
+Technical Contributor
+cody.ramirez@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Evan Savage | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD - NOT REGISTERED
+PREFERENCE: NOT RANKED","Abdelrahman Elsayed | In person
+Technical Contributor, Data Explorer
+aelsayed@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","LU XIE | In person
+Data Explorer
+lxie@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","ANTONIA CHRONI | In person
+Technical Contributor
+antonia.chroni@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Joseph Wardell | In person
+Data Explorer, Technical Contributor
+joseph.wardell@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Sylwia Feibelman | In person
+Data Explorer, Other:Project lead
+sfeibelm@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Maycon Marção | In person
+Domain Expert, Technical Contributor, Data Explorer
+Maycon.Marcao@STJUDE.ORG
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Nobel Makonnen | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD 
+PREFERENCE: NOT RANKED","Ty Michael | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD
+PREFERENCE: NOT RANKED","Yichen Chen | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD - NOT REGISTERED
+PREFERENCE: NOT RANKED"
+"Pandurang Kolekar | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD - NOT REGISTERED
+PREFERENCE: NOT RANKED","Sukesh Sangam | In person
+Technical Contributor, Product Designer
+sukesh.sangam@gmail.com
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Mayuri Makan | In person
+Domain Expert
+mmakan@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Nate Orwig | In person
+Other:Data producer
+nathane.orwig@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Surbhi Sona | In person
+Data Explorer
+ssona@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Alexandria Dawson | Possible virtual
+Data Explorer, Technical Contributor
+alexedawson2023@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE
+TRAVEL AWARD: WAITLISTED","Kartikeya Bomb | In person
+Technical Contributor
+bomka-27@rhodes.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Houston Wingo | In person
+Technical Contributor, Data Explorer
+houston.wingo@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Geethanjalee Mudunkotuwa | In person
+Technical Contributor
+gmudunkotuwaappuhami@kumc.edu
+EXISTING TEAM
+PREFERENCE: NOT RANKED
+TRAVEL AWARDEE","Hanah Rahman | Virtual
+Data Explorer, Domain Expert
+rahman.hanah@gmail.com
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Aylar Babaei | In person
+Technical Contributor, Data Explorer, Domain Expert
+ababaei@childrensnational.org
+ALLOCATED
+PREFERENCE: 3RD CHOICE
+TRAVEL AWARDEE","Susanna Downing | In person
+Technical Contributor, Data Explorer, Domain Expert
+susanna.downing@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Andrew Willems | In person
+Data Explorer, Technical Contributor
+andrew.willems@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Anna Pittman | In person
+Technical Contributor, Domain Expert, Data Explorer
+anna.pittman@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Rojina Sapkota | In person
+Data Explorer, Technical Contributor
+rsapkota@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Cornelius Evans Jr. | Possible virtual
+Technical Contributor, Data Explorer
+cornelius.evans@dillard.edu
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Kathryn Russell | In person
+Technical Contributor, Data Explorer
+kathryn.Russell@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Chloe Swanton | In person
+Data Explorer
+cgs47@bath.ac.uk
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Colleen Reilly | In person
+Technical Contributor, Product Designer
+creilly@stjude.org
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Saikat Nandy | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD - NOT REGISTERED
+PREFERENCE: NOT RANKED","Brian Wentzloff | In person
+Technical Contributor
+brian.wentzloff@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE"
+"Priyabrota Sen | Virtual
+Domain Expert
+priyabrota.cse.kuet@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Sadie Mirzaei | In person
+Other:I collaborate with technical person
+Sedigheh.Mirzaei@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Monica Key | Virtual
+Domain Expert
+monica.key@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Sanchit Trivedi | In person
+Domain Expert, Data Explorer
+sanchit.trivedi@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Augustus Gottlieb | In person
+Technical Contributor
+gus.gottlieb@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Madhan Kumar Tammineni | In person
+Technical Contributor, Data Explorer
+mtmmnni1@memphis.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","MANOJ KUMAR DEPURU | Virtual
+Domain Expert
+dmanojkumar205@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Peter Simko | Virtual
+Data Explorer, Domain Expert
+peter.simko@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Rashid Mehmood | In person
+Technical Contributor, Domain Expert, Data Explorer
+gulkhan007@gmail.com
+ALLOCATED
+PREFERENCE: 4TH CHOICE","Elijah Williams | In person
+Technical Contributor, Data Explorer
+elijah.williams@dillard.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE
+TRAVEL AWARDEE","Kelly McCastlain | In person
+Data Explorer, Domain Expert
+kelly.mccastlain@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE","TARUN VENKAT SAI KARANAM | In person
+Technical Contributor, Data Explorer, Product Designer
+tarunkaranam10@gmail.com
+ALLOCATED
+PREFERENCE: 3RD CHOICE","Balint Meszaros | In person
+Domain Expert
+Balint.Meszaros@STJUDE.ORG
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Prajvala Mysore | Possible virtual
+Technical Contributor, Data Explorer, Product Designer
+mysore.praj@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Zach Skidmore | Unknown
+Pre-selected member
+Email not listed
+PRE-SELECTED
+PREFERENCE: NOT IN REGISTRATION","Kendahl Franklin | In person
+Data Explorer, Domain Expert, Product Designer
+kendahlfrank20@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Ketaki Saokar | In person
+Data Explorer, Other:team
+Ketaki.Saokar@STJUDE.ORG
+PRE-SELECTED
+PREFERENCE: NOT RANKED","George Jia-Hua Qu | In person
+Technical Contributor, Data Explorer, Domain Expert
+jiahuaqu@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Daniel Emerson | In person
+Data Explorer, Technical Contributor
+demerson368@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Arif Usta | Unknown
+Pre-selected member
+Arif.Usta@STJUDE.ORG
+PRE-SELECTED
+PREFERENCE: NOT IN REGISTRATION","Doris Wu | In person
+Product Designer
+xiduowawa@gmail.com
+ALLOCATED
+PREFERENCE: 2ND CHOICE"
+"Vishakan Deivanayagam | Virtual
+Data Explorer, Other:Bioinformatician
+deivanayagam.v@northeastern.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Milena Marchese | Virtual
+Data Explorer
+marchesemilena04@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Jennifer Pauley | In person
+Domain Expert
+jennifer.pauley@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Vinisha Venugopal | Virtual
+Technical Contributor, Data Explorer
+vinishavvenugopal@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Mattia Marasco | Possible virtual
+Technical Contributor, Data Explorer
+marasco.m@icloud.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Jaison John | In person
+Technical Contributor, Data Explorer, Domain Expert
+jjohn@stjude.org
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Prisha Chhabra | Virtual
+Technical Contributor, Data Explorer
+prchhabra@ucsd.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","AMRIT GAIRE | In person
+Technical Contributor, Data Explorer
+gaire004@umn.edu
+ALLOCATED
+PREFERENCE: 2ND CHOICE
+TRAVEL AWARDEE","Rachael Abolade | In person
+Data Explorer
+oluwakamiyeabolade@gmail.com
+ALLOCATED
+PREFERENCE: 5TH CHOICE","Ulofe Uduokhai | Virtual
+Technical Contributor, Data Explorer, Product Designer
+ulofe.uduokhai@uleth.ca
+ALLOCATED
+PREFERENCE: 3RD CHOICE","Emerson Huitt | In person
+Data Explorer, Domain Expert, Technical Contributor, Product Designer
+emerson@snthesis.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Sai Thulabandu | In person
+Data Explorer
+sai.thulabandu@stjude.org
+ALLOCATED
+PREFERENCE: 3RD CHOICE","Petri Pölönen | In person
+Domain Expert, Data Explorer
+Petri.Polonen@STJUDE.ORG
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Pragyee Neupane | In person
+Technical Contributor, Data Explorer
+pneupane2@patriots.uttyler.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","David George | Virtual
+Technical Contributor, Product Designer
+davidg1091620@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Larry Mays | In person
+Technical Contributor, Data Explorer
+mayslarry00@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Nazneen Kaleem Shaikh | In person
+Data Explorer, Domain Expert
+nazneenkaleem.shaikh@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Margaret Alexander | In person
+Technical Contributor, Data Explorer
+maggie.alexander@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","VINEETH KUKKADAPU | In person
+Technical Contributor, Data Explorer
+vkukkada@stjude.org
+ALLOCATED
+PREFERENCE: 3RD CHOICE","Chris House | In person
+Technical Contributor
+chris.house@stjude.org
+PRE-SELECTED
+PREFERENCE: 1ST CHOICE","Swapnali Mohite | In person
+Technical Contributor, Other:Quality Assurance
+swapnali.mohite@stjude.org
+ALLOCATED
+PREFERENCE: 2ND CHOICE"
+"Dhanus Chinnakalipatti Thilagaa Ramesh | Virtual
+Technical Contributor, Data Explorer
+chinnakalipattithi.d@northeastern.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Parth Tiwari | In person
+Technical Contributor, Other:Presenter
+parthtiwari10052005@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Jessica Farmer | Virtual
+Technical Contributor
+jessica.farmer@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Jon-Michael Glenn | Possible virtual
+Technical Contributor, Product Designer
+jonmichaelglenn@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Patrick Seiler | In person
+Other:blend of domain expert and domain expert
+jon.seiler@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Glen Chen | Virtual
+Technical Contributor, Product Designer
+cheng130@mcmaster.ca
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Nima Aflaki | In person
+Technical Contributor, Data Explorer
+naflaki@memphis.edu
+PRE-SELECTED
+PREFERENCE: 1ST CHOICE","Katelyn King | In person
+Data Explorer, Domain Expert
+katelyn.king@stjude.org
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Sharon Freshour | In person
+Data Explorer
+sharon.freshour@stjude.org
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Tharindu Ranathunge | In person
+Data Explorer
+tharindu.ranathunge@stjude.org
+ALLOCATED
+PREFERENCE: 4TH CHOICE","Davneet Kaur | Virtual
+Data Explorer
+dkaur103@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Kayode Raheem | Virtual
+Technical Contributor, Data Explorer
+kraheem@unmc.edu
+ALLOCATED
+PREFERENCE: 3RD CHOICE","Yonghui Ni | In person
+Technical Contributor
+yni54@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Francesco Pio Vasamì | Possible virtual
+Technical Contributor
+francescovasami03@gmail.com
+ALLOCATED
+PREFERENCE: 3RD CHOICE","Sarthak Sunil Dhanke | Virtual
+Technical Contributor, Product Designer, Data Explorer
+sar3142168@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Randi Rooney | In person
+Technical Contributor
+randi.rooney@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Kelly Pimenta | In person
+Technical Contributor, Data Explorer, Domain Expert
+kpimenta@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Robin Paul | In person
+Data Explorer, Product Designer, Technical Contributor
+robin.paul@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Krithika Premkumar | Virtual
+Data Explorer, Technical Contributor
+kprmkmar@memphis.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Kyana Edwards | Virtual
+Data Explorer, Product Designer
+kyana.k.edwards@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Ying Li | In person
+Data Explorer
+ying.li@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE"
+"Abhinandita Dash | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD - NOT REGISTERED
+PREFERENCE: NOT RANKED","shahinur alam | Virtual
+Technical Contributor, Data Explorer, Domain Expert
+salam@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Komal Sodhi | Virtual
+Domain Expert, Product Designer
+komal.sodhi@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Phuc Nguyen | Virtual
+Technical Contributor, Data Explorer
+phuc@wustl.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Sajid Ahmed Mohammed | Virtual
+Technical Contributor, Data Explorer
+smhmmd21@memphis.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Miaohui Hu | In person
+Data Explorer, Domain Expert
+Miaohui.Hu@STJUDE.ORG
+ALLOCATED
+PREFERENCE: 1ST CHOICE",,"Elena Corbelli | Possible virtual
+Technical Contributor
+elenacorbelli4@outlook.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE", ,"Supriya Nunna | In person
+Technical Contributor, Data Explorer
+snunna@stjude.org
+ALLOCATED
+PREFERENCE: NOT RANKED","Asha Jacob Jannu | Virtual
+Data Explorer, Technical Contributor
+ashajacob.jannu@stjude.org
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Sanika Naik | Virtual
+Product Designer, Data Explorer, Domain Expert
+naiksanika859@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Pramesh Sharma | In person
+Technical Contributor, Data Explorer
+prameshsharma25@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE
+TRAVEL AWARDEE","Nithya Mathivanan | Virtual
+Data Explorer
+nitikani@gmail.com
+ALLOCATED
+PREFERENCE: 2ND CHOICE","A. S. M. Tanjim Hassan | Virtual
+Technical Contributor, Data Explorer, Product Designer
+asmtanjimhassan@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","TEJASWI KONDAVEETI | In person
+Technical Contributor
+tejaswikondaveeti01@gmail.com
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Kedrick Gutter | Virtual
+Technical Contributor
+kedrick.gutter@dillard.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Morgen Malinoski | Virtual
+Technical Contributor
+morgen.malinoski@stjude.org
+EXISTING TEAM
+PREFERENCE: NOT RANKED","Pritam Deb | Virtual
+Data Explorer
+pdeb@students.kennesaw.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","chen li | In person
+Technical Contributor, Data Explorer
+chen.li@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Srikanth Tulluru | Virtual
+Product Designer
+srikanthuiuxd05@gmail.com
+ALLOCATED
+PREFERENCE: 3RD CHOICE"
+"Yuyu Zhang | In person
+Other:Project Lead
+Email not listed
+PROJECT LEAD - NOT REGISTERED
+PREFERENCE: NOT RANKED","Ibrahim Bello | In person
+Technical Contributor, Data Explorer
+ibrahim.bello.idowu@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE
+TRAVEL AWARDEE","Manoo Bhakta | Virtual
+Domain Expert
+bhaktamg@gmail.com
+PRE-SELECTED
+PREFERENCE: NOT RANKED","Pooja Kadam | Virtual
+Technical Contributor
+poojakad@bu.edu
+ALLOCATED
+PREFERENCE: 3RD CHOICE","Tanbin Islam Rohan | Virtual
+Technical Contributor, Data Explorer, Product Designer
+trohan1@students.kennesaw.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Shaurita Hutchins | In person
+Technical Contributor, Data Explorer, Domain Expert
+shutchins@uab.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE
+TRAVEL AWARDEE",,"Koi Cooks | Possible virtual
+Domain Expert, Product Designer, Data Explorer
+koi.cooks@dillard.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE", ,"Jason Fang | Virtual
+Data Explorer, Technical Contributor
+jhfang@sas.upenn.edu
+ALLOCATED
+PREFERENCE: 5th Choice","Salyse Harp | Possible virtual
+Technical Contributor, Product Designer
+salyse.harp@dillard.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE
+TRAVEL AWARD: WAITLISTED","Farai Kapopo | Possible virtual
+Data Explorer
+farairudokapopo@gmail.com
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Ganesan Murugan | Virtual
+Technical Contributor, Data Explorer, Domain Expert, Product Designer
+murugan.g@northeastern.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Richa Singh | In person
+Technical Contributor, Data Explorer
+rsingh55@jh.edu
+ALLOCATED
+PREFERENCE: 2ND CHOICE
+TRAVEL AWARDEE","Rachana Pandey | In person
+Data Explorer, Technical Contributor, Domain Expert
+pande250@umn.edu
+ALLOCATED
+PREFERENCE: 3RD CHOICE
+TRAVEL AWARDEE","Edward Bae | Virtual
+Technical Contributor, Data Explorer
+edward.bae.00@gmail.com
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Silvia Arantza Sanchez Guerrero | In person
+Domain Expert, Product Designer
+arantzasancheza@icloud.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE
+TRAVEL AWARDEE","Anthony Hill | In person
+Technical Contributor, Data Explorer, Domain Expert
+Hill@nbio.uni-heidelberg.de
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Fauzan Ahmed | In person
+Data Explorer
+fauzan.ahmed1002@gmail.com
+ALLOCATED
+PREFERENCE: 2ND CHOICE
+TRAVEL AWARDEE","SANGAPPA CHADCHAN | In person
+Other:New to the omics
+Sangappa.Chadchan@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Amar Kumar | In person
+Data Explorer, Domain Expert, Technical Contributor
+kumar77@uic.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE
+TRAVEL AWARDEE"
+"Nithish Marimuthu | Virtual
+Data Explorer, Domain Expert
+marimuthu.n@northeastern.edu
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Benjamin Adu-Gyamfi | Virtual
+Technical Contributor, Data Explorer
+gyamfibenjamin88@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Miguel Bonilla | Unknown
+Pre-selected member
+mebonillam@gmail.com
+PRE-SELECTED
+PREFERENCE: NOT IN REGISTRATION","Torrance Bostick II | Virtual
+Technical Contributor, Data Explorer
+torrancebostick43@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Sahil Nalawade | Virtual
+Technical Contributor, Domain Expert
+sahil_nalawade@dfci.harvard.edu
+ALLOCATED
+PREFERENCE: 3RD CHOICE","Michael Gattas | In person
+Technical Contributor, Product Designer
+michael.gattas@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE",,"Monica Mesecar | Virtual
+Data Explorer
+mesecarm@umich.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE", , ,"Niru Shanbhag | In person
+Data Explorer
+nshanbha@stjude.org
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Talia Dalton | In Person
+MSABDS","xia wu | Virtual
+Data Explorer
+xwu76@uiowa.edu
+ALLOCATED
+PREFERENCE: 3RD CHOICE","Paul VanGilder | In person
+Data Explorer, Domain Expert
+paul.vangilder@stjude.org
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Lindsey Warren | In person
+Technical Contributor
+lrwarren94@gmail.com
+ALLOCATED
+PREFERENCE: 3RD CHOICE","Daffa Warsa | Virtual
+Data Explorer, Domain Expert
+daffawarsa@gmail.com
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Meghan Carr | In person
+Technical Contributor, Domain Expert, Product Designer, Other:GIS, behavior, education, employee performance
+coachmeghancarr@gmail.com
+PRE-SELECTED
+PREFERENCE: 1ST CHOICE","Aditi Verma | In person
+Data Explorer
+aditiverma17@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE
+TRAVEL AWARDEE","Md Shakhaowat Hossain | Virtual
+Domain Expert, Technical Contributor, Data Explorer, Product Designer
+mhossain1@tulane.edu
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Shovito Barua Soumma | Possible virtual
+Data Explorer, Technical Contributor
+shovito@asu.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Raymond Greene | Possible virtual
+Technical Contributor, Product Designer, Data Explorer
+raymondalexgreene@gmail.com
+ALLOCATED
+PREFERENCE: NOT MATECHED"
+"Satish Sati |  In person
+satish.sati@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT IN REGISTRATION","Angelo Busa | Possible virtual
+Technical Contributor
+Busa.angelo7@gmail.com
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Tony Woodard | Unknown
+Pre-selected member
+anthony.woodard@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT IN REGISTRATION","Shema Ntivuguruzwa | In person
+Data Explorer
+shema.ntivuguruzwa@dillard.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE
+TRAVEL AWARDEE","Allison Delgado | Virtual
+Technical Contributor, Data Explorer
+allisondelgado@college.harvard.edu
+ALLOCATED
+PREFERENCE: 2ND CHOICE","Prince Owusu | Possible virtual
+Data Explorer
+asareprince974@gmail.com
+ALLOCATED
+PREFERENCE: 5TH CHOICE
+TRAVEL AWARD: WAITLISTED", ,"Jeremy Kosir | Virtual
+Technical Contributor, Data Explorer
+jeremykosir@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE", , , , , ,"Jenny Lin | Virtual
+Technical Contributor, Data Explorer
+jenny.x.lin@gmail.com
+ALLOCATED
+PREFERENCE: 3RD CHOICE","Niru Shanbhag | In Person
+Data Explorer
+nshanbha@stjude.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE ","Minzhang Zheng | In person
+Technical Contributor, Data Explorer
+minzhang.zheng@stjude.org
+ALLOCATED
+PREFERENCE: 4TH CHOICE","Liu Yang | In person
+Data Explorer, Product Designer
+liu.yang@stjude.org
+ALLOCATED
+PREFERENCE: 5TH CHOICE","Rujuta Shinde | Possible virtual
+Technical Contributor, Data Explorer, Domain Expert
+rujuta.shinde@lundquist.org
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Ian Maurer | In person
+Technical Contributor, Data Explorer, Other:BioMCP creator
+ian@genomoncology.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Jennifer Tran | Virtual
+Domain Expert, Product Designer
+jennifertranpk@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Calvin Payton | In person
+Technical Contributor
+calvin.payton@stjude.org
+ALLOCATED
+PREFERENCE: 2ND CHOICCE"
+"Sheetal Bhatara |  In person
+sheetal.bhatara@stjude.org
+PRE-SELECTED
+PREFERENCE: NOT IN REGISTRATION","Elizabeth Chan | In Person
+MSABDS","Dennis Mathew Jose | In person
+Data Explorer, Technical Contributor
+jose.de@northeastern.edu
+ALLOCATED
+PREFERENCE: 2ND CHOICE
+TRAVEL AWARDEE",,"Nirajan Bhattarai | Possible Virtual
+Data Explorer, Product Designer, Technical Contributor
+bhatnira@isu.edu
+ALLOCATED
+PREFERENCE: 4TH CHOICE", , ,"Ethan Foster | In Person
+MSABDS", , , , , ,"Juliette Kippen | In person
+MSABDS","Jason Wu | In Person
+MSABDS", ,"Pei Tan | In person
+MSABDS","Hasini De Silva | Virtual
+Technical Contributor, Data Explorer, Domain Expert, Product Designer
+hasini.s.de.silva@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Soundharya Kumaresan | Virtual
+Data Explorer, Domain Expert
+soundharya.kumaresan@emory.edu
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Aliyah Cole | Possible virtual
+Data Explorer, Technical Contributor
+aliyah.cole05@gmail.com
+ALLOCATED
+PREFERENCE: 1ST CHOICE","Samuel Mitchell | Virtual
+Data Explorer
+samuelmmmitchell@gmail.com
+ALLOCATED
+PREFERENCE: 3RD CHOICE"
+,,"Franz Parkins | TBD
+Technical Contributor
+Franz.Parkins@STJUDE.ORG
+PREFERENCE: 1ST CHOICE",,,,,,,,,,,,,,,,,,
+,,"Ashok Boddu | TBD
+Technical Contributor
+Ashok.Boddu@STJUDE.ORG
+ALLOCATED
+PREFERENCE: 1ST CHOICE",,,,,,,,,,,,,,,,,,
+,,"Shahinur Alam | TBD
+Technical Contributor
+Shahinur.Alam@STJUDE.ORG
+ALLOCATED
+PREFERENCE: 1ST CHOICE",,,,,,,,,,,,,,,,,,
+,,"Vineeth Kumar Kukkadapu
+Technical Contributor
+VineethKumar.Kukkadapu@STJUDE.ORG
+ALLOCATED
+PREFERENCE: 1ST CHOICE",,,,,,,,,,,,,,,,,,
+,,"Shikha Nayak
+Technical Contributor
+Shikha.Nayak@STJUDE.ORG
+ALLOCATED
+PREFERENCE: 1ST CHOICE",,,,,,,,,,,,,,,,,,
+,,"Nishanth Godalla
+Technical Contributor
+Nishanth.Godalla@STJUDE.ORG
+ALLOCATED
+PREFERENCE: 1ST CHOICE",,,,,,,,,,,,,,,,,,
+TOTAL: 10,TOTAL: 10,TOTAL: 16,TOTAL: 9,TOTAL: 10,TOTAL: 9,TOTAL: 5,TOTAL: 10,TOTAL: 5,TOTAL: 7,TOTAL: 8,TOTAL: 8,TOTAL: 8,TOTAL: 10,TOTAL: 10,TOTAL: 9,TOTAL: 10,TOTAL: 10,TOTAL: 10,TOTAL: 10,TOTAL: 9
+IN PERSON: 4,IN PERSON: 5,IN PERSON: 4,IN PERSON: 4,IN PERSON: 5,IN PERSON: 5,IN PERSON: 3,IN PERSON: 4,IN PERSON: 5,IN PERSON: 4,IN PERSON: 5,IN PERSON: 4,IN PERSON: 6,IN PERSON: 5,IN PERSON: 6,IN PERSON: 6,IN PERSON: 8,IN PERSON: 7,IN PERSON: 6,IN PERSON: 5,IN PERSON: 7
+"VIRTUAL: 4
+POSSIBLE VIRTUAL: 0","VIRTUAL: 3
+POSSIBLE VIRTUAL: 1","VIRTUAL: 4
+POSSIBLE VIRTUAL: 0","VIRTUAL: 4
+POSSIBLE VIRTUAL: 1","VIRTUAL: 4
+POSSIBLE VIRTUAL: 1","VIRTUAL: 1
+POSSIBLE VIRTUAL: 1","VIRTUAL: 2
+POSSIBLE VIRTUAL: 0","VIRTUAL: 3
+POSSIBLE VIRTUAL: 2","VIRTUAL: 0
+POSSIBLE VIRTUAL: 0","VIRTUAL: 3
+POSSIBLE VIRTUAL: 0","VIRTUAL: 2
+POSSIBLE VIRTUAL: 1","VIRTUAL: 2
+POSSIBLE VIRTUAL: 1","VIRTUAL: 2
+POSSIBLE VIRTUAL: 0","VIRTUAL: 2
+POSSIBLE VIRTUAL: 2","VIRTUAL: 3
+POSSIBLE VIRTUAL: 0","VIRTUAL: 2
+POSSIBLE VIRTUAL: 1","VIRTUAL: 1
+POSSIBLE VIRTUAL: 0","VIRTUAL: 2
+POSSIBLE VIRTUAL: 1","VIRTUAL: 3
+POSSIBLE VIRTUAL: 0","VIRTUAL: 2
+POSSIBLE VIRTUAL: 2","VIRTUAL: 1
+POSSIBLE VIRTUAL: 1"
+"TECHNICAL: 1
+DATA EXPLORER: 3
+DOMAIN EXPERT: 2
+PRODUCT DESIGNER: 0
+OTHER: 5","TECHNICAL: 7
+DATA EXPLORER: 4
+DOMAIN EXPERT: 1
+PRODUCT DESIGNER: 1
+OTHER: 2","TECHNICAL: 2
+DATA EXPLORER: 1
+DOMAIN EXPERT: 6
+PRODUCT DESIGNER: 2
+OTHER: 0","TECHNICAL: 6
+DATA EXPLORER: 6
+DOMAIN EXPERT: 1
+PRODUCT DESIGNER: 1
+OTHER: 1","TECHNICAL: 7
+DATA EXPLORER: 6
+DOMAIN EXPERT: 2
+PRODUCT DESIGNER: 2
+OTHER: 2","TECHNICAL: 5
+DATA EXPLORER: 5
+DOMAIN EXPERT: 3
+PRODUCT DESIGNER: 1
+OTHER: 1","TECHNICAL: 3
+DATA EXPLORER: 2
+DOMAIN EXPERT: 1
+PRODUCT DESIGNER: 0
+OTHER: 1","TECHNICAL: 5
+DATA EXPLORER: 8
+DOMAIN EXPERT: 3
+PRODUCT DESIGNER: 1
+OTHER: 0","TECHNICAL: 2
+DATA EXPLORER: 3
+DOMAIN EXPERT: 1
+PRODUCT DESIGNER: 0
+OTHER: 1","TECHNICAL: 4
+DATA EXPLORER: 6
+DOMAIN EXPERT: 1
+PRODUCT DESIGNER: 1
+OTHER: 1","TECHNICAL: 5
+DATA EXPLORER: 6
+DOMAIN EXPERT: 3
+PRODUCT DESIGNER: 2
+OTHER: 0","TECHNICAL: 3
+DATA EXPLORER: 6
+DOMAIN EXPERT: 2
+PRODUCT DESIGNER: 2
+OTHER: 1","TECHNICAL: 5
+DATA EXPLORER: 6
+DOMAIN EXPERT: 3
+PRODUCT DESIGNER: 1
+OTHER: 0","TECHNICAL: 6
+DATA EXPLORER: 8
+DOMAIN EXPERT: 2
+PRODUCT DESIGNER: 1
+OTHER: 0","TECHNICAL: 7
+DATA EXPLORER: 5
+DOMAIN EXPERT: 2
+PRODUCT DESIGNER: 3
+OTHER: 0","TECHNICAL: 7
+DATA EXPLORER: 7
+DOMAIN EXPERT: 2
+PRODUCT DESIGNER: 1
+OTHER: 0","TECHNICAL: 4
+DATA EXPLORER: 6
+DOMAIN EXPERT: 4
+PRODUCT DESIGNER: 3
+OTHER: 3","TECHNICAL: 8
+DATA EXPLORER: 9
+DOMAIN EXPERT: 5
+PRODUCT DESIGNER: 2
+OTHER: 0","TECHNICAL: 6
+DATA EXPLORER: 7
+DOMAIN EXPERT: 1
+PRODUCT DESIGNER: 2
+OTHER: 2","TECHNICAL: 4
+DATA EXPLORER: 4
+DOMAIN EXPERT: 1
+PRODUCT DESIGNER: 2
+OTHER: 3","TECHNICAL: 5
+DATA EXPLORER: 3
+DOMAIN EXPERT: 1
+PRODUCT DESIGNER: 3
+OTHER: 2"
+TRAVEL AWARDS: 0,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 0,TRAVEL AWARDS: 1,TRAVEL AWARDS: 0,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 0,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 0,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 0,TRAVEL AWARDS: 1
+"ST. JUDE: 6
+EXTERNAL: 4
+UNKNOWN: 0","ST. JUDE: 3
+EXTERNAL: 6
+UNKNOWN: 0","ST. JUDE: 7
+EXTERNAL: 3
+UNKNOWN: 0","ST. JUDE: 3
+EXTERNAL: 6
+UNKNOWN: 0","ST. JUDE: 4
+EXTERNAL: 6
+UNKNOWN: 0","ST. JUDE: 4
+EXTERNAL: 5
+UNKNOWN: 0","ST. JUDE: 1
+EXTERNAL: 4
+UNKNOWN: 0","ST. JUDE: 4
+EXTERNAL: 5
+UNKNOWN: 0","ST. JUDE: 2
+EXTERNAL: 3
+UNKNOWN: 0","ST. JUDE: 3
+EXTERNAL: 4
+UNKNOWN: 0","ST. JUDE: 4
+EXTERNAL: 4
+UNKNOWN: 0","ST. JUDE: 3
+EXTERNAL: 4
+UNKNOWN: 0","ST. JUDE: 5
+EXTERNAL: 3","ST. JUDE: 3
+EXTERNAL: 6","ST. JUDE: 4
+EXTERNAL: 5","ST. JUDE: 3
+EXTERNAL: 6","ST. JUDE: 6
+EXTERNAL: 3","ST. JUDE: 5
+EXTERNAL: 5","ST. JUDE: 2
+EXTERNAL: 6","ST. JUDE: 5
+EXTERNAL: 4","ST. JUDE: 4
+EXTERNAL: 5"
+TRAVEL AWARDS: 0,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 0,TRAVEL AWARDS: 1,TRAVEL AWARDS: 0,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 0,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 0,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 1,TRAVEL AWARDS: 0,TRAVEL AWARDS: 1
+"ST. JUDE: 5
+EXTERNAL: 4
+UNKNOWN: 0","ST. JUDE: 2
+EXTERNAL: 6
+UNKNOWN: 0","ST. JUDE: 12
+EXTERNAL: 3
+UNKNOWN: 0","ST. JUDE: 2
+EXTERNAL: 6
+UNKNOWN: 0","ST. JUDE: 3
+EXTERNAL: 6
+UNKNOWN: 0","ST. JUDE: 3
+EXTERNAL: 5
+UNKNOWN: 0","ST. JUDE: 0
+EXTERNAL: 4
+UNKNOWN: 0","ST. JUDE: 3
+EXTERNAL: 5
+UNKNOWN: 0","ST. JUDE: 1
+EXTERNAL: 3
+UNKNOWN: 0","ST. JUDE: 2
+EXTERNAL: 4
+UNKNOWN: 0","ST. JUDE: 3
+EXTERNAL: 4
+UNKNOWN: 0","ST. JUDE: 2
+EXTERNAL: 4
+UNKNOWN: 0","ST. JUDE: 4
+EXTERNAL: 3
+","ST. JUDE: 2
+EXTERNAL: 6
+","ST. JUDE: 2
+EXTERNAL: 5
+","ST. JUDE: 2
+EXTERNAL: 6
+","ST. JUDE: 5
+EXTERNAL: 3
+","ST. JUDE: 4
+EXTERNAL: 5
+","ST. JUDE: 2
+EXTERNAL: 7
+","ST. JUDE: 5
+EXTERNAL: 4
+","ST. JUDE: 3
+EXTERNAL: 6
+"
