@@ -1,0 +1,74 @@
+{
+  "sessions": [
+    {
+      "trace_id": "capture-001",
+      "analyst": "analyst-a",
+      "title": "HG008 QC and report assembly",
+      "workflow_family": "hg008 qc report assembly",
+      "summary": "Captured analyst session for GIAB HG008 QC summary, figure preparation, and markdown report bundling.",
+      "tags": ["giab", "qc", "report", "screenpipe-demo"],
+      "events": [
+        {
+          "timestamp": "2026-07-21T09:00:00",
+          "tool": "terminal",
+          "action": "inspect",
+          "window_title": "qc_summary.tsv",
+          "ocr_text": "HG008 benchmark summary table loaded with qc metrics and thresholds",
+          "notes": "Public-data QC review"
+        },
+        {
+          "timestamp": "2026-07-21T09:10:00",
+          "tool": "notebook",
+          "action": "plot",
+          "window_title": "GIAB report notebook",
+          "ocr_text": "Generate figure panels and markdown sections for HG008 review",
+          "notes": "Figure assembly in progress"
+        }
+      ]
+    },
+    {
+      "trace_id": "capture-002",
+      "analyst": "analyst-b",
+      "title": "HG008 QC and report assembly",
+      "workflow_family": "hg008 qc report assembly",
+      "summary": "Follow-up capture showing report packaging and collaborator review note preparation.",
+      "tags": ["giab", "qc", "report", "screenpipe-demo"],
+      "events": [
+        {
+          "timestamp": "2026-07-21T13:00:00",
+          "tool": "editor",
+          "action": "bundle",
+          "window_title": "report.md",
+          "ocr_text": "Bundle plots tables and markdown for collaborator package",
+          "notes": "Send note to analyst.team@example.org after review"
+        },
+        {
+          "timestamp": "2026-07-21T13:05:00",
+          "tool": "terminal",
+          "action": "summarize",
+          "window_title": "scratch.txt",
+          "ocr_text": "MRN 123456 accidentally pasted into scratch note during summary drafting",
+          "notes": "Should be redacted before proposal generation"
+        }
+      ]
+    },
+    {
+      "trace_id": "capture-003",
+      "analyst": "analyst-c",
+      "title": "Variant review benchmarking",
+      "workflow_family": "variant review benchmarking",
+      "summary": "Captured VCF comparison workflow for public GIAB benchmark review.",
+      "tags": ["giab", "variant", "benchmark", "screenpipe-demo"],
+      "events": [
+        {
+          "timestamp": "2026-07-21T16:00:00",
+          "tool": "terminal",
+          "action": "compare",
+          "window_title": "vcf_compare.log",
+          "ocr_text": "Compare GIAB variant benchmark results against reference calls",
+          "notes": "Capture final review notes"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autocab"
+version = "0.1.0"
+description = "AutoCAB starter repository for drafting reusable AI agent skills from recurring workflows."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE.md" }
+
+[project.scripts]
+autocab = "autocab.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
