@@ -1,79 +1,104 @@
-AutoCAB: Turning Everyday Scientific Workflows into Reusable AI Agent Skills
-"PROJECT LEAD(S)
-”Rosikiewicz Wojciech“
-"Rosikiewicz Wojciech | In person
-Other:Project Lead
-Email Wojciech.Rosikiewicz@STJUDE.ORG
-PROJECT LEAD - NOT REGISTERED
-PREFERENCE: NOT RANKED"
+# AutoCAB: Turning Everyday Scientific Workflows into Reusable AI Agent Skills
 
-“Niu Beifang"
-"Niu Beifang | In person
-Other:Project Lead
-Email Beifang.Niu@STJUDE.ORG
-PROJECT LEAD - NOT REGISTERED
-PREFERENCE: NOT RANKED"
-"Alexandria Dawson | Possible virtual
-Data Explorer, Technical Contributor
-alexedawson2023@gmail.com
+This file reformats the team roster into GitHub-friendly Markdown for easier reading.
 
-ALLOCATED
-PREFERENCE: 1ST CHOICE
-TRAVEL AWARD: WAITLISTED"
-"Madhan Kumar Tammineni | In person
-Technical Contributor, Data Explorer
-mtmmnni1@memphis.edu
+## Project Leads
 
-ALLOCATED
-PREFERENCE: 1ST CHOICE"
-"Jaison John | In person
-Technical Contributor, Data Explorer, Domain Expert
-jjohn@stjude.org
-ALLOCATED
-PREFERENCE: 2ND CHOICE"
-"Glen Chen | Virtual
-Technical Contributor, Product Designer
-cheng130@mcmaster.ca
-ALLOCATED
-PREFERENCE: 2ND CHOICE"
-"Miaohui Hu | In person
-Data Explorer, Domain Expert
-Miaohui.Hu@STJUDE.ORG
-ALLOCATED
-PREFERENCE: 1ST CHOICE"
-"Shaurita Hutchins | In person
-Technical Contributor, Data Explorer, Domain Expert
-shutchins@uab.edu
-ALLOCATED
-PREFERENCE: 1ST CHOICE
-TRAVEL AWARDEE"
-"Michael Gattas | In person
-Technical Contributor, Product Designer
-michael.gattas@stjude.org
-ALLOCATED
-PREFERENCE: 1ST CHOICE"
-"Prince Owusu | Possible virtual
-Data Explorer
-asareprince974@gmail.com
-ALLOCATED
-PREFERENCE: 5TH CHOICE
-TRAVEL AWARD: WAITLISTED"
+### Wojciech Rosikiewicz
 
+- Participation: In person
+- Role: Project Lead
+- Email: `Wojciech.Rosikiewicz@STJUDE.ORG`
+- Registration status: Project lead, not registered
+- Preference: Not ranked
 
-TOTAL: 9
-IN PERSON: 5
-"VIRTUAL: 1
-POSSIBLE VIRTUAL: 1"
-"TECHNICAL: 5
-DATA EXPLORER: 5
-DOMAIN EXPERT: 3
-PRODUCT DESIGNER: 1
-OTHER: 1"
-TRAVEL AWARDS: 1
-"ST. JUDE: 4
-EXTERNAL: 5
-UNKNOWN: 0"
-TRAVEL AWARDS: 1
-"ST. JUDE: 3
-EXTERNAL: 5
-UNKNOWN: 0"
+### Beifang Niu
+
+- Participation: In person
+- Role: Project Lead
+- Email: `Beifang.Niu@STJUDE.ORG`
+- Registration status: Project lead, not registered
+- Preference: Not ranked
+
+## Team Members
+
+### Alexandria Dawson
+
+- Participation: Possible virtual
+- Roles: Data Explorer, Technical Contributor
+- Email: `alexedawson2023@gmail.com`
+- Status: Allocated
+- Preference: 1st choice
+- Travel award: Waitlisted
+
+### Madhan Kumar Tammineni
+
+- Participation: In person
+- Roles: Technical Contributor, Data Explorer
+- Email: `mtmmnni1@memphis.edu`
+- Status: Allocated
+- Preference: 1st choice
+
+### Jaison John
+
+- Participation: In person
+- Roles: Technical Contributor, Data Explorer, Domain Expert
+- Email: `jjohn@stjude.org`
+- Status: Allocated
+- Preference: 2nd choice
+
+### Glen Chen
+
+- Participation: Virtual
+- Roles: Technical Contributor, Product Designer
+- Email: `cheng130@mcmaster.ca`
+- Status: Allocated
+- Preference: 2nd choice
+
+### Miaohui Hu
+
+- Participation: In person
+- Roles: Data Explorer, Domain Expert
+- Email: `Miaohui.Hu@STJUDE.ORG`
+- Status: Allocated
+- Preference: 1st choice
+
+### Shaurita Hutchins
+
+- Participation: In person
+- Roles: Technical Contributor, Data Explorer, Domain Expert
+- Email: `shutchins@uab.edu`
+- Status: Allocated
+- Preference: 1st choice
+- Travel award: Awardee
+
+### Michael Gattas
+
+- Participation: In person
+- Roles: Technical Contributor, Product Designer
+- Email: `michael.gattas@stjude.org`
+- Status: Allocated
+- Preference: 1st choice
+
+### Prince Owusu
+
+- Participation: Possible virtual
+- Roles: Data Explorer
+- Email: `asareprince974@gmail.com`
+- Status: Allocated
+- Preference: 5th choice
+- Travel award: Waitlisted
+
+## Summary
+
+- Project leads listed: 2
+- Allocated team members listed: 8
+- Total people listed in this file: 10
+- In person: 6
+- Virtual: 1
+- Possible virtual: 2
+
+## Notes
+
+- The original source text contained formatting artifacts and conflicting totals.
+- This version preserves the listed people and roles, while presenting them in a clearer Markdown layout.
