@@ -123,15 +123,18 @@ finalize() {
 
 installation_hint() {
     local command_name="$1"
-    local package_name="$command_name"
+    local package_name
 
-    [[ "$command_name" == "xz" ]] && package_name="xz-utils"
     if command -v apt-get >/dev/null 2>&1; then
+        package_name="$command_name"
+        [[ "$command_name" == "xz" ]] && package_name="xz-utils"
         printf 'sudo apt-get install %s' "$package_name"
     elif command -v dnf >/dev/null 2>&1; then
         printf 'sudo dnf install %s' "$command_name"
     elif command -v pacman >/dev/null 2>&1; then
         printf 'sudo pacman -S %s' "$command_name"
+    elif command -v brew >/dev/null 2>&1; then
+        printf 'brew install %s' "$command_name"
     else
         printf 'install %s with the system package manager' "$command_name"
     fi
@@ -228,10 +231,12 @@ configure_shell() {
 main() {
     local command_name
     local index
+    local platform_name
 
     log_info "Starting AutoCAB activity-tracking dependency setup."
-    [[ "$(uname -s)" == "Linux" ]] || \
-        fail "This prototype installer currently supports Linux only."
+    platform_name="$(uname -s)"
+    [[ "$platform_name" == "Linux" || "$platform_name" == "Darwin" ]] || \
+        fail "This installer supports Linux and macOS only."
     for command_name in bash curl grep tar xz awk; do
         require_command "$command_name"
     done
