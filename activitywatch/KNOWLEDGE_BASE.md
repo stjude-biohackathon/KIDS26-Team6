@@ -22,6 +22,19 @@ Needs the real `aw-server` already running (`open -a ActivityWatch`) — this fo
 
 **Next up**: Start/Stop session UI with task naming and resume-under-same-name, video recording via `ffmpeg` (already installed) toggleable alongside the existing OCR script, a merge-sessions feature, and an LLM-backed (not template-based) skill-drafting step on merged sessions.
 
+## Session controller backend + Sessions tab (Start/Stop/Resume) — built and verified
+
+The dashboard can't itself spawn a capture process — browsers are sandboxed from that — so a small local API (`activitywatch/backend/session_controller.py`, Flask, port 5677) is what the new **Sessions** tab actually calls: `POST /api/session/start {task_name}` spawns the OCR watcher as a real subprocess and records it; `POST /api/session/stop {session_id}` kills it; `GET /api/tasks` returns sessions grouped by task name, which is what "resume the same task" is built on — starting again with a task name that already has sessions just adds another session under that same group, no special-casing needed.
+
+**Bugs hit and fixed while building this, all verified with real process checks, not just API responses:**
+- **Zombie processes**: `os.kill(pid, SIGTERM)` alone left `<defunct>` entries — the backend never reaped its children. Fixed by keeping a live `Popen` handle per session and calling `.wait()` after signaling; confirmed by checking `ps -p <pid>` showed nothing at all (not even defunct) after the fix, vs. showing `<defunct>` before it.
+- **CSP blocked the new backend**: `aw-webui`'s `index.html` template has a `connect-src` Content-Security-Policy only allowlisting `*:5600 *:5666 ws://*:27180` — our backend on `5677` was silently blocked by the browser itself (console showed the exact CSP violation). Fixed by adding `*:5677` to `cspDefaultSrc` in `vue.config.js`, which needs a full dev-server restart (not hot-reload) to take effect.
+- **Icon registration via HMR**: a newly-added `vue-awesome` icon import (`tasks`) threw `Cannot read properties of undefined (reading 'paths')` under hot-reload, but worked fine after a full dev-server restart — side-effect icon-registration imports don't seem to survive HMR cleanly in this setup.
+
+**Verified end-to-end via actual browser clicks, not curl**: typed a task name (had to use the `form_input` tool rather than synthetic typing, since Vue's `v-model` didn't pick up a raw DOM `.value` change from simulated typing — a browser-automation quirk, not an app bug), clicked **Start**, confirmed the real OS process existed via `ps aux` with the correct `--label`, clicked **Stop**, confirmed the process was fully gone. Then clicked **Resume** on the same task row and confirmed a second session appeared grouped under the same task name (`2 sessions`), which is exactly the resume behavior asked for. Test data cleaned up afterward.
+
+**Not yet built**: real video recording (toggle alongside OCR), merge-sessions-into-one-record, and the LLM-backed skill-drafting step.
+
 ## What it is
 
 ActivityWatch is a free, open-source, **local-first automated time tracker** (activitywatch.net), MPL-2.0 licensed. It runs on Windows, macOS, Linux, and Android. All data is stored on the device it runs on and is never uploaded anywhere — there's no account, no cloud sync, no server component outside your own machine.

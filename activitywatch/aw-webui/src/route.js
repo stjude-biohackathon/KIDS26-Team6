@@ -18,6 +18,7 @@ const Settings = () => import('./views/settings/Settings.vue');
 // redirect, so no direct reference here. Keeping the import out avoids
 // pulling a second copy into a separate chunk.
 const Stopwatch = () => import('./views/Stopwatch.vue');
+const Sessions = () => import('./views/Sessions.vue');
 const WorkReport = () => import('./views/WorkReport.vue');
 const BillingView = () => import('./views/BillingView.vue');
 const AISummaryView = () => import('./views/AISummaryView.vue');
@@ -83,6 +84,7 @@ const router = new VueRouter({
       props: true,
     },
     { path: '/stopwatch', component: Stopwatch },
+    { path: '/sessions', component: Sessions },
     { path: '/work-report', component: WorkReport },
     { path: '/billing', component: BillingView },
     { path: '/analysis/activity', component: AISummaryView },

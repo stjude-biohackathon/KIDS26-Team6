@@ -43,6 +43,11 @@ div(:class="{'fixed-top-padding': fixedTopMenu}")
             icon(name="stopwatch")
             | {{ $t('nav.stopwatch') }}
 
+        b-nav-item(to="/sessions")
+          div.px-2.px-lg-1
+            icon(name="tasks")
+            | Sessions
+
       // Brand on large screens (centered)
       b-navbar-nav.abs-center.d-none.d-lg-block
         b-navbar-brand(to="/" style="background-color: transparent;")
@@ -117,6 +122,7 @@ import 'vue-awesome/icons/chart-line';
 import 'vue-awesome/icons/chart-pie';
 import 'vue-awesome/icons/flag-checkered';
 import 'vue-awesome/icons/stopwatch';
+import 'vue-awesome/icons/tasks';
 import 'vue-awesome/icons/robot';
 import 'vue-awesome/icons/cog';
 import 'vue-awesome/icons/tools';

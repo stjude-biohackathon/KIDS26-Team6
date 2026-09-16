@@ -11,7 +11,7 @@ Custom session-recording tooling built on top of ActivityWatch, for AutoCAB's ac
 | `scripts/screenshot_ocr_watcher.py` | Standalone watcher: periodic screenshot + OCR, posted into AW as a custom bucket, task-labeled |
 | `visualization/index.html` | Custom AW dashboard panel showing that OCR bucket's events |
 | `aw-webui/` | Fork of AW's real dashboard (Vue app) — this is where Start/Stop/session/merge/skill-drafting features are being built directly into the UI |
-| `backend/` | Our own small API service the dashboard calls into to actually start/stop capture and manage sessions *(added as of the session controller phase — see KNOWLEDGE_BASE.md)* |
+| `backend/session_controller.py` | Flask API (port 5677) the dashboard's Sessions tab calls into to actually start/stop capture and track sessions by task name |
 
 ## Running everything
 
@@ -34,7 +34,12 @@ npm install      # first time only
 npm run serve    # → http://localhost:27180
 ```
 
-**4. The session backend** *(to be filled in as this phase lands — see KNOWLEDGE_BASE.md for current status)*.
+**4. The session backend** (needed for the Sessions tab's Start/Stop/Resume — see KNOWLEDGE_BASE.md for design details):
+```bash
+cd activitywatch/backend
+python3 session_controller.py   # → http://localhost:5677
+```
+Then open the dashboard (step 3) and go to the **Sessions** tab in the nav.
 
 **5. The screenshot+OCR watcher, standalone** (if not driven through the dashboard yet):
 ```bash

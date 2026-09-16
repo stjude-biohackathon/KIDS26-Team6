@@ -18,7 +18,8 @@ export default {
       entry: './src/main.js',
       template: './index.html',
       templateParameters: {
-        cspDefaultSrc: process.env.NODE_ENV === 'production' ? '' : '*:5600 *:5666 ws://*:27180',
+        // *:5677 added for our own session-controller backend (see activitywatch/backend/)
+        cspDefaultSrc: process.env.NODE_ENV === 'production' ? '' : '*:5600 *:5666 *:5677 ws://*:27180',
       },
     },
   },
