@@ -7,6 +7,11 @@ typed while the daemon was down are still picked up on the next start.
 
 from __future__ import annotations
 
+import json
+import os
+import tempfile
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -48,6 +53,9 @@ DEVSQL_COMMAND_COLUMNS = (
     "originator",
     "tool_name",
 )
+DEVSQL_CURSOR_SCHEMA_VERSION = 1
+DEVSQL_SHELL_SOURCE = "atuin"
+DevSQLIdentity = tuple[str, str, str]
 
 
 def datetime_to_iso(moment: datetime) -> str:
@@ -109,10 +117,138 @@ def optional_int(value: object) -> int | None:
         return None
 
 
+@dataclass(slots=True)
+class DevSQLCursor:
+    """Durable progress for one DevSQL-backed active interval."""
+
+    devsql_version: str
+    active_interval_start: str
+    shell_source: str = DEVSQL_SHELL_SOURCE
+    last_timestamp: str | None = None
+    identities_at_last_timestamp: set[DevSQLIdentity] = field(
+        default_factory=set
+    )
+
+    @classmethod
+    def load(
+        cls,
+        path: Path,
+        *,
+        devsql_version: str,
+        active_interval_start: str,
+        shell_source: str = DEVSQL_SHELL_SOURCE,
+    ) -> DevSQLCursor:
+        """Load compatible progress or return a clean interval cursor."""
+
+        fresh = cls(
+            devsql_version=devsql_version,
+            active_interval_start=active_interval_start,
+            shell_source=shell_source,
+        )
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, OSError, json.JSONDecodeError):
+            return fresh
+        if not isinstance(payload, dict):
+            return fresh
+        expected = {
+            "schema_version": DEVSQL_CURSOR_SCHEMA_VERSION,
+            "devsql_version": devsql_version,
+            "shell_source": shell_source,
+            "active_interval_start": active_interval_start,
+        }
+        if any(payload.get(key) != value for key, value in expected.items()):
+            return fresh
+
+        last_timestamp = payload.get("last_timestamp")
+        if last_timestamp is not None:
+            last_moment = parse_devsql_timestamp(last_timestamp)
+            interval_start = parse_devsql_timestamp(active_interval_start)
+            if (
+                last_moment is None
+                or interval_start is None
+                or last_moment < interval_start
+            ):
+                return fresh
+            fresh.last_timestamp = datetime_to_iso(last_moment)
+
+        identities = payload.get("identities_at_last_timestamp", [])
+        if not isinstance(identities, list):
+            return fresh
+        if last_timestamp is None and identities:
+            return fresh
+        for identity in identities:
+            if (
+                not isinstance(identity, list)
+                or len(identity) != 3
+                or not all(isinstance(value, str) and value for value in identity)
+            ):
+                return fresh
+            fresh.identities_at_last_timestamp.add(
+                (identity[0], identity[1], identity[2])
+            )
+        return fresh
+
+    def include(self, occurred_at: datetime, identity: DevSQLIdentity) -> None:
+        """Advance progress while retaining every identity at the boundary."""
+
+        timestamp = datetime_to_iso(occurred_at)
+        last_moment = parse_devsql_timestamp(self.last_timestamp)
+        current_moment = parse_devsql_timestamp(timestamp)
+        if current_moment is None:
+            return
+        if last_moment is None or current_moment > last_moment:
+            self.last_timestamp = timestamp
+            self.identities_at_last_timestamp = {identity}
+        elif current_moment == last_moment:
+            self.identities_at_last_timestamp.add(identity)
+
+    def save(self, path: Path) -> None:
+        """Atomically write only non-content activity metadata."""
+
+        payload = {
+            "schema_version": DEVSQL_CURSOR_SCHEMA_VERSION,
+            "devsql_version": self.devsql_version,
+            "shell_source": self.shell_source,
+            "active_interval_start": self.active_interval_start,
+            "last_timestamp": self.last_timestamp,
+            "identities_at_last_timestamp": [
+                list(identity)
+                for identity in sorted(self.identities_at_last_timestamp)
+            ],
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=path.parent,
+                prefix=f".{path.name}.",
+                delete=False,
+            ) as handle:
+                temporary_path = Path(handle.name)
+                handle.write(json.dumps(payload, indent=2) + "\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            temporary_path.chmod(0o600)
+            temporary_path.replace(path)
+        finally:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
+
+
 class DevSQLCommandReader:
     """Read Atuin and agent commands from one active recording interval."""
 
-    def __init__(self, client: DevSQLClient, *, since: str) -> None:
+    def __init__(
+        self,
+        client: DevSQLClient,
+        *,
+        since: str,
+        cursor_path: Path,
+        existing_events: Iterable[Event] = (),
+    ) -> None:
         interval_start = parse_devsql_timestamp(since)
         if interval_start is None:
             raise ValueError(
@@ -120,34 +256,91 @@ class DevSQLCommandReader:
             )
         self.client = client
         self.interval_start = interval_start
-        self._seen: set[tuple[str, str, str]] = set()
+        self.cursor_path = cursor_path
+        self.cursor = DevSQLCursor.load(
+            cursor_path,
+            devsql_version=client.version(),
+            active_interval_start=datetime_to_iso(interval_start),
+        )
+        self._seen = set(self.cursor.identities_at_last_timestamp)
+        self._restore_from_timeline(existing_events)
 
     def read(self) -> list[Event]:
         """Return new commands while retaining both Claude and Codex rows."""
 
         # DevSQL timestamps have mixed fractional precision. SQL narrows to the
         # correct second, then Python applies the exact interval boundary.
-        query_second = self.interval_start.strftime("%Y-%m-%dT%H:%M:%S")
+        query_start = (
+            parse_devsql_timestamp(self.cursor.last_timestamp)
+            or self.interval_start
+        )
+        query_second = query_start.strftime("%Y-%m-%dT%H:%M:%S")
         columns = ", ".join(DEVSQL_COMMAND_COLUMNS)
         sql = (
             f"SELECT {columns} FROM command_events "
             f"WHERE substr(timestamp, 1, 19) >= '{query_second}' "
-            "AND (source = 'atuin' OR channel = 'agent_tool') "
+            f"AND (source = '{self.cursor.shell_source}' "
+            "OR channel = 'agent_tool') "
             "ORDER BY timestamp, source, session_id, source_id"
         )
         rows = self.client.query(sql, required_columns=DEVSQL_COMMAND_COLUMNS)
 
         events: list[Event] = []
+        batch_seen = set(self._seen)
         for row in rows:
-            event = self._convert(row)
-            if event is not None:
+            converted = self._convert(row, query_start, batch_seen)
+            if converted is not None:
+                event, identity = converted
                 events.append(event)
+                batch_seen.add(identity)
         return events
 
-    def _convert(self, row: dict[str, Any]) -> Event | None:
+    def commit(self, events: Iterable[Event]) -> None:
+        """Persist progress after the timeline accepts a complete batch."""
+
+        for event in events:
+            identity = self._event_identity(event)
+            occurred_at = parse_devsql_timestamp(event.ts)
+            if identity is None or occurred_at is None:
+                continue
+            self._seen.add(identity)
+            self.cursor.include(occurred_at, identity)
+        self.cursor.save(self.cursor_path)
+
+    def _restore_from_timeline(self, events: Iterable[Event]) -> None:
+        """Recover if events were written before a cursor update completed."""
+
+        for event in events:
+            if event.type != SHELL_COMMAND:
+                continue
+            identity = self._event_identity(event)
+            if identity is None:
+                continue
+            self._seen.add(identity)
+            occurred_at = parse_devsql_timestamp(event.ts)
+            if occurred_at is not None and occurred_at >= self.interval_start:
+                self.cursor.include(occurred_at, identity)
+
+    @staticmethod
+    def _event_identity(event: Event) -> DevSQLIdentity | None:
+        values = (
+            event.payload.get("source"),
+            event.payload.get("session_id"),
+            event.payload.get("source_id"),
+        )
+        if not all(isinstance(value, str) and value for value in values):
+            return None
+        return (str(values[0]), str(values[1]), str(values[2]))
+
+    def _convert(
+        self,
+        row: dict[str, Any],
+        query_start: datetime,
+        seen: set[DevSQLIdentity],
+    ) -> tuple[Event, DevSQLIdentity] | None:
         source = row["source"]
         channel = row["channel"]
-        if source != "atuin" and channel != "agent_tool":
+        if source != self.cursor.shell_source and channel != "agent_tool":
             return None
 
         session_id = row["session_id"]
@@ -157,12 +350,13 @@ class DevSQLCommandReader:
             isinstance(value, str) and value for value in stable_identity
         ):
             return None
+        identity = (str(source), str(session_id), str(source_id))
 
-        if stable_identity in self._seen:
+        if identity in seen:
             return None
 
         occurred_at = parse_devsql_timestamp(row["timestamp"])
-        if occurred_at is None or occurred_at < self.interval_start:
+        if occurred_at is None or occurred_at < query_start:
             return None
 
         command = row["command"]
@@ -172,7 +366,6 @@ class DevSQLCommandReader:
         if not redacted.available:
             raise RuntimeError("DevSQL command redaction is unavailable.")
 
-        self._seen.add(stable_identity)
         payload = {
             "command": redacted.text,
             "cwd": row["cwd"],
@@ -191,13 +384,16 @@ class DevSQLCommandReader:
             "tool_name": row["tool_name"],
         }
         hostname = row["hostname"]
-        return Event(
-            source="shell",
-            type=SHELL_COMMAND,
-            payload=payload,
-            ts=datetime_to_iso(occurred_at),
-            host=hostname if isinstance(hostname, str) and hostname else None,
-            redactions=redacted.findings,
+        return (
+            Event(
+                source="shell",
+                type=SHELL_COMMAND,
+                payload=payload,
+                ts=datetime_to_iso(occurred_at),
+                host=hostname if isinstance(hostname, str) and hostname else None,
+                redactions=redacted.findings,
+            ),
+            identity,
         )
 
 
@@ -220,6 +416,8 @@ class ShellCollector(Collector):
             DevSQLCommandReader(
                 devsql_client,
                 since=active_interval_start(session),
+                cursor_path=session.root / "shell" / "devsql-cursor.json",
+                existing_events=session.writer.read(),
             )
             if devsql_client is not None
             else None
@@ -274,7 +472,9 @@ class ShellCollector(Collector):
         # Emit spool events first so a DevSQL failure cannot block remote or
         # fallback records that were already drained successfully.
         if self._devsql_reader is not None:
-            self.emit(self._devsql_reader.read())
+            devsql_events = self._devsql_reader.read()
+            self.emit(devsql_events)
+            self._devsql_reader.commit(devsql_events)
 
     def _convert(self, record: spool.SpoolRecord, origin: str) -> Event | None:
         if record.kind == spool.KIND_COMMAND:

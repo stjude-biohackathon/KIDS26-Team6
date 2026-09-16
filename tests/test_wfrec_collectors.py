@@ -287,6 +287,13 @@ def _devsql_client(
         command: list[str],
         **options: object,
     ) -> subprocess.CompletedProcess[str]:
+        if command[-1] == "--version":
+            return subprocess.CompletedProcess(
+                args=command,
+                returncode=0,
+                stdout="devsql 0.5.1\n",
+                stderr="",
+            )
         if queries is not None:
             queries.append(command[-1])
         return subprocess.CompletedProcess(
