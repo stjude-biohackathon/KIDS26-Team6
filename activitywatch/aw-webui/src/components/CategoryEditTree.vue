@@ -1,0 +1,113 @@
+<template lang="pug">
+div
+  div.row.py-2.class
+    div.col-8.col-md-4
+      span(:style="{ marginLeft: (1.5 * depth) + 'em', cursor: _class.children.length > 0 ? 'pointer' : null}" @click="expanded = !expanded")
+        span(v-if="_class.children.length > 0" style="opacity: 0.8")
+          icon(:name="expanded ? 'regular/minus-square' : 'regular/plus-square'" scale="0.8")
+        span(v-else style="opacity: 0.6")
+          icon(name="circle" scale="0.4" style="margin-left: 1em; margin-right: 1.22em;")
+        | {{ _class.name.slice(depth).join(" ➤ ")}}
+        icon.ml-1(v-if="_class.data && _class.data.color" name="circle" :style="'color: ' + _class.data.color")
+        span.ml-1(v-if="_class.children.length > 0" style="opacity: 0.5") ({{totalChildren}})
+        span.d-none.d-md-inline
+          span(v-if="_class.data && _class.data.score !== undefined" :style="'color: ' + (_class.data.score > 0 ? 'green' : 'red')")
+            | &nbsp; {{ _class.data.score >= 0 ? '+' : '' }}{{ _class.data.score }}
+
+    div.col-4.col-md-8
+      span.d-none.d-md-inline
+        span(v-if="_class.rule.type === 'regex'")
+          | Rule ({{_class.rule.type}}): #[code {{_class.rule.regex}}]
+          span.text-muted(v-if="_class.rule.select_keys && _class.rule.select_keys.length")
+            |  [{{ _class.rule.select_keys.join(', ') }}]
+        span.text-muted(v-else) No rule
+      span.float-right
+        b-btn.ml-1.border-0(size="sm", variant="outline-secondary", @click="showEditModal(_class.id)" pill)
+          icon(name="edit")
+        b-btn.ml-1.border-0(size="sm", variant="outline-success", @click="addSubclass(_class); expanded = true" pill)
+          icon(name="plus")
+  div
+    div.pa-2(v-for="child in _class.children", style="background: rgba(0, 0, 0, 0);", v-show="expanded")
+      CategoryEditTree(:_class="child", :depth="depth+1")
+
+  div(v-if="editingId !== null")
+    CategoryEditModal(:categoryId='editingId', @hidden="hideEditModal()")
+</template>
+
+<script lang="ts">
+import 'vue-awesome/icons/regular/plus-square';
+import 'vue-awesome/icons/regular/minus-square';
+import 'vue-awesome/icons/circle';
+import 'vue-awesome/icons/caret-right';
+import 'vue-awesome/icons/trash';
+import 'vue-awesome/icons/plus';
+import 'vue-awesome/icons/edit';
+
+import CategoryEditModal from './CategoryEditModal.vue';
+import { useCategoryStore } from '~/stores/categories';
+
+import _ from 'lodash';
+
+export default {
+  name: 'CategoryEditTree',
+  components: {
+    CategoryEditModal,
+  },
+  props: {
+    _class: Object,
+    depth: {
+      type: Number,
+      default: 0,
+    },
+  },
+  data: function () {
+    return {
+      categoryStore: useCategoryStore(),
+
+      expanded: this.depth < 1,
+      editingId: null,
+    };
+  },
+  computed: {
+    totalChildren: function () {
+      function countChildren(node) {
+        return node.children.length + _.sum(_.map(node.children, countChildren));
+      }
+      return countChildren(this._class);
+    },
+  },
+  methods: {
+    addSubclass: function (parent) {
+      // Generate a unique default name to prevent duplicate name conflicts (#702)
+      const baseName = 'New class';
+      let name = baseName;
+      let counter = 2;
+      const existingNames = this.categoryStore.classes.map(c => JSON.stringify(c.name));
+      while (existingNames.includes(JSON.stringify(parent.name.concat([name])))) {
+        name = `${baseName} (${counter})`;
+        counter++;
+      }
+
+      const lastId = this.categoryStore.addClass({
+        name: parent.name.concat([name]),
+        rule: { type: 'regex', regex: 'FILL ME' },
+      });
+
+      this.editingId = lastId;
+    },
+    showEditModal: function () {
+      this.editingId = this._class.id;
+    },
+    hideEditModal: function () {
+      this.editingId = null;
+    },
+  },
+};
+</script>
+
+<style scoped lang="scss">
+.row.class:hover {
+  background-color: #eee;
+  border-radius: 5px;
+}
+</style>

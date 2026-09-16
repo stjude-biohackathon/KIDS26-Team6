@@ -155,3 +155,7 @@ dmypy.json
 .pyre/
 .myenv/
 requirements.txt
+
+# aw-webui fork: build artifacts, never commit these
+activitywatch/aw-webui/node_modules/
+activitywatch/aw-webui/dist/

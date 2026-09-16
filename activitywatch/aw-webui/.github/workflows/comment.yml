@@ -1,0 +1,86 @@
+# NOTE: For screenshots to work in untrusted PRs we need to do the screenshot comment in a trusted job like this one.
+#       See this post for details: https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+
+name: Comment
+
+on:
+  workflow_run:
+    workflows: ["Build"]
+    types:
+      - completed
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    # TODO: Maybe add `github.event.workflow_run.event == 'pull_request'` to avoid spam?
+
+    steps:
+    - uses: actions/checkout@v7
+    - uses: iterative/setup-cml@1b5ab8766e715e8f1aab96bbb1f4f2e3e1e8af45  # v3
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        vega: false
+
+    # Doesn't work for fetching artifacts from separate workflows
+    #- name: Download screenshots
+    #  uses: actions/download-artifact@v2
+    #  with:
+    #    name: screenshots
+    #    path: screenshots
+
+    - name: 'Download artifact'
+      uses: actions/github-script@v9
+      with:
+        script: |
+          var fs = require('fs');
+          var child_process = require('child_process');
+          var artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+             owner: context.repo.owner,
+             repo: context.repo.repo,
+             run_id: ${{ github.event.workflow_run.id }},
+          });
+          var matchingArtifacts = artifacts.data.artifacts.filter((artifact) => {
+            return artifact.name.startsWith("screenshots-");
+          });
+
+          for (const artifact of matchingArtifacts) {
+            var download = await github.rest.actions.downloadArtifact({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               artifact_id: artifact.id,
+               archive_format: 'zip',
+            });
+            fs.writeFileSync(`${{github.workspace}}/${artifact.name}.zip`, Buffer.from(download.data));
+            // Unzip the artifact
+            child_process.execSync(`unzip -d screenshots ${artifact.name}.zip`, {cwd: process.env.GITHUB_WORKSPACE});
+            // Remove the zip file
+            fs.unlinkSync(`${{github.workspace}}/${artifact.name}.zip`);
+          }
+
+    - name: Compose comment
+      env:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "Here are screenshots of this commit:" >> comment.md
+        echo "" >> comment.md  # just for the newline
+        for aw_server_dir in screenshots/aw-*; do
+            for aw_version_dir in $aw_server_dir/*; do
+                aw_server=$(basename $aw_server_dir)
+                aw_version=$(basename $aw_version_dir)
+                echo "<details><summary>Screenshots using $aw_server $aw_version (click to expand)</summary>" >> comment.md
+                echo '<p float="left">' >> comment.md
+                for screenshot in $aw_version_dir/*.png; do
+                    echo "<img width=\"45%\" src=\"$(cml publish $screenshot)\"/>" >> comment.md
+                done
+                echo '</p>' >> comment.md
+                echo -n '</details>' >> comment.md
+            done
+        done
+    - name: Post screenshots in commit comment
+      env:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        head_sha: ${{ github.event.workflow_run.head_sha }}
+      run: |
+        cml comment create --target=commit/$head_sha --repo https://github.com/ActivityWatch/aw-webui comment.md

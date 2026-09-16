@@ -1,0 +1,460 @@
+<template lang="pug">
+div
+  h3 {{ $t('timeline.title') }}
+
+  input-timeinterval(v-model="daterange", :defaultDuration="timeintervalDefaultDuration", :maxDuration="maxDuration").mb-3
+
+  // Toolbar: filters (primary), display kebab (swimlanes etc.), event count,
+  // and keyboard hint. Flex-wrap so it doesn't overlap at narrow widths.
+  div.timeline-toolbar.d-flex.flex-wrap.align-items-center
+    details.timeline-filters.mr-2(ref="filtersDetails")
+      summary.timeline-chip.timeline-chip--clickable
+        icon.mr-1(name="filter")
+        b Filters: {{ filter_summary }}
+      div.timeline-filters-panel.shadow-sm
+        table
+          tr
+            th.pt-2.pr-3
+              label(for="timeline-filter-host") Host:
+            td
+              select#timeline-filter-host.form-control.form-control-sm(v-model="filter_hostname")
+                option(:value='null') All
+                option(v-for="host in hosts", :value="host") {{ host }}
+          tr
+            th.pt-2.pr-3
+              label(for="timeline-filter-client") Client:
+            td
+              select#timeline-filter-client.form-control.form-control-sm(v-model="filter_client")
+                option(:value='null') All
+                option(v-for="client in clients", :value="client") {{ client }}
+          tr
+            th.pt-2.pr-3
+              label(for="timeline-filter-duration") Duration:
+            td
+              select#timeline-filter-duration.form-control.form-control-sm(v-model="filter_duration")
+                option(:value='null') All
+                option(:value='2') 2+ secs
+                option(:value='5') 5+ secs
+                option(:value='10') 10+ secs
+                option(:value='30') 30+ sec
+                option(:value='1 * 60') 1+ mins
+                option(:value='2 * 60') 2+ mins
+                option(:value='3 * 60') 3+ mins
+                option(:value='10 * 60') 10+ mins
+                option(:value='30 * 60') 30+ mins
+                option(:value='1 * 60 * 60') 1+ hrs
+                option(:value='2 * 60 * 60') 2+ hrs
+          tr
+            th.pt-2.pr-3
+              label AFK:
+            td
+              b-form-checkbox(v-model="filter_afk" size="sm" switch)
+                | {{ $t('timeline.filterAfk') }}
+          tr
+            th.pt-2.pr-3
+              label Merge:
+            td
+              b-form-checkbox(v-model="filter_merge_similar" size="sm" switch)
+                | {{ $t('timeline.mergeByApp') }}
+          tr
+            th.pt-2.pr-3
+              label(for="timeline-filter-categories") Categories:
+            td
+              select#timeline-filter-categories.form-control.form-control-sm(@change="onCategorySelect($event)", :value="''")
+                option(value="" disabled) {{ filter_categories.length > 0 ? 'Add category...' : 'All' }}
+                option(v-for="cat in category_options", :key="cat.text", :value="cat.text") {{ cat.text }}
+              div.mt-1(v-if="filter_categories.length > 0")
+                span.badge.badge-info.mr-1(v-for="(cat, idx) in filter_categories", :key="idx")
+                  | {{ cat.join(' > ') }}
+                  button.ml-1.close.small(@click="removeCategory(idx)", type="button", aria-label="Remove category", style="font-size: 0.85rem; line-height: 1") &times;
+
+    // Display options (swimlanes, future visual toggles) tucked behind a
+    // ghost kebab so they don't compete visually with Filters.
+    b-dropdown.kebab-dropdown.mr-2(
+      size="sm"
+      variant="outline-secondary"
+      toggle-class="border-0"
+      no-caret
+      right
+      title="Display options"
+      aria-label="Display options"
+    )
+      template(v-slot:button-content)
+        icon(name="ellipsis-v")
+      b-dropdown-header Swimlanes
+      b-dropdown-item-button(
+        v-for="opt in swimlaneOptions"
+        :key="String(opt.value)"
+        :active="swimlane === opt.value"
+        @click="swimlane = opt.value"
+      ) {{ opt.text }}
+
+    div.timeline-chip.mr-2.text-muted
+      | {{ num_events }} {{ $t('timeline.eventsShown') }}
+
+    small.text-muted.ml-auto
+      | {{ $t('timeline.scrollHint') }}
+
+  b-alert.mb-2(v-if="buckets !== null && num_events === 0", variant="warning", show)
+    | {{ $t('timeline.noEvents') }}
+
+  div(v-if="buckets !== null")
+    vis-timeline(:buckets="buckets", :showRowLabels='true', :queriedInterval="daterange", :swimlane="swimlane", :updateTimelineWindow='updateTimelineWindow')
+
+    aw-devonly(reason="Not ready for production, still experimenting")
+      aw-calendar(:buckets="buckets")
+  div(v-else)
+    h1.aw-loading {{ $t('common.loading') }}
+</template>
+
+<script lang="ts">
+import 'vue-awesome/icons/filter';
+import 'vue-awesome/icons/ellipsis-v';
+import _ from 'lodash';
+import { mapState } from 'pinia';
+import { useSettingsStore } from '~/stores/settings';
+import { useBucketsStore } from '~/stores/buckets';
+import { getClient } from '~/util/awclient';
+import { canonicalEvents, querystr_to_array } from '~/queries';
+import { useCategoryStore } from '~/stores/categories';
+import { matchString } from '~/util/classes';
+import { getCategorizationStringFromEvent } from '~/util/color';
+import { seconds_to_duration } from '~/util/time';
+
+export default {
+  name: 'Timeline',
+  data() {
+    return {
+      all_buckets: null,
+      hosts: null,
+      buckets: null,
+      clients: null,
+      daterange: null,
+      maxDuration: 31 * 24 * 60 * 60,
+      filter_hostname: null,
+      filter_client: null,
+      filter_duration: null,
+      filter_afk: false,
+      filter_merge_similar: false,
+      filter_categories: [],
+      swimlane: null,
+      swimlaneOptions: [
+        { value: null, text: 'None' },
+        { value: 'category', text: 'Group by category' },
+        { value: 'bucketType', text: 'Group by bucket type' },
+      ],
+      updateTimelineWindow: true,
+    };
+  },
+  computed: {
+    ...mapState(useSettingsStore, ['always_active_pattern']),
+    timeintervalDefaultDuration() {
+      const settingsStore = useSettingsStore();
+      return Number(settingsStore.durationDefault);
+    },
+    // This does not match the chartData which is rendered in the timeline, as chartData excludes short events.
+    num_events() {
+      return _.sumBy(this.buckets, 'events.length');
+    },
+    category_options() {
+      const categoryStore = useCategoryStore();
+      return categoryStore.allCategoriesSelect;
+    },
+    filter_summary() {
+      const desc = [];
+      if (this.filter_hostname) {
+        desc.push(this.filter_hostname);
+      }
+      if (this.filter_client) {
+        desc.push(this.filter_client);
+      }
+      if (this.filter_duration > 0) {
+        desc.push(seconds_to_duration(this.filter_duration));
+      }
+      if (this.filter_afk) {
+        desc.push('AFK filtered');
+      }
+      if (this.filter_merge_similar) {
+        desc.push('merged by app');
+      }
+      if (this.filter_categories.length > 0) {
+        desc.push(
+          this.filter_categories.length +
+            ' categor' +
+            (this.filter_categories.length === 1 ? 'y' : 'ies')
+        );
+      }
+
+      if (desc.length > 0) {
+        return desc.join(', ');
+      }
+      return 'none';
+    },
+  },
+  watch: {
+    daterange() {
+      this.updateTimelineWindow = true;
+      this.getBuckets();
+    },
+    filter_hostname() {
+      this.updateTimelineWindow = false;
+      this.getBuckets();
+    },
+    filter_client() {
+      this.updateTimelineWindow = false;
+      this.getBuckets();
+    },
+    filter_duration() {
+      this.updateTimelineWindow = false;
+      this.getBuckets();
+    },
+    filter_afk() {
+      this.updateTimelineWindow = false;
+      this.getBuckets();
+    },
+    filter_merge_similar() {
+      this.updateTimelineWindow = false;
+      this.getBuckets();
+    },
+    filter_categories() {
+      this.updateTimelineWindow = false;
+      this.getBuckets();
+    },
+    swimlane() {
+      this.updateTimelineWindow = false;
+      this.getBuckets();
+    },
+  },
+  methods: {
+    onCategorySelect(event) {
+      const text = event.target.value;
+      if (!text) return;
+      const cat = this.category_options.find(c => c.text === text);
+      if (cat && !this.filter_categories.some(fc => _.isEqual(fc, cat.value))) {
+        this.filter_categories = [...this.filter_categories, cat.value];
+      }
+      event.target.value = '';
+    },
+    removeCategory(idx) {
+      this.filter_categories = this.filter_categories.filter((_cat, i) => i !== idx);
+    },
+    getBuckets: async function () {
+      if (this.daterange == null) return;
+
+      this.all_buckets = Object.freeze(
+        await useBucketsStore().getBucketsWithEvents({
+          start: this.daterange[0].format(),
+          end: this.daterange[1].format(),
+        })
+      );
+
+      this.hosts = this.all_buckets
+        .map(a => a.hostname)
+        .filter((value, index, array) => array.indexOf(value) === index);
+      this.clients = this.all_buckets
+        .map(a => a.client)
+        .filter((value, index, array) => array.indexOf(value) === index);
+
+      let buckets = this.all_buckets;
+      if (this.filter_hostname) {
+        buckets = _.filter(buckets, b => b.hostname == this.filter_hostname);
+      }
+      if (this.filter_client) {
+        buckets = _.filter(buckets, b => b.client == this.filter_client);
+      }
+
+      if (this.filter_duration > 0) {
+        for (const bucket of buckets) {
+          bucket.events = _.filter(bucket.events, e => e.duration >= this.filter_duration);
+        }
+      }
+
+      if (this.filter_categories.length > 0) {
+        const categoryStore = useCategoryStore();
+        const allCats = categoryStore.classes;
+        for (const bucket of buckets) {
+          // Skip AFK buckets — they don't have meaningful categorization
+          if (bucket.type === 'afkstatus') continue;
+          bucket.events = _.filter(bucket.events, e => {
+            const str = getCategorizationStringFromEvent(bucket, e);
+            if (str === null) return true; // Keep events from unknown bucket types
+            const matched = matchString(str, allCats, e);
+            const eventCat = matched ? matched.name : ['Uncategorized'];
+            // Check if the event's category matches any selected filter category
+            // (including parent matches: selecting "Work" also shows "Work > Programming")
+            return this.filter_categories.some(filterCat =>
+              _.isEqual(eventCat.slice(0, filterCat.length), filterCat)
+            );
+          });
+        }
+      }
+
+      // AFK filtering: use query engine to filter window events by AFK status
+      if (this.filter_afk) {
+        buckets = await this._applyAfkFilter(buckets);
+      }
+
+      // Merge adjacent events by app name for window buckets.
+      // Runs after AFK filtering so merges operate on already-filtered events.
+      // Reduces visual clutter from apps that produce many small events (e.g.
+      // Adobe Illustrator's TAB key toggling UI panels). See: activitywatch#1165
+      if (this.filter_merge_similar) {
+        buckets = this._applyMergeSimilar(buckets);
+      }
+
+      this.buckets = buckets;
+    },
+
+    // Merges adjacent events with the same app name within window buckets.
+    // This collapses rapid title changes (e.g. toggling UI panels) into single
+    // blocks per app, fixing timeline flooding for apps like Adobe Illustrator.
+    _applyMergeSimilar: function (buckets) {
+      return buckets.map(bucket => {
+        if (bucket.type !== 'currentwindow' || !bucket.events || bucket.events.length <= 1) {
+          return bucket;
+        }
+
+        const sorted = [...bucket.events].sort(
+          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+
+        const merged = [];
+        let current = { ...sorted[0] };
+
+        for (let i = 1; i < sorted.length; i++) {
+          const next = sorted[i];
+          const currentEnd = new Date(current.timestamp).getTime() + current.duration * 1000;
+          const nextStart = new Date(next.timestamp).getTime();
+          const gap = nextStart - currentEnd;
+
+          // Merge if same app and gap is small (< 30 seconds)
+          if (current.data?.app && current.data.app === next.data?.app && gap < 30000) {
+            const nextEnd = nextStart + next.duration * 1000;
+            current.duration =
+              (Math.max(currentEnd, nextEnd) - new Date(current.timestamp).getTime()) / 1000;
+          } else {
+            merged.push(current);
+            current = { ...next };
+          }
+        }
+        merged.push(current);
+
+        return { ...bucket, events: merged };
+      });
+    },
+
+    // Replaces raw window bucket events with AFK-filtered events via aw query engine.
+    // Also hides AFK status buckets since they're used for filtering, not display.
+    _applyAfkFilter: async function (buckets) {
+      const bucketsStore = useBucketsStore();
+      const result = [];
+
+      for (const bucket of buckets) {
+        // Hide AFK status buckets when AFK filtering is active
+        if (bucket.type === 'afkstatus') {
+          continue;
+        }
+
+        // For window buckets, replace events with AFK-filtered query results
+        if (bucket.type === 'currentwindow' && bucket.hostname) {
+          const afkBucketIds = bucketsStore.bucketsAFK(bucket.hostname);
+          if (afkBucketIds.length > 0) {
+            try {
+              const filteredEvents = await this._queryAfkFilteredEvents(bucket.id, afkBucketIds[0]);
+              // Create a copy with filtered events to avoid mutating frozen all_buckets
+              result.push({ ...bucket, events: filteredEvents });
+              continue;
+            } catch (e) {
+              console.warn('AFK filter query failed, falling back to raw events:', e);
+            }
+          }
+        }
+
+        // Keep other buckets unchanged
+        result.push(bucket);
+      }
+
+      return result;
+    },
+
+    // Runs a canonicalEvents query to get window events filtered by AFK status,
+    // respecting the user's always_active_pattern setting.
+    _queryAfkFilteredEvents: async function (windowBucketId, afkBucketId) {
+      const queryCode =
+        canonicalEvents({
+          bid_window: windowBucketId,
+          bid_afk: afkBucketId,
+          filter_afk: true,
+          always_active_pattern: this.always_active_pattern || undefined,
+          categories: [],
+          filter_categories: null,
+        }) + '\nRETURN = events;';
+
+      const queryArray = querystr_to_array(queryCode);
+
+      const start = this.daterange[0].format();
+      const end = this.daterange[1].format();
+      const timeperiods = [`${start}/${end}`];
+
+      const data = await getClient().query(timeperiods, queryArray);
+      return data[0] || [];
+    },
+  },
+};
+</script>
+
+<style scoped>
+.timeline-toolbar {
+  row-gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.timeline-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  background: #fff;
+  padding: 0.375rem 0.625rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+
+.timeline-chip--clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.timeline-chip--clickable:hover {
+  background: #f8f9fa;
+}
+
+.timeline-filters {
+  position: relative;
+}
+
+.timeline-filters > summary {
+  list-style: none;
+}
+
+.timeline-filters > summary::-webkit-details-marker {
+  display: none;
+}
+
+.timeline-filters-panel {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  padding: 0.75rem 1rem;
+  z-index: 100;
+  min-width: 320px;
+}
+
+.timeline-filters[open] .timeline-filters-panel {
+  display: block;
+}
+</style>

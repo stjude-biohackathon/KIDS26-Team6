@@ -1,0 +1,28 @@
+node_modules/
+dist*/
+/modules
+
+# logs
+npm-debug.log
+selenium-debug.log
+
+# copied from media
+static/logo*
+
+# outputs
+coverage
+coverage-ts
+screenshots
+test/unit/coverage
+test/e2e/reports
+*.map
+
+# platform-specific trash
+.DS_Store
+
+# editor-specific
+*.swp
+.vscode
+
+# python
+__pycache__
