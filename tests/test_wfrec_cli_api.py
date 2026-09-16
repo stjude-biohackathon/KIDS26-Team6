@@ -201,4 +201,8 @@ def test_cli_hooks_install_is_idempotent(wfrec_home, tmp_path, monkeypatch, caps
 def test_cli_doctor_renders(wfrec_home, capsys):
     assert main(["doctor"]) == 0
     out = capsys.readouterr().out
-    assert "sources:" in out and "shell hooks:" in out
+    assert "wfrec 0.1.0" in out
+    assert "System" in out
+    assert "Sources" in out
+    assert "Shell hooks" in out
+    assert "Status" in out

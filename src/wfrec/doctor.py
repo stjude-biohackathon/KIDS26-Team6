@@ -15,6 +15,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from rich import box
+from rich.console import Group
+from rich.table import Table
+from rich.text import Text
+
 from . import SOURCES, __version__, paths
 from .events import platform_summary
 from .state import RecorderState, read_api, read_sentinel
@@ -223,55 +228,145 @@ def _agents_status() -> dict[str, Any]:
     }
 
 
-def render(report: dict[str, Any]) -> str:
-    """Format a report for a terminal."""
+def render(report: dict[str, Any]) -> Group:
+    """Build a compact terminal report without changing diagnostic data."""
 
-    lines: list[str] = []
     platform_info = report["platform"]
-    lines.append(f"wfrec {report['wfrec_version']}  (python {report['python']})")
-    lines.append(
-        f"host: {platform_info['system']} {platform_info['release']} "
-        f"{platform_info['machine']}  display: {platform_info['display_server']}"
+    heading = Text.assemble(
+        (f"wfrec {report['wfrec_version']}", "bold cyan"),
+        (f"  Python {report['python']}", "dim"),
     )
-    lines.append(f"home: {report['paths']['home']}")
-    lines.append(f"runtime: {report['paths']['runtime_dir']}")
+
+    system = Table.grid(padding=(0, 2))
+    system.add_column(style="bold", no_wrap=True)
+    system.add_column(overflow="fold")
+    system.add_row(
+        "Host",
+        _plain_text(
+            f"{platform_info['system']} {platform_info['release']} "
+            f"{platform_info['machine']}"
+        ),
+    )
+    system.add_row("Display", _plain_text(platform_info["display_server"]))
+    system.add_row("Home", _plain_text(report["paths"]["home"]))
+    system.add_row("Runtime", _plain_text(report["paths"]["runtime_dir"]))
     daemon = report.get("daemon")
-    lines.append(f"daemon: {daemon['url'] if daemon else 'not running'}")
+    system.add_row(
+        "Daemon",
+        _plain_text(daemon["url"], "cyan")
+        if daemon
+        else Text("Not running", style="yellow"),
+    )
 
     state = report["state"]
-    lines.append(f"active session: {state['active_session'] or '(none)'}")
+    active_session = state["active_session"]
+    system.add_row(
+        "Session",
+        _plain_text(active_session)
+        if active_session
+        else Text("None", style="dim"),
+    )
     if report.get("sentinel"):
-        lines.append(f"sentinel flags: {report['sentinel']['flags']}")
+        system.add_row(
+            "Sentinel",
+            _plain_text(report["sentinel"]["flags"]),
+        )
 
-    lines.append("")
-    lines.append("sources:")
+    sources = _status_table("Source", "Backend", "Details")
     for name in SOURCES:
         info = report["sources"].get(name, {})
-        mark = "OK " if info.get("available") else "-- "
         backend = info.get("backend") or "none"
-        extra = []
-        if info.get("ocr_backend"):
-            extra.append(f"ocr={info['ocr_backend']}")
-        if info.get("window_backend"):
-            extra.append(f"window={info['window_backend']}")
-        if info.get("reason"):
-            extra.append(f"reason={info['reason']}")
-        suffix = f"  [{', '.join(extra)}]" if extra else ""
-        lines.append(f"  {mark} {name:<8} {backend}{suffix}")
+        sources.add_row(
+            _status_text(bool(info.get("available"))),
+            _plain_text(name),
+            _plain_text(backend),
+            _plain_text(_source_details(info)),
+        )
 
-    lines.append("")
-    lines.append("shell hooks:")
+    hooks = _status_table("Shell", "Configuration")
     for entry in report["hooks"]:
         if "error" in entry:
-            lines.append(f"  -- error: {entry['error']}")
+            hooks.add_row(
+                _status_text(False),
+                Text("Error", style="yellow"),
+                _plain_text(entry["error"]),
+            )
             continue
-        mark = "OK " if entry["installed"] else "-- "
-        where = ", ".join(entry["rc_files"]) or "not installed"
-        lines.append(f"  {mark} {entry['shell']:<11} {where}")
+        installed = bool(entry["installed"])
+        location = ", ".join(entry["rc_files"])
+        hooks.add_row(
+            _status_text(installed),
+            _plain_text(entry["shell"]),
+            _plain_text(location)
+            if location
+            else Text("Not installed", style="dim"),
+        )
 
+    sections: list[Any] = [
+        heading,
+        Text(""),
+        Text("System", style="bold"),
+        system,
+        Text(""),
+        Text("Sources", style="bold"),
+        sources,
+        Text(""),
+        Text("Shell hooks", style="bold"),
+        hooks,
+    ]
     if report["warnings"]:
-        lines.append("")
-        lines.append("warnings:")
+        warnings = Table.grid(padding=(0, 1))
+        warnings.add_column(no_wrap=True)
+        warnings.add_column(overflow="fold")
         for warning in report["warnings"]:
-            lines.append(f"  ! {warning}")
-    return "\n".join(lines)
+            warnings.add_row(
+                Text("!", style="bold yellow"),
+                _plain_text(warning),
+            )
+        sections.extend(
+            [Text(""), Text("Warnings", style="bold yellow"), warnings]
+        )
+    return Group(*sections)
+
+
+def _status_table(*columns: str) -> Table:
+    """Return the shared compact table used by doctor sections."""
+
+    table = Table(
+        box=box.SIMPLE_HEAVY,
+        expand=False,
+        header_style="bold dim",
+        pad_edge=False,
+        show_edge=False,
+    )
+    table.add_column("Status", no_wrap=True)
+    for column in columns:
+        table.add_column(column, overflow="fold")
+    return table
+
+
+def _status_text(available: bool) -> Text:
+    """Represent availability with both text and color."""
+
+    if available:
+        return Text("OK", style="bold green")
+    return Text("--", style="yellow")
+
+
+def _plain_text(value: object, style: str = "") -> Text:
+    """Render dynamic values literally rather than as Rich markup."""
+
+    return Text(str(value), style=style)
+
+
+def _source_details(info: dict[str, Any]) -> str:
+    """Summarize optional source attributes in one readable cell."""
+
+    details: list[str] = []
+    if info.get("ocr_backend"):
+        details.append(f"OCR: {info['ocr_backend']}")
+    if info.get("window_backend"):
+        details.append(f"window: {info['window_backend']}")
+    if info.get("reason"):
+        details.append(f"reason: {info['reason']}")
+    return ", ".join(details)

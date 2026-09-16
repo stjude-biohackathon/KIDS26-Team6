@@ -219,13 +219,15 @@ def _dispatch(args: argparse.Namespace, as_json: bool) -> int:
         return 0
 
     if command == "doctor":
+        from rich.console import Console
+
         from .doctor import diagnose, render
 
         report = diagnose()
         if as_json:
             _emit(report, True)
         else:
-            print(render(report))
+            Console(highlight=False).print(render(report))
         return 0
 
     if command == "hooks":
