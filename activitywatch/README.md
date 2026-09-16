@@ -10,7 +10,9 @@ Custom session-recording tooling built on top of ActivityWatch, for AutoCAB's ac
 | `aw-server.toml.reference` | Copy of the real AW server config needed for the custom dashboard visualization + CORS — see below to apply it |
 | `scripts/screenshot_ocr_watcher.py` | Capture mode "ocr": periodic screenshot + OCR, posted into AW as a custom bucket, task-labeled |
 | `scripts/audio_transcript_watcher.py` | Capture mode "audio": rolling mic recording, transcribed locally (whisper.cpp), posted into AW, task-labeled |
+| `scripts/video_watcher.py` | Capture mode "video": real screen recording in rolling chunks, saved to disk, referenced from AW events |
 | `models/` | Local Whisper model file(s) for audio transcription — gitignored, download separately (see below) |
+| `backend/video_output/` | Recorded video chunks — gitignored, real video files, never committed |
 | `visualization/index.html` | Custom AW dashboard panel showing the OCR bucket's events |
 | `aw-webui/` | Fork of AW's real dashboard (Vue app) — Start/Stop/session/merge/skill-drafting features are being built directly into the UI, including the **Sessions** tab |
 | `backend/session_controller.py` | Flask API (port 5677) the dashboard's Sessions tab calls into. Capture modes (ocr, audio, ...) are a registry here — adding a new one is one dict entry, see KNOWLEDGE_BASE.md |

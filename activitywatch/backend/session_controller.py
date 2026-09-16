@@ -48,7 +48,11 @@ CAPTURE_MODES: dict[str, dict] = {
         "extra_args": [],
         "description": "Mic audio, transcribed locally in near-real-time",
     },
-    # "video": not built yet — same shape as the two above once it is.
+    "video": {
+        "script": SCRIPTS_DIR / "video_watcher.py",
+        "extra_args": [],
+        "description": "Real screen video, recorded in rolling chunks",
+    },
 }
 DEFAULT_MODES = ["ocr"]
 
@@ -143,6 +147,12 @@ def start_session():
             [sys.executable, str(cfg["script"]), "--label", task_name, *cfg["extra_args"]],
             stdout=open(log_path, "w"),
             stderr=subprocess.STDOUT,
+            # Own process group per capture process: several watchers (audio,
+            # video) block on their own ffmpeg child for a whole chunk. Without
+            # this, SIGTERM to the watcher alone leaves that child orphaned and
+            # still recording — confirmed happening with a real video chunk.
+            # killpg on this group takes down the watcher AND its child together.
+            start_new_session=True,
         )
         _processes[f"{session_id}:{mode}"] = proc
         processes.append({"mode": mode, "pid": proc.pid, "log_file": str(log_path)})
@@ -166,7 +176,12 @@ def _stop_one_process(session_id: str, proc_info: dict) -> None:
     pid = proc_info["pid"]
     if not is_pid_alive(pid):
         return
-    os.kill(pid, signal.SIGTERM)
+    # Kill the whole process group (see start_new_session above) so a
+    # watcher's own ffmpeg child dies with it, not just the watcher itself.
+    try:
+        os.killpg(os.getpgid(pid), signal.SIGTERM)
+    except ProcessLookupError:
+        pass
     key = f"{session_id}:{proc_info['mode']}"
     proc = _processes.pop(key, None)
     if proc is not None:
@@ -175,7 +190,10 @@ def _stop_one_process(session_id: str, proc_info: dict) -> None:
         try:
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
-            proc.kill()
+            try:
+                os.killpg(os.getpgid(pid), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
             proc.wait(timeout=5)
     else:
         # Session from a previous backend run (no Popen handle here) —

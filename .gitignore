@@ -162,3 +162,6 @@ activitywatch/aw-webui/dist/
 
 # Whisper model files - large binaries, downloaded separately, never committed
 activitywatch/models/*.bin
+
+# Recorded video chunks - large binaries, never committed
+activitywatch/backend/video_output/
