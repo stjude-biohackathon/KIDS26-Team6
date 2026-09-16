@@ -55,6 +55,19 @@ div
         b-button.ml-2(size="sm", variant="outline-success", @click="startSession(task.task_name)")
           icon(name="play")
           | Resume
+        b-button.ml-2(size="sm", variant="outline-primary", @click="draftSkill(task.task_name)", :disabled="draftingTask === task.task_name")
+          b-spinner(v-if="draftingTask === task.task_name", small)
+          icon(v-else, name="magic")
+          |
+          |  Merge & Draft Skill
+
+      div.alert.alert-danger.mb-2(v-if="draftErrors[task.task_name]")
+        | {{ draftErrors[task.task_name] }}
+
+      div.card.mb-2(v-if="drafts[task.task_name]")
+        div.card-body
+          h6.card-title Drafted skill
+          pre.mb-0(style="white-space: pre-wrap; font-size: 0.85em") {{ drafts[task.task_name] }}
 
       b-table-simple(small, borderless)
         b-tbody
@@ -88,6 +101,7 @@ import moment from 'moment';
 import 'vue-awesome/icons/play';
 import 'vue-awesome/icons/stop';
 import 'vue-awesome/icons/question-circle';
+import 'vue-awesome/icons/magic';
 
 const BACKEND_URL = 'http://localhost:5677';
 
@@ -102,6 +116,9 @@ export default {
       modeOptions: [] as Array<{ text: string; value: string }>,
       selectedModes: ['ocr'] as string[],
       poller: null as ReturnType<typeof setInterval> | null,
+      draftingTask: null as string | null,
+      drafts: {} as Record<string, string>,
+      draftErrors: {} as Record<string, string>,
     };
   },
   mounted: async function () {
@@ -163,6 +180,24 @@ export default {
       } catch (e) {
         this.backendError = true;
       }
+    },
+    draftSkill: async function (task_name: string) {
+      this.draftingTask = task_name;
+      this.$delete(this.draftErrors, task_name);
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/task/${encodeURIComponent(task_name)}/draft_skill`, {
+          method: 'POST',
+        });
+        const body = await res.json();
+        if (!res.ok) {
+          this.$set(this.draftErrors, task_name, body.error || 'Draft failed.');
+        } else {
+          this.$set(this.drafts, task_name, body.draft);
+        }
+      } catch (e) {
+        this.$set(this.draftErrors, task_name, 'Could not reach the backend.');
+      }
+      this.draftingTask = null;
     },
   },
 };

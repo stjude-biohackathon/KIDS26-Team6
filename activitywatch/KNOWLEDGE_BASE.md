@@ -45,7 +45,7 @@ Added a second capture mode: `scripts/audio_transcript_watcher.py` records rolli
 
 **Verified end-to-end (2026-09-16)**: real 5s mic recording → real transcription of actual ambient speech (not a stub) → confirmed landed in AW via the API → deleted after (audio transcripts of real conversation are more sensitive than OCR text, cleaned up promptly). Then the multi-mode backend refactor: started a session with `["ocr", "audio"]` via curl, confirmed **two** distinct real PIDs alive via `ps`, stopped, confirmed **both** fully gone (no zombies). Then the same thing again through actual browser clicks on the new mode checkboxes in the Sessions tab — not curl — confirmed two real OS processes tagged with the right label, then Stop killed both cleanly. One more HMR quirk hit: a newly-added Vue method (`loadCaptureModes`) threw "is not a function" under hot-reload in one tab; a fresh tab + reload showed it was already fine, consistent with the same HMR-doesn't-always-propagate-cleanly pattern seen with icon registration earlier — noting this as a recurring characteristic of this dev setup, not a new bug each time.
 
-**Not yet built**: merge-sessions-into-one-record, LLM-backed skill drafting. (Video added next — see below.)
+**Not yet built at this point**: merge-sessions-into-one-record, LLM-backed skill drafting. (Both added next — see below.)
 
 ## Real video recording, and a real bug it exposed in the process-management model
 
@@ -56,6 +56,16 @@ Third capture mode: `scripts/video_watcher.py`, real screen video via `ffmpeg` (
 **Fix, at the process-management layer so it covers every mode, present and future**: `session_controller.py` now spawns each capture process with `start_new_session=True`, giving it (and anything it spawns) its own process group; stopping now does `os.killpg(os.getpgid(pid), SIGTERM)` instead of `os.kill(pid, SIGTERM)`, taking down the whole group together. Verified properly this time: started video alone, waited 3s into its 30s chunk, stopped, confirmed via `ps -p <parent>,<ffmpeg-child>` that **both** were completely gone — then repeated the same mid-chunk-stop test for audio and confirmed the identical fix resolved it there too.
 
 **Verified end-to-end (2026-09-16)**: real chunk recorded and confirmed playable (`ffprobe` showed correct 5s duration), event landed in AW with correct path/duration metadata, then the full three-mode test — `ocr + audio + video` together via real browser clicks, all three real OS processes confirmed alive via `ps` simultaneously, Stop confirmed all three (plus video's ffmpeg grandchild) fully gone. Test data cleaned up.
+
+## Merge + LLM-backed skill drafting
+
+`GET /api/task/<task_name>/merge` pulls every event tagged with that task's `label` across all three capture-mode buckets (found by bucket-name prefix, not hardcoded hostname), and merges them into one timeline sorted by timestamp — filtered by **label**, not session_id, so a task resumed after a gap (even a different day) merges in correctly with earlier sessions automatically. No special-casing needed for "resume" at merge time; it falls out of the label-based filter for free.
+
+`POST /api/task/<task_name>/draft_skill` builds a prompt from that merged timeline (OCR snippets + audio transcripts inlined, video chunks referenced as recorded clips) and calls the Anthropic API (`claude-sonnet-4-5`) to draft a real `SKILL.md`, saved under `backend/drafted_skills/<task-slug>.md` (gitignored — may contain content from captured sessions). This replaces the existing template-based `SkillProposalBuilder` in the main pipeline for this path — it's a genuine LLM call, not keyword matching.
+
+**Requires `ANTHROPIC_API_KEY`** set in the environment the backend runs in. Not set on this machine as of this build — the endpoint fails cleanly with a clear 400 (`"ANTHROPIC_API_KEY is not set..."`) rather than crashing, verified via both curl and a real UI click showing the error correctly in the Sessions tab. **The actual LLM call itself has not been exercised end-to-end** — that needs a real key, which wasn't available to test with. Everything up to that call (merge logic, prompt construction, request/response wiring, UI display of both success and error paths) is verified.
+
+**Verified end-to-end (2026-09-16)**: ran two real sessions for the same task across a gap (stop, wait, resume) — merge correctly combined 3 real events from both sessions, sorted by time, with correct session metadata. `draft_skill`'s error path verified via curl and via a real button click in the Sessions tab, error displayed correctly in a red alert box. `event_count == 0` guard (nothing to draft from) not yet exercised with a real key, but the code path is there.
 
 ## What it is
 

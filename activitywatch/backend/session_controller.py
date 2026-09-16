@@ -26,12 +26,25 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+import requests
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 BACKEND_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = BACKEND_DIR.parent / "scripts"
 SESSIONS_FILE = BACKEND_DIR / "sessions.json"
+DRAFTS_DIR = BACKEND_DIR / "drafted_skills"
+AW_SERVER = "http://127.0.0.1:5600"
+
+# Which AW bucket each capture mode posts events into. Used to pull a task's
+# data back out for merging — this is the other half of "add a capture mode
+# in one place": if a new mode posts to its own bucket, add its prefix here
+# too and merge/draft-skill pick it up automatically.
+BUCKET_PREFIXES: dict[str, str] = {
+    "ocr": "aw-watcher-screenocr",
+    "audio": "aw-watcher-audiotranscript",
+    "video": "aw-watcher-video",
+}
 
 # --- Capture modes registry -------------------------------------------------
 # To add a new capture mode: add an entry here pointing at a script that
@@ -221,6 +234,113 @@ def stop_session():
     session["stop_time"] = now_iso()
     save_sessions(sessions)
     return jsonify(session)
+
+
+def _find_bucket_id(prefix: str) -> str | None:
+    resp = requests.get(f"{AW_SERVER}/api/0/buckets/", timeout=5)
+    resp.raise_for_status()
+    for bucket_id in resp.json():
+        if bucket_id.startswith(prefix):
+            return bucket_id
+    return None
+
+
+def merge_task(task_name: str) -> dict:
+    """Pull every event tagged with this task's label across all capture-mode
+    buckets and merge them into one timeline, sorted by time. This is the
+    "combine multiple sessions of the same task into one record" step —
+    it works across sessions automatically since it filters by label, not
+    by session_id, so a task resumed tomorrow merges in with today's.
+    """
+    timeline = []
+    bucket_ids: dict[str, str] = {}
+    for mode, prefix in BUCKET_PREFIXES.items():
+        bucket_id = _find_bucket_id(prefix)
+        if not bucket_id:
+            continue
+        bucket_ids[mode] = bucket_id
+        resp = requests.get(f"{AW_SERVER}/api/0/buckets/{bucket_id}/events", params={"limit": 1000}, timeout=10)
+        resp.raise_for_status()
+        for event in resp.json():
+            if event.get("data", {}).get("label") == task_name:
+                timeline.append({"mode": mode, "timestamp": event["timestamp"], "data": event["data"]})
+
+    timeline.sort(key=lambda e: e["timestamp"])
+
+    sessions = [s for s in load_sessions() if s["task_name"] == task_name]
+
+    return {
+        "task_name": task_name,
+        "session_count": len(sessions),
+        "sessions": sessions,
+        "buckets_used": bucket_ids,
+        "event_count": len(timeline),
+        "timeline": timeline,
+    }
+
+
+@app.route("/api/task/<task_name>/merge", methods=["GET"])
+def get_task_merge(task_name: str):
+    return jsonify(merge_task(task_name))
+
+
+def build_skill_prompt(merged: dict) -> str:
+    lines = [
+        f"You are drafting a reusable AI agent skill (SKILL.md) from an observed task session.",
+        f"Task name: {merged['task_name']}",
+        f"Observed across {merged['session_count']} session(s), {merged['event_count']} captured events.",
+        "",
+        "Timeline of what was observed (OCR = text visible on screen, audio = transcribed narration,",
+        "video = a recorded screen clip reference):",
+        "",
+    ]
+    for event in merged["timeline"]:
+        mode = event["mode"]
+        data = event["data"]
+        if mode == "video":
+            lines.append(f"[{event['timestamp']}] (video clip recorded, {data.get('duration_seconds')}s)")
+        else:
+            text = (data.get("text") or "").strip()
+            if text:
+                lines.append(f"[{event['timestamp']}] ({mode}) {text}")
+
+    lines += [
+        "",
+        "Based on this observed activity, draft a SKILL.md for this task following standard",
+        "agent-skill conventions: a purpose section, required inputs, expected outputs, numbered",
+        "steps inferred from what was actually observed, and validation notes. If the observed",
+        "data is too sparse to confidently infer steps, say so explicitly rather than inventing them.",
+    ]
+    return "\n".join(lines)
+
+
+@app.route("/api/task/<task_name>/draft_skill", methods=["POST"])
+def draft_skill(task_name: str):
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY is not set in this backend's environment."}), 400
+
+    merged = merge_task(task_name)
+    if merged["event_count"] == 0:
+        return jsonify({"error": f"No captured events found for task '{task_name}' — nothing to draft from."}), 400
+
+    import anthropic
+
+    client = anthropic.Anthropic(api_key=api_key)
+    prompt = build_skill_prompt(merged)
+    response = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=2000,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    draft_text = "".join(block.text for block in response.content if hasattr(block, "text"))
+
+    DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
+    slug = task_name.replace(" ", "-")
+    draft_path = DRAFTS_DIR / f"{slug}.md"
+    draft_path.write_text(draft_text, encoding="utf-8")
+
+    return jsonify({"task_name": task_name, "draft_path": str(draft_path), "draft": draft_text})
 
 
 if __name__ == "__main__":

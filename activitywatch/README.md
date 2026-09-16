@@ -15,7 +15,8 @@ Custom session-recording tooling built on top of ActivityWatch, for AutoCAB's ac
 | `backend/video_output/` | Recorded video chunks — gitignored, real video files, never committed |
 | `visualization/index.html` | Custom AW dashboard panel showing the OCR bucket's events |
 | `aw-webui/` | Fork of AW's real dashboard (Vue app) — Start/Stop/session/merge/skill-drafting features are being built directly into the UI, including the **Sessions** tab |
-| `backend/session_controller.py` | Flask API (port 5677) the dashboard's Sessions tab calls into. Capture modes (ocr, audio, ...) are a registry here — adding a new one is one dict entry, see KNOWLEDGE_BASE.md |
+| `backend/session_controller.py` | Flask API (port 5677) the dashboard's Sessions tab calls into. Capture modes (ocr, audio, video, ...) are a registry here — adding a new one is one dict entry, see KNOWLEDGE_BASE.md. Also has the merge + LLM skill-drafting endpoints |
+| `backend/drafted_skills/` | LLM-drafted `SKILL.md` output per task — gitignored, may contain content from captured sessions |
 
 ## Running everything
 
@@ -46,14 +47,20 @@ curl -L -o activitywatch/models/ggml-base.en.bin \
   https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
 ```
 
-**5. The session backend** (needed for the Sessions tab's Start/Stop/Resume — see KNOWLEDGE_BASE.md for design details):
+**5. For "Merge & Draft Skill"** (one-time setup — skip if you only want capture, not drafting):
+```bash
+export ANTHROPIC_API_KEY="your-key-here"   # set in the same shell that starts the backend below
+```
+Without this, "Merge & Draft Skill" fails with a clear error in the UI rather than crashing — capture/Start/Stop/Resume/Merge all still work fine without it, only the actual drafting step needs it.
+
+**6. The session backend** (needed for the Sessions tab's Start/Stop/Resume/Merge/Draft — see KNOWLEDGE_BASE.md for design details):
 ```bash
 cd activitywatch/backend
 python3 session_controller.py   # → http://localhost:5677
 ```
-Then open the dashboard (step 3) and go to the **Sessions** tab in the nav — pick which capture mode(s) to enable there.
+Then open the dashboard (step 3) and go to the **Sessions** tab in the nav — pick which capture mode(s) to enable, and use **Merge & Draft Skill** on a task once it has some captured sessions.
 
-**6. Any watcher standalone**, without going through the dashboard (same pattern for either script):
+**7. Any watcher standalone**, without going through the dashboard (same pattern for either script):
 ```bash
 cd activitywatch/scripts
 nohup python3 screenshot_ocr_watcher.py --label "your-task-name" > /tmp/aw_ocr.log 2>&1 &

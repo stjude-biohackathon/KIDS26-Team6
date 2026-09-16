@@ -165,3 +165,6 @@ activitywatch/models/*.bin
 
 # Recorded video chunks - large binaries, never committed
 activitywatch/backend/video_output/
+
+# LLM-drafted skill outputs - may contain content from captured sessions
+activitywatch/backend/drafted_skills/
