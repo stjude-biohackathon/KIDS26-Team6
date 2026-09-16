@@ -14,13 +14,17 @@ div
       placement="bottom"
       title="About sessions"
     )
-      | Start a named session to capture screenshots+OCR for a task. Stop it when
-      | you're done. Starting again with the same task name resumes that task
-      | across multiple sessions, so they can later be merged for skill-drafting.
+      | Start a named session to capture a task, using whichever modes you pick
+      | below. Stop it when you're done. Starting again with the same task name
+      | resumes that task across multiple sessions, so they can later be merged
+      | for skill-drafting.
 
   div.alert.alert-warning(v-if="backendError")
     | Can't reach the session backend at #[code http://localhost:5677] —
     | is it running? (#[code cd activitywatch/backend && python3 session_controller.py])
+
+  div.mb-2
+    b-form-checkbox-group(v-model="selectedModes", :options="modeOptions")
 
   b-input-group(size="lg")
     b-input(
@@ -30,7 +34,7 @@ div
       @keyup.enter="startSession(taskName)"
     )
     b-input-group-append
-      b-button(@click="startSession(taskName)", variant="success", :disabled="!taskName.trim()")
+      b-button(@click="startSession(taskName)", variant="success", :disabled="!taskName.trim() || selectedModes.length === 0")
         icon(name="play")
         | Start
 
@@ -58,6 +62,7 @@ div
             b-td
               b-badge(:variant="s.status === 'running' ? 'success' : 'secondary'")
                 | {{ s.status }}
+            b-td.text-muted(style="font-size: 0.85em") {{ (s.modes || []).join(' + ') }}
             b-td.text-muted {{ formatTime(s.start_time) }}
             b-td.text-muted(v-if="s.stop_time") → {{ formatTime(s.stop_time) }}
             b-td(v-else)
@@ -94,10 +99,13 @@ export default {
       backendError: false,
       taskName: '',
       tasks: [] as Array<{ task_name: string; session_count: number; sessions: any[] }>,
+      modeOptions: [] as Array<{ text: string; value: string }>,
+      selectedModes: ['ocr'] as string[],
       poller: null as ReturnType<typeof setInterval> | null,
     };
   },
   mounted: async function () {
+    await this.loadCaptureModes();
     await this.refresh();
     this.poller = setInterval(() => this.refresh(), 3000);
   },
@@ -107,6 +115,18 @@ export default {
   methods: {
     formatTime(iso: string) {
       return moment(iso).format('HH:mm:ss');
+    },
+    loadCaptureModes: async function () {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/capture_modes`);
+        const modes = await res.json();
+        this.modeOptions = modes.map((m: { mode: string; description: string }) => ({
+          text: `${m.mode} — ${m.description}`,
+          value: m.mode,
+        }));
+      } catch (e) {
+        this.backendError = true;
+      }
     },
     refresh: async function () {
       try {
@@ -119,12 +139,12 @@ export default {
       this.loading = false;
     },
     startSession: async function (task_name: string) {
-      if (!task_name || !task_name.trim()) return;
+      if (!task_name || !task_name.trim() || this.selectedModes.length === 0) return;
       try {
         await fetch(`${BACKEND_URL}/api/session/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ task_name: task_name.trim() }),
+          body: JSON.stringify({ task_name: task_name.trim(), modes: this.selectedModes }),
         });
         this.taskName = '';
         await this.refresh();

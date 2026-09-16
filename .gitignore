@@ -159,3 +159,6 @@ requirements.txt
 # aw-webui fork: build artifacts, never commit these
 activitywatch/aw-webui/node_modules/
 activitywatch/aw-webui/dist/
+
+# Whisper model files - large binaries, downloaded separately, never committed
+activitywatch/models/*.bin

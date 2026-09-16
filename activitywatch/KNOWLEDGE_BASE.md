@@ -35,6 +35,18 @@ The dashboard can't itself spawn a capture process — browsers are sandboxed fr
 
 **Not yet built**: real video recording (toggle alongside OCR), merge-sessions-into-one-record, and the LLM-backed skill-drafting step.
 
+## Audio + local transcription, and the capture-modes registry refactor
+
+Added a second capture mode: `scripts/audio_transcript_watcher.py` records rolling mic-audio chunks (`ffmpeg` + `avfoundation`) and transcribes each one **locally** via `whisper.cpp` (`brew install whisper-cpp`, model at `activitywatch/models/ggml-base.en.bin`, gitignored — 141MB, download separately) — no cloud API, same privacy stance as everything else here, since spoken narration of a task can easily include sensitive context. Posts transcripts into a new `aw-watcher-audiotranscript` bucket, same shape as the OCR watcher.
+
+**Why local transcription specifically**: on this machine (Apple M4), Metal-accelerated `whisper-cli` transcribed a 5-second clip in 0.34s — fast enough that chunked (~15-30s windows) near-real-time transcription is comfortable, without needing true streaming ASR's added complexity.
+
+**Scalability refactor**: rather than bolt audio on as a second hardcoded script, `backend/session_controller.py` now has a `CAPTURE_MODES` registry — each mode is one dict entry (script path + args), and a session picks a list of modes (`{"task_name": ..., "modes": ["ocr", "audio"]}`), spawning one process per mode. Adding the next capture type (video, browser activity, whatever) means adding one registry entry — session/task tracking, resume, and stop-everything-cleanly all work automatically for it, no other code changes needed. `GET /api/capture_modes` exposes the registry so the UI can render checkboxes without hardcoding mode names client-side either.
+
+**Verified end-to-end (2026-09-16)**: real 5s mic recording → real transcription of actual ambient speech (not a stub) → confirmed landed in AW via the API → deleted after (audio transcripts of real conversation are more sensitive than OCR text, cleaned up promptly). Then the multi-mode backend refactor: started a session with `["ocr", "audio"]` via curl, confirmed **two** distinct real PIDs alive via `ps`, stopped, confirmed **both** fully gone (no zombies). Then the same thing again through actual browser clicks on the new mode checkboxes in the Sessions tab — not curl — confirmed two real OS processes tagged with the right label, then Stop killed both cleanly. One more HMR quirk hit: a newly-added Vue method (`loadCaptureModes`) threw "is not a function" under hot-reload in one tab; a fresh tab + reload showed it was already fine, consistent with the same HMR-doesn't-always-propagate-cleanly pattern seen with icon registration earlier — noting this as a recurring characteristic of this dev setup, not a new bug each time.
+
+**Not yet built**: real video recording, merge-sessions-into-one-record, LLM-backed skill drafting.
+
 ## What it is
 
 ActivityWatch is a free, open-source, **local-first automated time tracker** (activitywatch.net), MPL-2.0 licensed. It runs on Windows, macOS, Linux, and Android. All data is stored on the device it runs on and is never uploaded anywhere — there's no account, no cloud sync, no server component outside your own machine.
