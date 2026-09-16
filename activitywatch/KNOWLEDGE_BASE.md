@@ -79,6 +79,25 @@ Decided direction (2026-09-16): keep the direct-API "Merge & Draft Skill" button
 - [ ] No `ANTHROPIC_API_KEY` needed for this path — whatever Claude client connects brings its own authenticated access, which is the whole point of doing it this way.
 - [ ] Once built, the Sessions tab could optionally show "drafted via MCP" entries too (same `drafted_skills/` folder, either path writes there) — no UI change strictly required, just worth noting the two paths converge on the same output location.
 
+## TODO: post-stop redaction review (annotate/redact PHI/PII before the capture is "final")
+
+Requested (2026-09-16), not built. Right now Stop just marks a session stopped — nothing surfaces what was actually captured for review before it's sitting in AW's database (and eligible for merge/draft-skill later). Plan for when this gets picked up:
+
+- [ ] On Stop, immediately show a review popup/panel — not something you have to go find later — surfacing everything that session just captured: OCR text snippets, audio transcript segments, video chunk references, in order.
+- [ ] Let the user select/highlight spans of text (or flag a whole event) as PHI/PII/sensitive, replacing them with a redaction marker.
+- [ ] Auto-suggest redactions as a first pass rather than starting from a blank slate — the existing `redact_text()` in `src/redaction/__init__.py` (email/SJ-ID/MRN/DOB patterns + deny-list) already does exactly this kind of pattern-based flagging; run it automatically on the captured text and pre-highlight its findings for the human to confirm/adjust/add to, rather than building a second redaction engine from scratch.
+- [ ] Real design decision to make here, not to default silently: does confirming redactions **rewrite the AW event in place** (the raw unredacted version is gone), or does it produce a separate redacted copy while the raw capture stays local-only? Rewriting is simpler and matches "nothing sensitive should persist even locally longer than necessary," but is irreversible if the human's redaction pass was wrong; a separate copy is safer to revise but means the raw sensitive version still exists on disk somewhere. Pick one deliberately later, don't just implement whichever is easiest.
+- [ ] Consider gating merge/draft-skill on this: a task's sessions aren't eligible to merge until each one's redaction review has been confirmed, matching the actual AutoCAB challenge's human-in-the-loop review requirement rather than just being a nice-to-have UI feature bolted on the side.
+
+## TODO: surface capture activity in AW's own Activity tab, not just our Sessions tab
+
+Requested (2026-09-16), not built. Right now everything we've built (sessions, tasks, modes, drafts) only shows in the custom **Sessions** tab — the actual **Activity** tab (Top Applications, Top Window Titles, Timeline barchart) has no idea any of this exists. Ideas to explore later (not committed to any of these specifically):
+
+- [ ] A "captured tasks" section on the Activity view's summary, alongside Top Applications/Top Window Titles, showing which task(s) were being recorded during the viewed period.
+- [ ] Overlay task-session boundaries directly on the existing Timeline barchart — a colored band showing "task X was being captured here," alongside the normal app/window activity bars, so you can visually correlate what AW saw passively with what AutoCAB was deliberately recording.
+- [ ] Click-through from a captured OCR/audio/video event back to its task in the Sessions tab (and the reverse — from a task in Sessions, jump to that time range in Activity).
+- [ ] A small "today's captured tasks" widget: task name, total duration, which modes were used, one click to Sessions for more detail or straight to Merge & Draft Skill.
+
 ## What it is
 
 ActivityWatch is a free, open-source, **local-first automated time tracker** (activitywatch.net), MPL-2.0 licensed. It runs on Windows, macOS, Linux, and Android. All data is stored on the device it runs on and is never uploaded anywhere — there's no account, no cloud sync, no server component outside your own machine.
