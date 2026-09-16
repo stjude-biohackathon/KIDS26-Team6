@@ -1,23 +1,18 @@
-"""Shell collector: drains hook spool files into the timeline.
-
-The hooks do the capture; this collector only converts. That split is what
-keeps a dead daemon from ever hanging a terminal, and it means shell commands
-typed while the daemon was down are still picked up on the next start.
-"""
+"""Shell collector for local DevSQL or hook-spool capture and remote spools."""
 
 from __future__ import annotations
 
 import json
 import os
 import tempfile
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .. import spool
-from ..devsql import DevSQLClient
+from ..devsql import DevSQLClient, DevSQLError
 from ..events import (
     AGENT_MESSAGE,
     Event,
@@ -28,6 +23,7 @@ from ..events import (
     SESSION_STARTED,
 )
 from ..redaction import shared as shared_redactor
+from ..state import SHELL_BACKEND_DEVSQL, SHELL_BACKEND_SPOOL
 from .base import Collector, CollectorStatus
 
 if TYPE_CHECKING:
@@ -56,6 +52,63 @@ DEVSQL_COMMAND_COLUMNS = (
 DEVSQL_CURSOR_SCHEMA_VERSION = 1
 DEVSQL_SHELL_SOURCE = "atuin"
 DevSQLIdentity = tuple[str, str, str]
+DevSQLDiscoverer = Callable[[], DevSQLClient]
+
+
+@dataclass(frozen=True, slots=True)
+class ShellBackendSelection:
+    """One fixed local shell backend for an active recording interval."""
+
+    name: str
+    provider: str = ""
+    client: DevSQLClient | None = field(default=None, repr=False, compare=False)
+    devsql_version: str = ""
+    detail: str = ""
+
+
+ShellBackendResolver = Callable[[str | None], ShellBackendSelection]
+
+
+def resolve_shell_backend(
+    persisted_backend: str | None = None,
+    *,
+    discover: DevSQLDiscoverer = DevSQLClient.discover,
+) -> ShellBackendSelection:
+    """Select a new backend or reconnect one fixed for an active interval."""
+
+    if persisted_backend == SHELL_BACKEND_SPOOL:
+        return ShellBackendSelection(name=SHELL_BACKEND_SPOOL)
+    try:
+        return _connect_devsql(discover)
+    except DevSQLError as error:
+        return ShellBackendSelection(
+            name=(
+                SHELL_BACKEND_DEVSQL
+                if persisted_backend == SHELL_BACKEND_DEVSQL
+                else SHELL_BACKEND_SPOOL
+            ),
+            provider=(
+                DEVSQL_SHELL_SOURCE
+                if persisted_backend == SHELL_BACKEND_DEVSQL
+                else ""
+            ),
+            detail=str(error),
+        )
+
+
+def _connect_devsql(discover: DevSQLDiscoverer) -> ShellBackendSelection:
+    """Validate DevSQL metadata access without reading activity rows."""
+
+    client = discover()
+    version = client.version()
+    columns = ", ".join(DEVSQL_COMMAND_COLUMNS)
+    client.query(f"SELECT {columns} FROM command_events LIMIT 0")
+    return ShellBackendSelection(
+        name=SHELL_BACKEND_DEVSQL,
+        provider=DEVSQL_SHELL_SOURCE,
+        client=client,
+        devsql_version=version,
+    )
 
 
 def datetime_to_iso(moment: datetime) -> str:
@@ -248,6 +301,7 @@ class DevSQLCommandReader:
         since: str,
         cursor_path: Path,
         existing_events: Iterable[Event] = (),
+        devsql_version: str | None = None,
     ) -> None:
         interval_start = parse_devsql_timestamp(since)
         if interval_start is None:
@@ -259,7 +313,7 @@ class DevSQLCommandReader:
         self.cursor_path = cursor_path
         self.cursor = DevSQLCursor.load(
             cursor_path,
-            devsql_version=client.version(),
+            devsql_version=devsql_version or client.version(),
             active_interval_start=datetime_to_iso(interval_start),
         )
         self._seen = set(self.cursor.identities_at_last_timestamp)
@@ -408,16 +462,25 @@ class ShellCollector(Collector):
         session: "Session",
         extra_spools: dict[Path, str] | None = None,
         devsql_client: DevSQLClient | None = None,
+        *,
+        local_backend: str = SHELL_BACKEND_SPOOL,
+        devsql_version: str = "",
+        backend_detail: str = "",
     ) -> None:
         super().__init__(session)
         self._readers: dict[Path, spool.SpoolReader] = {}
-        self._origins: dict[Path, str] = {session.spool_dir: "local"}
+        self._local_backend = local_backend
+        self._backend_detail = backend_detail
+        self._origins: dict[Path, str] = {}
+        if local_backend == SHELL_BACKEND_SPOOL:
+            self._origins[session.spool_dir] = "local"
         self._devsql_reader = (
             DevSQLCommandReader(
                 devsql_client,
                 since=active_interval_start(session),
                 cursor_path=session.root / "shell" / "devsql-cursor.json",
                 existing_events=session.writer.read(),
+                devsql_version=devsql_version or None,
             )
             if devsql_client is not None
             else None
@@ -430,12 +493,29 @@ class ShellCollector(Collector):
         self._load_seen()
 
     def probe(self) -> CollectorStatus:
+        if self._local_backend == SHELL_BACKEND_DEVSQL:
+            available = self._devsql_reader is not None
+            return CollectorStatus(
+                source=self.source,
+                available=available,
+                backend=SHELL_BACKEND_DEVSQL,
+                reason="" if available else "devsql-unavailable",
+                detail=self._backend_detail,
+                extra={"provider": DEVSQL_SHELL_SOURCE},
+            )
         self.session.spool_dir.mkdir(parents=True, exist_ok=True)
         return CollectorStatus(
             source=self.source,
             available=True,
-            backend="spool",
-            extra={"spool_dir": str(self.session.spool_dir)},
+            backend=SHELL_BACKEND_SPOOL,
+            extra={
+                "spool_dir": str(self.session.spool_dir),
+                **(
+                    {"selection_detail": self._backend_detail}
+                    if self._backend_detail
+                    else {}
+                ),
+            },
         )
 
     def _load_seen(self) -> None:

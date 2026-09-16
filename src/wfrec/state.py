@@ -44,6 +44,10 @@ FLAG_SHELL_OUTPUT = "O"
 
 FLAG_TO_SOURCE = {flag: source for source, flag in SOURCE_FLAGS.items()}
 
+SHELL_BACKEND_DEVSQL = "devsql"
+SHELL_BACKEND_SPOOL = "hook-spool"
+SHELL_BACKENDS = {SHELL_BACKEND_DEVSQL, SHELL_BACKEND_SPOOL}
+
 
 @dataclass(slots=True)
 class RecorderState:
@@ -54,6 +58,7 @@ class RecorderState:
         default_factory=lambda: {name: True for name in SOURCES}
     )
     shell_output: bool = False
+    shell_backend: str = SHELL_BACKEND_SPOOL
     paused: list[str] = field(default_factory=list)
     api_url: str | None = None
     api_token: str | None = None
@@ -84,10 +89,14 @@ class RecorderState:
         for name, enabled in (payload.get("sources") or {}).items():
             if name in sources:
                 sources[name] = bool(enabled)
+        shell_backend = payload.get("shell_backend", SHELL_BACKEND_SPOOL)
+        if shell_backend not in SHELL_BACKENDS:
+            shell_backend = SHELL_BACKEND_SPOOL
         return cls(
             active_session=payload.get("active_session"),
             sources=sources,
             shell_output=bool(payload.get("shell_output", False)),
+            shell_backend=shell_backend,
             paused=list(payload.get("paused") or []),
             api_url=payload.get("api_url"),
             api_token=payload.get("api_token"),
@@ -99,6 +108,7 @@ class RecorderState:
             "active_session": self.active_session,
             "sources": dict(self.sources),
             "shell_output": self.shell_output,
+            "shell_backend": self.shell_backend,
             "paused": list(self.paused),
             "api_url": self.api_url,
             "api_token": self.api_token,
@@ -112,7 +122,11 @@ class RecorderState:
         enabled = [
             SOURCE_FLAGS[name]
             for name in SOURCES
-            if self.sources.get(name) and name in SOURCE_FLAGS
+            if self.sources.get(name)
+            and name in SOURCE_FLAGS
+            and not (
+                name == "shell" and self.shell_backend == SHELL_BACKEND_DEVSQL
+            )
         ]
         if self.shell_output:
             enabled.append(FLAG_SHELL_OUTPUT)

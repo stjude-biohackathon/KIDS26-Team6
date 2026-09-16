@@ -18,9 +18,14 @@ from .collectors.agents import AgentCollector
 from .collectors.base import Collector, CollectorStatus
 from .collectors.files import FileCollector
 from .collectors.screen import ScreenCollector
-from .collectors.shell import ShellCollector
+from .collectors.shell import (
+    ShellBackendSelection,
+    ShellBackendResolver,
+    ShellCollector,
+    resolve_shell_backend,
+)
 from .session import STATUS_ACTIVE, Session, SessionStore
-from .state import RecorderState
+from .state import RecorderState, SHELL_BACKEND_SPOOL
 
 #: How often to emit a `session.waiting` heartbeat while paused.
 WAITING_HEARTBEAT_SECONDS = 300.0
@@ -29,7 +34,12 @@ WAITING_HEARTBEAT_SECONDS = 300.0
 class Recorder:
     """Supervises collectors for whichever session is active."""
 
-    def __init__(self, *, supervise: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        supervise: bool = True,
+        shell_backend_resolver: ShellBackendResolver | None = None,
+    ) -> None:
         #: When False, no background collectors are started. The CLI uses this
         #: for one-shot invocations, where any thread would die with the
         #: process a few milliseconds later -- and where an agent collector
@@ -44,6 +54,10 @@ class Recorder:
         self._pause_reason = ""
         self._paused_at = 0.0
         self._next_file_trigger = "session-start"
+        self._shell_backend_resolver = (
+            shell_backend_resolver or resolve_shell_backend
+        )
+        self._shell_backend: ShellBackendSelection | None = None
 
     # ------------------------------------------------------------------ state
     @property
@@ -55,6 +69,7 @@ class Recorder:
 
         with self._lock:
             self._session = session
+            self._shell_backend = self._restore_shell_backend(session)
 
     def statuses(self) -> dict[str, dict[str, Any]]:
         with self._lock:
@@ -81,6 +96,7 @@ class Recorder:
                 "paused_sessions": list(state.paused),
                 "sources": dict(state.sources),
                 "shell_output": state.shell_output,
+                "shell_backend": state.shell_backend,
                 "collectors": self.statuses(),
                 "running": {
                     name: collector.running
@@ -98,6 +114,7 @@ class Recorder:
                     "events": _count_lines(session.writer.path),
                     "active_seconds": round(session.manifest.active_seconds, 1),
                     "paused_seconds": round(session.manifest.paused_seconds, 1),
+                    "shell_backend": session.manifest.shell_backend,
                 }
             if state.active_session:
                 payload["pause_reason"] = self._pause_reason
@@ -117,12 +134,14 @@ class Recorder:
         """Create, activate and begin capturing a new session."""
 
         with self._lock:
+            shell_backend = self._resolve_shell_backend()
             self._stop_collectors()
             session, preempted = self.store.start(
                 title=title,
                 analyst=analyst,
                 workflow_family=workflow_family,
                 tags=tags,
+                shell_backend=shell_backend.name,
             )
             for root in watch or []:
                 session.add_watch_root(root)
@@ -138,8 +157,12 @@ class Recorder:
 
     def resume_session(self, session_id: str | None = None) -> dict[str, Any]:
         with self._lock:
+            shell_backend = self._resolve_shell_backend()
             self._stop_collectors()
-            session, preempted = self.store.resume(session_id)
+            session, preempted = self.store.resume(
+                session_id,
+                shell_backend=shell_backend.name,
+            )
             self._session = session
             self._stop_heartbeat()
             # The file collector's own start-up snapshot IS the gap
@@ -238,7 +261,19 @@ class Recorder:
 
     def _build(self, source: str, session: Session) -> Collector | None:
         if source == "shell":
-            return ShellCollector(session)
+            shell_backend = self._shell_backend
+            if (
+                shell_backend is None
+                or shell_backend.name != session.manifest.shell_backend
+            ):
+                shell_backend = self._restore_shell_backend(session)
+            return ShellCollector(
+                session,
+                local_backend=shell_backend.name,
+                devsql_client=shell_backend.client,
+                devsql_version=shell_backend.devsql_version,
+                backend_detail=shell_backend.detail,
+            )
         if source == "files":
             roots = [Path(r) for r in session.manifest.watch_roots]
             return FileCollector(
@@ -251,6 +286,28 @@ class Recorder:
         # `context` needs no background collector: notes arrive by explicit
         # user action through the API, never by polling.
         return None
+
+    def _resolve_shell_backend(self) -> ShellBackendSelection:
+        """Choose one backend for a new supervised active interval."""
+
+        if self.supervise:
+            selection = self._shell_backend_resolver(None)
+        else:
+            selection = ShellBackendSelection(
+                name=SHELL_BACKEND_SPOOL,
+                detail="Background supervision is disabled.",
+            )
+        self._shell_backend = selection
+        return selection
+
+    def _restore_shell_backend(self, session: Session) -> ShellBackendSelection:
+        """Reconnect the persisted backend without changing its identity."""
+
+        selection = self._shell_backend_resolver(
+            session.manifest.shell_backend
+        )
+        self._shell_backend = selection
+        return selection
 
     def _start_collector(self, source: str) -> CollectorStatus | None:
         session = self._require_session()
