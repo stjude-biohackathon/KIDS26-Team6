@@ -177,6 +177,12 @@ Our OCR bucket doesn't have to sit as raw JSON in Raw Data view — AW supports 
    ```
 2. Restart AW (`killall aw-qt` then `open -a ActivityWatch`) for the config to take effect.
 
+**A copy of the real, working config is kept in this folder** at [`aw-server.toml.reference`](aw-server.toml.reference) — this is a *reference copy*, not the live file. AW hardcodes its actual config path to `~/Library/Application Support/activitywatch/aw-server/aw-server.toml`, outside any repo, so the live file can't literally move into this branch without breaking AW's ability to find it (it would just regenerate a blank default there instead). Keeping a copy here means anyone can see exactly what config is needed, or on a fresh machine, apply it directly:
+```bash
+cp activitywatch/aw-server.toml.reference "$HOME/Library/Application Support/activitywatch/aw-server/aw-server.toml"
+```
+(then restart AW). Remember to re-copy it here if the live config changes, since the two aren't linked automatically.
+
 **Confirmed working end-to-end (2026-09-16)**: verified the static file is actually served (`curl -L localhost:5600/pages/aw-watcher-screenocr/` → HTTP 200, correct content, redirected from the `.../index.html` form). Loaded it in a real browser: empty-state message rendered correctly with no bucket present, no console errors; then ran the watcher for one real capture and reloaded — the table populated with the correct timestamp, label, and OCR text, fetched live from the real API. Test bucket deleted afterward per the cleanup habit below.
 
 ## Task-scoped recording (start with the task, stop with the task)
