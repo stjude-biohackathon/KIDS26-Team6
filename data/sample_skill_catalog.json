@@ -1,0 +1,38 @@
+[
+  {
+    "skill_id": "cab-qc-summary",
+    "name": "CAB QC Summary Prep",
+    "summary": "Prepare QC tables and benchmark notes for public genomics runs.",
+    "tags": ["qc", "summary", "benchmark", "giab", "report"],
+    "maturity": "published",
+    "source_repo": "cab-ai-skills",
+    "path_hint": "skills/cab-qc-summary/SKILL.md"
+  },
+  {
+    "skill_id": "cab-figure-assembly",
+    "name": "CAB Figure Assembly",
+    "summary": "Assemble public-data figures, labels, and panels for analysis reporting.",
+    "tags": ["figure", "report", "plot", "summary"],
+    "maturity": "published",
+    "source_repo": "cab-ai-skills",
+    "path_hint": "skills/cab-figure-assembly/SKILL.md"
+  },
+  {
+    "skill_id": "cab-report-bundler",
+    "name": "CAB Report Bundler",
+    "summary": "Package tables, plots, and markdown notes into a reusable report folder.",
+    "tags": ["report", "bundle", "markdown", "tables", "plots"],
+    "maturity": "prototype",
+    "source_repo": "scientific-agent-skills",
+    "path_hint": "skills/cab-report-bundler/SKILL.md"
+  },
+  {
+    "skill_id": "cab-variant-review",
+    "name": "CAB Variant Review",
+    "summary": "Review GIAB variant calls, compare benchmarks, and capture analyst decisions.",
+    "tags": ["giab", "variant", "review", "benchmark", "vcf"],
+    "maturity": "published",
+    "source_repo": "cab-pipelines",
+    "path_hint": "skills/cab-variant-review/SKILL.md"
+  }
+]
