@@ -1,0 +1,319 @@
+# `wfrec` — workflow recorder
+
+Records a bioinformatician's working session into a folder containing an
+append-only, deliberately verbose JSONL timeline plus sidecar artifacts, so
+AutoCAB can draft a `SKILL.md` from real work instead of a fixture file.
+
+`wfrec` is the observation front end for the pipeline in `src/autocab/`. Both
+of that pipeline's original input adapters are passive — they read artifacts
+somebody else produced. This produces them.
+
+Design rationale, the per-OS backend matrix and the known platform limits live
+in [`docs/mgatta42/plan.md`](../../docs/mgatta42/plan.md). This file is how to
+use it.
+
+---
+
+## Install
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e '.[macos,gui]'      # Linux: '.[linux,gui]'   Windows: '.[gui]'
+```
+
+**Quote the extras.** In zsh, `pip install -e .[macos,gui]` fails with
+`zsh: no matches found` — brackets are glob characters.
+
+Extras are optional but worth having:
+
+| Extra | Gives you |
+|---|---|
+| `macos` | Window titles via Quartz, plus Apple Vision OCR (faster than the bundled RapidOCR, and needs no permission prompt) |
+| `linux` | X11 window titles (`python-xlib`) and the Wayland desktop-portal screenshot path (`jeepney`) |
+| `gui` | A native app window via `pywebview`. Without it the UI opens in your browser, which works everywhere — this extra is optional *because* `pywebview`'s Linux backend needs PyGObject, which is sdist-only and wants a compiler |
+
+The first install pulls a few hundred megabytes (ONNX OCR models and a bundled
+ffmpeg binary). Do it before an event, not on event wifi.
+
+## Check the machine first
+
+```bash
+wfrec doctor
+```
+
+Run this before anything else, on every machine. It reports which backend each
+source resolved to and **why** anything degraded, which is the difference
+between diagnosing a problem and describing symptoms over Slack. With three
+operating systems and two display servers, "works on my machine" is the most
+expensive bug class here.
+
+## Install the shell hook (once per machine)
+
+```bash
+wfrec hooks install                # detects zsh/bash/fish, or PowerShell on Windows
+wfrec hooks status
+wfrec hooks uninstall
+```
+
+This appends one guarded, marker-delimited `source` line to your rc file and
+takes a timestamped backup first. The hook body itself lives in
+`~/.wfrec/hooks/`, so your rc file gains two reviewable lines rather than a few
+hundred of someone else's code.
+
+Installing only affects **new** terminals. To start capturing in the terminal
+you are already sitting in:
+
+```bash
+eval "$(wfrec hooks eval --shell zsh)"
+```
+
+Hooks are installed once and left alone. Every later start, stop, pause and
+per-source toggle is a state change that already-open shells pick up on their
+next prompt.
+
+## Record
+
+```bash
+wfrec start --title "HG008 variant QC" --watch .
+```
+
+`--watch` matters: without a declared project root the `files` source reports
+`no-watch-roots` and captures nothing. `--title` becomes the workflow family
+AutoCAB clusters on, and `--analyst` (defaulting to your OS username) is what
+makes multi-analyst aggregation work.
+
+`start` auto-spawns the background daemon; its log is `~/.wfrec/daemon.log`.
+Pass `--no-daemon` to skip that (shell capture still works, since the hooks
+write to disk themselves).
+
+Then, at any point mid-session:
+
+```bash
+wfrec source screen on            # or off -- any source, any time
+wfrec source shell off            # "stop logging my bash history"
+wfrec shell-output on             # opt-in full terminal output capture
+wfrec note "reran because the BAM was truncated" --label why
+wfrec mark "QC finished"
+wfrec watch ../other-project
+wfrec pause --reason "waiting on bwa" --expect 6h
+wfrec resume
+wfrec status
+wfrec stop
+```
+
+Toggles and pause take effect in terminals that are **already open** — no
+restarting and no re-sourcing.
+
+**Always pass `--reason` to `pause`.** It is what lets a downstream skill
+distinguish *"the analyst waited six hours on an alignment job"* from
+*"nothing happened"*. A pause without a reason throws that signal away.
+
+## The five sources
+
+| Source | Captures | Notes |
+|---|---|---|
+| `shell` | Commands, cwd, exit codes, durations | Needs the hook. Full output is a separate opt-in toggle |
+| `files` | Git-verified changes and diffs in declared roots | `watchdog` triggers, `git` verifies. Genomics binaries are metadata-only, never opened |
+| `agents` | Claude Code, Copilot Chat and Cursor transcripts | Best-effort per tool; `attach-transcript` always works |
+| `screen` | Frames, OCR text, active-window titles, optional video | OCR is the part a downstream LLM can read; video is for humans |
+| `context` | A paste box and `wfrec note` | Everything captured is deliberate. There is no background clipboard watching, by design |
+
+Exactly one session is active at a time; any number may be paused. Starting or
+resuming another auto-pauses the current one and records the handover on both
+timelines — so either timeline alone explains what happened.
+
+## Look at what you captured
+
+```bash
+wfrec sessions
+wfrec events --limit 40
+wfrec events --source shell
+wfrec events --type git. --json
+```
+
+A session folder is self-contained and movable — zip one and hand it to a
+teammate:
+
+```text
+~/.wfrec/sessions/<id>/
+├── manifest.json     # title, analyst, host, lifecycle log, toggle history
+├── events.jsonl      # the verbose timeline (source of truth)
+├── screen/           # frames, ocr text, video
+├── shell/            # hook spool, opt-in output, pulled-back remote spools
+├── agents/           # transcript captures
+├── files/            # change events and diffs
+├── context/          # pasted notes
+├── jobs/             # slurm output slices and accounting
+└── exports/          # lossy projections for AutoCAB
+```
+
+`events.jsonl` is append-ordered by `seq`, which is **not** the same as
+chronological: a shell hook stamps a command the instant it finishes, but the
+daemon ingests it up to a second later. Sort by `(ts, seq)` if you need
+chronology — `EventWriter.read_sorted()` does, and so does every exporter.
+
+## Hand off to AutoCAB
+
+```bash
+wfrec export --format autocab --format trace
+autocab demo --input-mode session --session-dir ~/.wfrec/sessions/<id>
+```
+
+`wfrec export` prints the exact `autocab` command with the id filled in. Drafts
+land in `skills/generated-drafts/`.
+
+Three export formats, each targeting code that already existed:
+
+| Format | Consumed by |
+|---|---|
+| `autocab-terminal.log` | `autocab.terminal_logs.convert_terminal_log` |
+| `autocab-screen-capture.json` | `autocab.input_sources.load_screen_capture_input` |
+| `trace.json` | `autocab.demo_data.load_workflow_traces` |
+
+All three are **deliberately lossy**. `autocab.models.WorkflowStep` has exactly
+four fields (`timestamp`, `tool`, `action`, `detail`), so exit codes, durations,
+diffs and OCR collapse into `detail` or are dropped. The session folder stays
+the source of truth; do not widen `WorkflowStep` to fit the recorder.
+
+You can also skip `export` entirely — `--input-mode session` reads the session
+folder directly and rebuilds from the live timeline rather than trusting a
+possibly-stale export.
+
+## The GUI
+
+```bash
+wfrec daemon --gui        # start the daemon and open the window
+wfrec gui                 # attach to a daemon that is already running
+```
+
+Per-source toggle switches, a paste box, session controls and a live event
+tail. It is a client of the same HTTP control API the CLI and the agent skill
+use, so a click and a command do the same thing.
+
+## Multiple analysts
+
+Challenge extension (b). Each session records its own `analyst`, and
+`autocab.framework.components.WorkflowClusterer` already groups by workflow
+family while collecting the distinct analysts per cluster.
+
+```bash
+wfrec merge <id1> <id2> <id3> --output merged.json --workflow-family "hg008 qc"
+autocab demo --input-mode session --session-dir ~/.wfrec/sessions     # a folder of sessions
+```
+
+`merge` reports which families more than one analyst performed — that is the
+high-value skill-candidate signal. `--workflow-family` forces a shared family
+so sessions people titled differently still cluster together.
+
+## Remote / HPC
+
+```bash
+wfrec ssh hpc-login                    # bootstrap a POSIX hook, open a recorded shell
+wfrec pull hpc-login --job 4213        # fold remote commands and job metadata in
+```
+
+This wraps *your* `ssh` and `~/.ssh/config`, so ProxyJump, agent forwarding and
+Duo/2FA behave exactly as you already expect. `sbatch` is wrapped on the remote
+so a job is captured at **submit** time, which is the only moment `scontrol`
+will tell you the real `StdOut`/`StdErr`/`WorkDir` paths rather than guessing
+`slurm-%j.out`. Job output is pulled as a bounded head-and-tail slice, never
+whole — a long alignment's log can be gigabytes.
+
+Writing to `~/.bashrc` on shared infrastructure is a change your colleagues may
+also live with. `wfrec ssh` only ever touches the host you explicitly name, and
+the block it adds is plain text and marker-delimited.
+
+This path is the least-proven part of the tool: it could not be tested against
+a real cluster. Try it early.
+
+## Platform reality
+
+| Source | macOS | Windows | Linux X11 | Linux Wayland |
+|---|---|---|---|---|
+| shell | zsh / bash / fish | **PowerShell only** — `cmd.exe` cannot be hooked | zsh / bash / fish | same |
+| screen frames | `mss` (needs Screen Recording) | `mss` | `mss` | **unavailable unattended** |
+| window titles | Quartz (needs Screen Recording) | ctypes GDI | `python-xlib` | **unavailable** |
+| OCR | Apple Vision or RapidOCR | RapidOCR | RapidOCR | RapidOCR |
+| files / agents / context / remote | yes | yes | yes | yes |
+
+**macOS Screen Recording is cached per process.** Granting it while the daemon
+is running does nothing; you must restart the daemon:
+
+```bash
+wfrec source screen on       # triggers the prompt
+# grant it in System Settings > Privacy & Security > Screen Recording
+wfrec daemon --stop
+wfrec daemon
+```
+
+Without the grant, `kCGWindowName` returns empty **with no prompt at all**, so
+titles silently come back blank. `wfrec` falls back to the app name and records
+the reason rather than looking broken.
+
+**Wayland cannot do unattended screen capture.** `mss` has no Wayland backend,
+the bundled ffmpeg has neither `kmsgrab` nor pipewire, and the desktop portal
+prompts for consent on every request. Everything else works normally; plan a
+screen-capture demo on an Xorg session.
+
+## Privacy posture
+
+The prototype targets **non-PHI inputs only** — synthetic or public datasets,
+matching the challenge brief's hard boundary. All text captured from shell
+commands, notes, OCR and agent transcripts is routed through
+`autocab.framework.components.SensitiveDataRedactor` on the way in, and each
+event records which patterns fired in its `redactions` array.
+
+That is scrubbing, **not a PHI control**. Screen-capture application
+denylisting, encryption at rest and a panic-pause are documented as future work
+in the design plan. Everything is local-only with no outbound network requests;
+the control API binds to `127.0.0.1` behind a token.
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| No shell commands captured | Hook not loaded in *that* terminal. Run `eval "$(wfrec hooks eval)"` |
+| `ImportError: libGL.so.1` | `opencv-python` shadowed the headless build. `pip install --force-reinstall opencv-python-headless` |
+| `files` source records nothing | No watch root. `wfrec watch <dir>` |
+| `agents` says `no-agent-tools-found` | No transcripts found. `wfrec attach-transcript <file> --tool <name>` |
+| Screen capture disabled on Linux | Wayland. See the platform table above |
+| File events missing on HPC scratch | inotify delivers nothing on NFS/Lustre. Those roots are polled instead; `wfrec doctor` reports it |
+| Session seems dead | `cat ~/.wfrec/daemon.log`; `wfrec daemon --stop && wfrec daemon` |
+| Anything else | `wfrec doctor` first |
+
+## Driving it from an agent
+
+The `recorder` skill in [`.claude/skills/recorder/`](../../.claude/skills/recorder/)
+(with a Copilot copy in `.github/skills/recorder/`) maps natural language onto
+these commands, so you can say "start screen recording" or "pause, I'm waiting
+on the alignment job" instead of typing them. The skill shells out to this CLI
+rather than reimplementing anything.
+
+## Development
+
+```bash
+pytest                       # 132 tests; no PYTHONPATH needed after `pip install -e .`
+pytest tests/test_wfrec_spool.py -v
+```
+
+Tests redirect `WFREC_HOME` and `WFREC_RUN` into `tmp_path` via the fixtures in
+`tests/conftest.py`. That is not cosmetic: without it, running the suite on a
+machine where somebody is actually recording would clobber their sessions.
+
+Module map:
+
+| Path | Role |
+|---|---|
+| `paths.py` | Durable root vs. runtime root, and why the sentinel is never in `$HOME` |
+| `state.py` | Rich JSON state plus the TAB-separated sentinel the hooks parse |
+| `spool.py` | The RS/US shell-to-daemon wire format |
+| `events.py` | Event model, sequencing, and the `seq`-vs-`ts` distinction |
+| `session.py` | Lifecycle: create, pause, resume, stop, preempt |
+| `recorder.py` | Owns the active session and its collectors |
+| `collectors/` | One backend per source, each degrading with a named reason |
+| `hooks/` | bash, zsh, fish, PowerShell, and POSIX `sh` for remote |
+| `exporters/` | The three lossy projections into AutoCAB's formats |
+| `api.py` / `daemon.py` / `cli.py` / `ui/` | The four faces of one control API |
+| `doctor.py` | Per-machine backend report |
+| `remote.py` / `merge.py` | SSH+SLURM capture, and multi-analyst aggregation |

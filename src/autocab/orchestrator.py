@@ -14,6 +14,7 @@ def run_pipeline(
     trace_path: Path | None = None,
     capture_path: Path | None = None,
     log_path: Path | None = None,
+    session_path: Path | None = None,
     reviewer: str = "CAB Maintainer",
     approve: bool = True,
 ) -> list[SkillProposal]:
@@ -26,6 +27,7 @@ def run_pipeline(
         trace_path=trace_path,
         capture_path=capture_path,
         log_path=log_path,
+        session_path=session_path,
         reviewer=reviewer,
         approve=approve,
     )

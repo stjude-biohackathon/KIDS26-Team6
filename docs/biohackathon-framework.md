@@ -1,6 +1,6 @@
 # AutoCAB BioHackathon Framework
 
-This repository now includes a lightweight framework for the challenge described in `docs/proposal/AutoCAB-challenge.docx`: turn repeated public-data bioinformatics workflows into governed, reviewable AI skill drafts.
+This repository now includes a lightweight framework for the challenge described in `docs/proposal/AutoCAB-challenge-description.docx`: turn repeated public-data bioinformatics workflows into governed, reviewable AI skill drafts.
 
 ## Core flow
 

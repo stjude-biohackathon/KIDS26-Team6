@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wfrec</title>
+<style>
+  :root{
+    --bg:#11131a; --panel:#181b24; --line:#262b38; --ink:#e7e9ee; --dim:#9aa3b2;
+    --on:#3ddc97; --off:#4a5468; --warn:#f0a339; --accent:#6aa6ff;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f6f7f9; --panel:#fff; --line:#e2e5ea; --ink:#1a1d24; --dim:#5f6775; --off:#c3c9d4; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;
+         align-items:baseline;gap:14px;flex-wrap:wrap}
+  h1{font-size:16px;margin:0;letter-spacing:.02em}
+  .sid{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim)}
+  .badge{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);
+         text-transform:uppercase;letter-spacing:.06em}
+  .badge.active{background:color-mix(in srgb,var(--on) 18%,transparent);
+                border-color:var(--on);color:var(--on)}
+  .badge.paused{background:color-mix(in srgb,var(--warn) 18%,transparent);
+                border-color:var(--warn);color:var(--warn)}
+  main{padding:22px;display:grid;gap:18px;max-width:1000px}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);
+     margin:0 0 12px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  button{font:inherit;padding:7px 14px;border-radius:7px;border:1px solid var(--line);
+          background:transparent;color:var(--ink);cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#0b1020;font-weight:600}
+  input,textarea{font:inherit;background:var(--bg);color:var(--ink);
+                 border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%}
+  textarea{min-height:110px;resize:vertical;font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .sources{display:grid;gap:8px}
+  .src{display:flex;align-items:center;justify-content:space-between;gap:12px;
+       padding:9px 12px;border:1px solid var(--line);border-radius:8px}
+  .src .meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .src .name{font-weight:600}
+  .src .why{font-size:12px;color:var(--dim);overflow-wrap:anywhere}
+  .toggle{flex:none;width:46px;height:26px;border-radius:999px;border:1px solid var(--line);
+          background:var(--off);position:relative;cursor:pointer;transition:background .15s}
+  .toggle[data-on="1"]{background:var(--on)}
+  .toggle::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;
+                 border-radius:50%;background:#fff;transition:transform .15s}
+  .toggle[data-on="1"]::after{transform:translateX(20px)}
+  .toggle[disabled]{opacity:.45;cursor:not-allowed}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{font:12px ui-monospace,Menlo,monospace;color:var(--dim)}
+  #log{font:12px ui-monospace,Menlo,monospace;white-space:pre-wrap;color:var(--dim);
+       max-height:190px;overflow:auto}
+  .warn{color:var(--warn);font-size:12px}
+  @media (max-width:640px){ .grid2{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<header>
+  <h1>wfrec</h1>
+  <span id="badge" class="badge">idle</span>
+  <span class="sid" id="sid">no active session</span>
+</header>
+
+<main>
+  <section>
+    <h2>Session</h2>
+    <div class="grid2" style="margin-bottom:12px">
+      <input id="title" placeholder="What are you working on? e.g. HG008 variant calling">
+      <input id="analyst" placeholder="Analyst id (for multi-analyst clustering)">
+    </div>
+    <div class="row">
+      <button class="primary" onclick="act('start')">Start</button>
+      <button onclick="pause()">Pause</button>
+      <button onclick="act('resume')">Resume</button>
+      <button onclick="act('stop')">Stop</button>
+      <button onclick="doExport()">Export for AutoCAB</button>
+    </div>
+    <p class="stat" id="stats"></p>
+  </section>
+
+  <section>
+    <h2>Capture sources</h2>
+    <div class="sources" id="sources"></div>
+    <p class="warn" id="warnings"></p>
+  </section>
+
+  <section>
+    <h2>Pasted context</h2>
+    <p class="stat">Paste or type anything worth remembering. Redaction runs before it is written to disk.</p>
+    <textarea id="note" placeholder="Paste the error, the job script, the reason you reran this..."></textarea>
+    <div class="row" style="margin-top:10px">
+      <input id="label" placeholder="Optional label, e.g. 'why I reran this'" style="max-width:340px">
+      <button class="primary" onclick="saveNote()">Add to timeline</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Recent events</h2>
+    <div id="log">(nothing yet)</div>
+  </section>
+</main>
+
+<script>
+const TOKEN = new URLSearchParams(location.search).get('token') || '@WFREC_TOKEN@';
+const H = {'Content-Type':'application/json','Authorization':'Bearer '+TOKEN};
+const SOURCE_HELP = {
+  screen:'Screenshots, OCR text and window titles',
+  context:'Paste box and wfrec note (no clipboard watching)',
+  shell:'Shell commands, exit codes and durations',
+  agents:'Claude Code, Copilot and Cursor transcripts',
+  files:'Git-verified file changes in declared roots'
+};
+let STATE = null;
+
+async function api(path, body){
+  const res = await fetch(path, {method: body?'POST':'GET', headers:H,
+                                body: body?JSON.stringify(body):undefined});
+  if(!res.ok){ const t = await res.text(); throw new Error(t || res.status); }
+  return res.json();
+}
+
+function pastedFlag(el){ return el.dataset.pasted === '1'; }
+document.getElementById('note').addEventListener('paste', e => {
+  // Use the paste event rather than reading the clipboard: it needs no
+  // permission, works in every webview, and only ever sees what the user
+  // deliberately pasted into this box.
+  e.currentTarget.dataset.pasted = '1';
+});
+
+async function act(kind){
+  try{
+    if(kind === 'start'){
+      STATE = await api('/sessions/start', {
+        title: document.getElementById('title').value,
+        analyst: document.getElementById('analyst').value || 'unknown-analyst'
+      });
+    } else if(kind === 'resume'){ STATE = await api('/sessions/resume', {}); }
+    else if(kind === 'stop'){ STATE = await api('/sessions/stop', {}); }
+    render();
+  }catch(e){ flash(e.message); }
+}
+
+async function pause(){
+  const reason = prompt('Why are you pausing? (e.g. "waiting on the alignment job")') || '';
+  try{ STATE = await api('/sessions/pause', {reason}); render(); }
+  catch(e){ flash(e.message); }
+}
+
+async function toggle(name, on){
+  try{ STATE = await api('/sources/'+name, {enabled:!on}); render(); }
+  catch(e){ flash(e.message); }
+}
+
+async function saveNote(){
+  const el = document.getElementById('note');
+  const text = el.value.trim();
+  if(!text) return;
+  try{
+    await api('/notes', {text, label:document.getElementById('label').value,
+                         pasted:pastedFlag(el)});
+    el.value=''; el.dataset.pasted='0'; document.getElementById('label').value='';
+    refreshLog();
+  }catch(e){ flash(e.message); }
+}
+
+async function doExport(){
+  try{ const r = await api('/export', {formats:['autocab','trace']}); flash('Exported: '+ (r.written||[]).join(', ')); }
+  catch(e){ flash(e.message); }
+}
+
+function flash(msg){ document.getElementById('warnings').textContent = msg; }
+
+function render(){
+  if(!STATE) return;
+  const s = STATE.session;
+  const badge = document.getElementById('badge');
+  const status = s ? s.status : 'idle';
+  badge.textContent = status;
+  badge.className = 'badge ' + (status==='active'?'active':status==='paused'?'paused':'');
+  document.getElementById('sid').textContent = s ? s.id : 'no active session';
+  document.getElementById('stats').textContent = s
+    ? `${s.events} events · active ${s.active_seconds}s · paused ${s.paused_seconds}s · ${s.root}`
+    : '';
+
+  const host = document.getElementById('sources');
+  host.innerHTML = '';
+  for(const [name, on] of Object.entries(STATE.sources || {})){
+    const col = (STATE.collectors||{})[name] || {};
+    const unavailable = col.available === false;
+    const why = unavailable
+      ? (col.reason ? col.reason + (col.detail? ' — '+col.detail : '') : 'unavailable')
+      : (col.backend ? SOURCE_HELP[name] + ' · ' + col.backend : SOURCE_HELP[name] || '');
+    const div = document.createElement('div');
+    div.className = 'src';
+    div.innerHTML = `<div class="meta"><span class="name">${name}</span>
+                     <span class="why">${why}</span></div>`;
+    const btn = document.createElement('button');
+    btn.className='toggle'; btn.dataset.on = on ? '1':'0';
+    btn.setAttribute('aria-label', (on?'Disable ':'Enable ')+name);
+    btn.onclick = () => toggle(name, on);
+    if(!s) btn.disabled = true;
+    div.appendChild(btn);
+    host.appendChild(div);
+  }
+}
+
+async function refresh(){
+  try{ STATE = await api('/status'); render(); }catch(e){}
+}
+async function refreshLog(){
+  if(!STATE || !STATE.session) return;
+  try{
+    const r = await api(`/sessions/${STATE.session.id}/events?limit=14&offset=${Math.max(0,STATE.session.events-14)}`);
+    document.getElementById('log').textContent =
+      (r.events||[]).map(e => `${e.ts.slice(11,23)}  ${String(e.type).padEnd(24)} ${summarize(e)}`).join('\n') || '(nothing yet)';
+  }catch(e){}
+}
+function summarize(e){
+  const p = e.payload || {};
+  if(p.command) return p.command.slice(0,70);
+  if(p.path) return p.path.split('/').pop();
+  if(p.window_title) return p.window_title.slice(0,60);
+  if(p.text) return p.text.slice(0,60).replace(/\n/g,' ');
+  if(p.reason) return p.reason;
+  return '';
+}
+refresh(); refreshLog();
+setInterval(refresh, 2000);
+setInterval(refreshLog, 3000);
+</script>
+</body>
+</html>

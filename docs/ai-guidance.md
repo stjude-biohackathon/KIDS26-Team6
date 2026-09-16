@@ -28,4 +28,4 @@ AI output can be incomplete, incorrect, insecure, or scientifically misleading. 
 
 Never provide an AI tool with passwords, API keys, private information, clinical or human-subject data, unpublished sensitive data, or anything your team is not allowed to share.
 
-Start with [AGENTS.md](../AGENTS.md), which gives the repository agent a small amount of context for its first interaction.
+Start with the agent skills under [`.claude/skills/`](../.claude/skills/) and [`.github/skills/`](../.github/skills/); `recorder` drives the `wfrec` workflow recorder that feeds the pipeline.

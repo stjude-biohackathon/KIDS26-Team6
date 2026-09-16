@@ -7,17 +7,73 @@ name = "autocab"
 version = "0.1.0"
 description = "AutoCAB starter repository for drafting reusable AI agent skills from recurring workflows."
 readme = "README.md"
+# No upper bound. rapidocr-onnxruntime 1.4.4 *declares* python<3.13, which
+# looked like it forced a cap -- but verified by running real OCR inference on
+# both 3.12 and 3.14, it works identically on each. Capping would have locked
+# teammates out of newer interpreters for a metadata claim that does not hold.
 requires-python = ">=3.10"
 license = { file = "LICENSE.md" }
 
+dependencies = [
+  # --- control plane, shared by the CLI, GUI and agent skill ---
+  "fastapi>=0.110",
+  "uvicorn>=0.27",
+  "httpx>=0.26",
+  # --- capture ---
+  "mss>=9.0",                      # screenshots; pure ctypes, no system deps
+  "Pillow>=10.0",                  # WebP encode + change-detection thumbnails
+  "watchdog>=4.0",                 # filesystem triggers (git does the verifying)
+  "imageio-ffmpeg>=0.5",           # bundles an ffmpeg binary; none is assumed present
+  # --- OCR: the part a downstream LLM can actually read ---
+  "rapidocr-onnxruntime>=1.3,<2",  # ONNX models ship inside the wheel: fully offline
+  # Explicit, and it must stay explicit: rapidocr-onnxruntime depends on
+  # `opencv-python`, which needs system libGL and fails with
+  # `ImportError: libGL.so.1` on a headless Linux box, in CI, or on an HPC
+  # login node. The headless wheel provides the same `cv2` module without that
+  # dependency. Note both builds can end up installed together (rapidocr pulls
+  # the GL one); they share the `cv2` package directory so whichever installs
+  # last wins, and `wfrec doctor` reports a libGL failure with the fix if the
+  # wrong one ends up on top. `pip install --force-reinstall
+  # opencv-python-headless` resolves it.
+  "opencv-python-headless>=4.8",
+  "psutil>=5.9",                   # process names for window attribution
+]
+
+[project.optional-dependencies]
+# Native app window. Kept optional because pywebview's Linux backend needs
+# PyGObject, which is sdist-only and requires a compiler plus GTK headers --
+# an unacceptable install blocker for a hybrid team. Without it the UI opens
+# in the system browser, which works everywhere.
+gui = ["pywebview>=4.4"]
+# Linux extras: X11 window titles and the Wayland desktop-portal screenshot path.
+linux = ["python-xlib>=0.33; sys_platform == 'linux'", "jeepney>=0.8; sys_platform == 'linux'"]
+# macOS window titles and Apple Vision OCR (faster than RapidOCR, no permission
+# prompt). NOT pywinctl, which pulls the entire pyobjc meta-package.
+macos = [
+  "pyobjc-framework-Quartz>=10.0; sys_platform == 'darwin'",
+  "pyobjc-framework-Cocoa>=10.0; sys_platform == 'darwin'",
+  "ocrmac>=1.0; sys_platform == 'darwin'",
+]
+dev = ["pytest>=8.0"]
+
 [project.scripts]
 autocab = "autocab.cli:main"
+wfrec = "wfrec.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+# Ship the usage guide with the package: an installed copy should carry its own
+# documentation rather than requiring the repo to be at hand.
+"wfrec" = ["README.md"]
+# The shell hooks and the control UI are data files, not importable modules,
+# and both must survive installation into a wheel.
+"wfrec.hooks" = ["*.bash", "*.zsh", "*.fish", "*.ps1", "*.sh"]
+"wfrec.ui" = ["*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

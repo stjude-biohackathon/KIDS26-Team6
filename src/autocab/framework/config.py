@@ -23,6 +23,11 @@ class PipelineConfig:
     skill_catalog_path: Path | None = None
     default_output_dir: Path = Path("skills/generated-drafts")
     benchmark_dataset: str = "GIAB HG008"
-    allowed_input_modes: tuple[str, ...] = ("trace", "screen-capture", "terminal-log")
+    allowed_input_modes: tuple[str, ...] = (
+        "trace",
+        "screen-capture",
+        "terminal-log",
+        "session",
+    )
     redact_deny_terms: tuple[str, ...] = ("patient", "diagnosis", "pathology")
     matching: MatchingPolicy = field(default_factory=MatchingPolicy)

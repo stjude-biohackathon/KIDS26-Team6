@@ -8,6 +8,7 @@ from pathlib import Path
 
 from autocab.demo_data import load_skill_catalog
 from autocab.input_sources import InputBundle, load_screen_capture_input, load_terminal_log_input, load_trace_input
+from autocab.session_bundle import load_session_input
 from autocab.models import (
     MatchResult,
     RedactionReport,
@@ -60,6 +61,15 @@ class TerminalLogInputAdapter:
 
     def load(self, source_path: Path | None = None) -> InputBundle:
         return load_terminal_log_input(source_path)
+
+
+class SessionBundleInputAdapter:
+    """Adapter for wfrec session folders, the live recorder's native output."""
+
+    mode = "session"
+
+    def load(self, source_path: Path | None = None) -> InputBundle:
+        return load_session_input(source_path)
 
 
 class WorkflowClusterer:

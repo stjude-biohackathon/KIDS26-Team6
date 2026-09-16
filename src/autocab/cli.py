@@ -37,9 +37,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     demo.add_argument(
         "--input-mode",
-        choices=("trace", "screen-capture", "terminal-log"),
+        choices=("trace", "screen-capture", "terminal-log", "session"),
         default="trace",
-        help="Workflow input mode. The PoC supports trace mode today and reserves screen-capture as a future adapter.",
+        help=(
+            "Workflow input mode. 'session' reads a wfrec session folder (or a "
+            "directory of them, for multi-analyst clustering)."
+        ),
     )
     demo.add_argument(
         "--trace-file",
@@ -55,6 +58,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--log-file",
         type=Path,
         help="Optional terminal workflow log file used when --input-mode terminal-log.",
+    )
+    demo.add_argument(
+        "--session-dir",
+        type=Path,
+        help=(
+            "wfrec session folder used when --input-mode session. May also be a "
+            "directory containing several session folders, or an exported "
+            "trace.json. List recorded sessions with `wfrec sessions`."
+        ),
     )
 
     ingest = subparsers.add_parser(
@@ -87,6 +99,7 @@ def main() -> int:
                 trace_path=args.trace_file,
                 capture_path=args.capture_file,
                 log_path=args.log_file,
+                session_path=args.session_dir,
                 reviewer=args.reviewer,
                 approve=not args.no_approve,
             )

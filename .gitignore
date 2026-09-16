@@ -155,3 +155,9 @@ dmypy.json
 .pyre/
 .myenv/
 requirements.txt
+
+# Committed test fixture: the two `*.log` rules above silently excluded this
+# file in commit 045d19d, which breaks tests/test_terminal_logs.py and three
+# tests in test_pipeline.py / test_framework.py. `wfrec` can regenerate it
+# (see docs/mgatta42/plan.md), but it must be committed to keep the suite green.
+!data/sample_terminal_session.log

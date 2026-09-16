@@ -66,18 +66,20 @@ class AutoCABPipeline:
         trace_path: Path | None = None,
         capture_path: Path | None = None,
         log_path: Path | None = None,
+        session_path: Path | None = None,
         reviewer: str = "CAB Maintainer",
         approve: bool = True,
     ) -> PipelineResult:
         if input_mode not in self._config.allowed_input_modes:
             raise ValueError(f"Unsupported input mode: {input_mode}")
 
-        if input_mode == "trace":
-            source_path = trace_path
-        elif input_mode == "screen-capture":
-            source_path = capture_path
-        else:
-            source_path = log_path
+        source_paths: dict[str, Path | None] = {
+            "trace": trace_path,
+            "screen-capture": capture_path,
+            "terminal-log": log_path,
+            "session": session_path,
+        }
+        source_path = source_paths.get(input_mode)
         adapter = self._input_adapters[input_mode]
         context = PipelineContext(
             input_mode=input_mode,
