@@ -48,7 +48,15 @@ DEVSQL_COMMAND_COLUMNS = (
     "originator",
     "tool_name",
 )
-DEVSQL_REQUIRED_COLUMNS = frozenset(DEVSQL_COMMAND_COLUMNS)
+
+
+def datetime_to_iso(moment: datetime) -> str:
+    """Format a timestamp using wfrec's millisecond UTC representation."""
+
+    utc_timestamp = moment.astimezone(timezone.utc).isoformat(
+        timespec="milliseconds"
+    )
+    return utc_timestamp.replace("+00:00", "Z")
 
 
 def epoch_ms_to_iso(value: str | int | None) -> str | None:
@@ -63,7 +71,7 @@ def epoch_ms_to_iso(value: str | int | None) -> str | None:
     if ms <= 0:
         return None
     moment = datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
-    return moment.strftime("%Y-%m-%dT%H:%M:%S.") + f"{moment.microsecond // 1000:03d}Z"
+    return datetime_to_iso(moment)
 
 
 def parse_devsql_timestamp(value: object) -> datetime | None:
@@ -79,16 +87,6 @@ def parse_devsql_timestamp(value: object) -> datetime | None:
     if moment.tzinfo is None:
         return None
     return moment.astimezone(timezone.utc)
-
-
-def datetime_to_iso(moment: datetime) -> str:
-    """Format a timestamp using wfrec's millisecond UTC representation."""
-
-    utc_moment = moment.astimezone(timezone.utc)
-    return (
-        utc_moment.strftime("%Y-%m-%dT%H:%M:%S.")
-        + f"{utc_moment.microsecond // 1000:03d}Z"
-    )
 
 
 def active_interval_start(session: "Session") -> str:
@@ -137,7 +135,7 @@ class DevSQLCommandReader:
             "AND (source = 'atuin' OR channel = 'agent_tool') "
             "ORDER BY timestamp, source, session_id, source_id"
         )
-        rows = self.client.query(sql, required_columns=DEVSQL_REQUIRED_COLUMNS)
+        rows = self.client.query(sql, required_columns=DEVSQL_COMMAND_COLUMNS)
 
         events: list[Event] = []
         for row in rows:
@@ -160,8 +158,7 @@ class DevSQLCommandReader:
         ):
             return None
 
-        key = (source, session_id, source_id)
-        if key in self._seen:
+        if stable_identity in self._seen:
             return None
 
         occurred_at = parse_devsql_timestamp(row["timestamp"])
@@ -175,7 +172,7 @@ class DevSQLCommandReader:
         if not redacted.available:
             raise RuntimeError("DevSQL command redaction is unavailable.")
 
-        self._seen.add(key)
+        self._seen.add(stable_identity)
         payload = {
             "command": redacted.text,
             "cwd": row["cwd"],

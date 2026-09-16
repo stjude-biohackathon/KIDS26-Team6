@@ -104,7 +104,6 @@ def test_devsql_ingests_atuin_claude_and_codex_without_duplicates(
             session_id="shell-session",
             timestamp=timestamp,
             command="cat /data/SJ001234.vcf",
-            actor=None,
         ),
         _devsql_command_row(
             source="claude",
@@ -113,7 +112,6 @@ def test_devsql_ingests_atuin_claude_and_codex_without_duplicates(
             session_id="agent-session",
             timestamp=timestamp,
             command="pytest tests/test_pipeline.py",
-            actor="agent",
         ),
         _devsql_command_row(
             source="codex",
@@ -122,24 +120,10 @@ def test_devsql_ingests_atuin_claude_and_codex_without_duplicates(
             session_id="agent-session",
             timestamp=timestamp,
             command="ruff check src",
-            actor="agent",
         ),
     ]
     queries: list[str] = []
-
-    def runner(
-        command: list[str],
-        **options: object,
-    ) -> subprocess.CompletedProcess[str]:
-        queries.append(command[-1])
-        return subprocess.CompletedProcess(
-            args=command,
-            returncode=0,
-            stdout=json.dumps(rows),
-            stderr="",
-        )
-
-    client = DevSQLClient(Path("/test/devsql"), runner=runner)
+    client = _devsql_client(rows, queries=queries)
     collector = ShellCollector(session, devsql_client=client)
     collector.safe_probe()
     collector._run_once()
@@ -179,7 +163,6 @@ def test_devsql_rejects_rows_outside_the_safe_capture_scope(
             session_id="shell-session",
             timestamp=active_interval_start(session),
             command="excluded zsh command",
-            actor=None,
         ),
         _devsql_command_row(
             source="atuin",
@@ -188,7 +171,6 @@ def test_devsql_rejects_rows_outside_the_safe_capture_scope(
             session_id="shell-session",
             timestamp="2020-01-01T00:00:00.000Z",
             command="excluded old command",
-            actor=None,
         ),
         _devsql_command_row(
             source="codex",
@@ -197,22 +179,9 @@ def test_devsql_rejects_rows_outside_the_safe_capture_scope(
             session_id="agent-session",
             timestamp=active_interval_start(session),
             command="excluded unstable command",
-            actor="agent",
         ),
     ]
-
-    def runner(
-        command: list[str],
-        **options: object,
-    ) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(
-            args=command,
-            returncode=0,
-            stdout=json.dumps(rows),
-            stderr="",
-        )
-
-    client = DevSQLClient(Path("/test/devsql"), runner=runner)
+    client = _devsql_client(rows)
     collector = ShellCollector(session, devsql_client=client)
     collector.safe_probe()
     collector._run_once()
@@ -283,7 +252,6 @@ def _devsql_command_row(
     session_id: str,
     timestamp: str,
     command: str,
-    actor: str | None,
 ) -> dict[str, object]:
     """Build one complete normalized row without reading local history."""
 
@@ -298,7 +266,7 @@ def _devsql_command_row(
         "exit_code": 0,
         "hostname": "workstation",
         "channel": channel,
-        "actor": actor,
+        "actor": "agent" if channel == "agent_tool" else None,
         "provenance_quality": "explicit",
         "provenance_reason": "test fixture",
         "agent_id": source if channel == "agent_tool" else None,
@@ -306,6 +274,29 @@ def _devsql_command_row(
         "originator": "user" if channel == "agent_tool" else None,
         "tool_name": "shell" if channel == "agent_tool" else None,
     }
+
+
+def _devsql_client(
+    rows: list[dict[str, object]],
+    *,
+    queries: list[str] | None = None,
+) -> DevSQLClient:
+    """Return a client backed by deterministic normalized rows."""
+
+    def runner(
+        command: list[str],
+        **options: object,
+    ) -> subprocess.CompletedProcess[str]:
+        if queries is not None:
+            queries.append(command[-1])
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout=json.dumps(rows),
+            stderr="",
+        )
+
+    return DevSQLClient(Path("/test/devsql"), runner=runner)
 
 
 # --------------------------------------------------------------------- files
