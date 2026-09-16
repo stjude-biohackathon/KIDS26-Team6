@@ -626,7 +626,7 @@ class AgentCollector(Collector):
             source=self.source,
             available=True,
             backend=",".join(a.name for a in self._adapters),
-            extra={"detected": detected},
+            extra={"detected": detected, "failed": []},
         )
 
     def _run_once(self) -> None:
@@ -643,6 +643,7 @@ class AgentCollector(Collector):
                 # Isolate the failure: one adapter's schema drift must not stop
                 # the others, and the recorder must say what broke.
                 self._failed.add(adapter.name)
+                self.status.extra["failed"] = sorted(self._failed)
                 events.append(
                     Event(
                         source=self.source,

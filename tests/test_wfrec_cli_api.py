@@ -111,6 +111,8 @@ def test_ui_injects_the_token_not_a_placeholder(client):
     body = client.get("/").text
     assert "@WFREC_TOKEN@" not in body
     assert "test-token" in body
+    assert "Codex, Claude Code" in body
+    assert "providers:" in body
 
 
 def test_export_endpoint_writes_files(client):

@@ -21,8 +21,18 @@ from rich.table import Table
 from rich.text import Text
 
 from . import SOURCES, __version__, paths
+from .collectors.shell import (
+    ShellBackendSelection,
+    resolve_shell_backend,
+)
+from .devsql import DevSQLClient
 from .events import platform_summary
-from .state import RecorderState, read_api, read_sentinel
+from .state import (
+    SHELL_BACKEND_DEVSQL,
+    RecorderState,
+    read_api,
+    read_sentinel,
+)
 
 
 def _probe_import(module: str) -> dict[str, Any]:
@@ -54,6 +64,7 @@ def diagnose() -> dict[str, Any]:
             "paused_sessions": state.paused,
             "sources": state.sources,
             "shell_output": state.shell_output,
+            "shell_backend": state.shell_backend,
         },
         "sentinel": None,
         "daemon": None,
@@ -120,25 +131,38 @@ def diagnose() -> dict[str, Any]:
     display = report["platform"]["display_server"]
 
     report["sources"]["screen"] = _screen_status(display, libs, window)
-    report["sources"]["shell"] = {
-        "backend": "hook-spool",
-        "available": True,
-        "detail": "Hooks append to the session spool; the daemon ingests it.",
-    }
+    persisted_backend = state.shell_backend if state.active_session else None
+    shell_selection = resolve_shell_backend(persisted_backend)
+    report["sources"]["shell"] = _shell_status(shell_selection)
     report["sources"]["context"] = {
         "backend": "api",
         "available": True,
         "detail": "Paste box and `wfrec note`. No background clipboard access.",
     }
     report["sources"]["files"] = _files_status(libs)
-    report["sources"]["agents"] = _agents_status()
+    report["sources"]["agents"] = _agents_status(shell_selection.client)
 
     # ----------------------------------------------------------------- hooks
     try:
         from .hookinstall import status as hook_status
 
         report["hooks"] = hook_status()
-        if not any(entry["installed"] for entry in report["hooks"]):
+        hooks_available = any(
+            entry.get("installed", False) for entry in report["hooks"]
+        )
+        report["sources"]["shell"]["fallback"] = (
+            "hook-spool available"
+            if hooks_available
+            else "hook-spool not installed"
+        )
+        if (
+            shell_selection.name != SHELL_BACKEND_DEVSQL
+            and not hooks_available
+        ):
+            report["sources"]["shell"].update(
+                available=False,
+                reason="no-shell-hooks",
+            )
             report["warnings"].append(
                 "No shell hooks installed: shell commands will not be captured. "
                 "Run `wfrec hooks install`."
@@ -207,14 +231,45 @@ def _files_status(libs: dict) -> dict[str, Any]:
     }
 
 
-def _agents_status() -> dict[str, Any]:
+def _shell_status(selection: ShellBackendSelection) -> dict[str, Any]:
+    """Describe the selected shell backend without reading command rows."""
+
+    available = (
+        selection.name != SHELL_BACKEND_DEVSQL
+        or selection.client is not None
+    )
+    return {
+        "backend": selection.name,
+        "available": available,
+        "provider": selection.provider,
+        "version": selection.devsql_version,
+        "reason": "" if available else "devsql-unavailable",
+        "detail": selection.detail,
+    }
+
+
+def _agents_status(
+    devsql_client: DevSQLClient | None = None,
+) -> dict[str, Any]:
+    """Probe agent schemas and paths without reading transcript rows."""
+
     from .collectors.agents import (
         ClaudeCodeAdapter,
         CopilotChatAdapter,
         CursorAdapter,
+        DevSQLCodexAdapter,
     )
 
-    detected: dict[str, bool] = {}
+    detected: dict[str, bool] = {DevSQLCodexAdapter.name: False}
+    try:
+        client = devsql_client or DevSQLClient.discover()
+        detected[DevSQLCodexAdapter.name] = DevSQLCodexAdapter(
+            client,
+            since="1970-01-01T00:00:00Z",
+        ).available()
+    except Exception:
+        pass
+
     for adapter in (ClaudeCodeAdapter(), CopilotChatAdapter(), CursorAdapter()):
         try:
             detected[adapter.name] = adapter.available()
@@ -224,6 +279,7 @@ def _agents_status() -> dict[str, Any]:
         "backend": ",".join(name for name, ok in detected.items() if ok) or "none",
         "available": any(detected.values()),
         "detected": detected,
+        "unavailable": [name for name, ok in detected.items() if not ok],
         "detail": "Manual fallback: `wfrec attach-transcript <file> --tool <name>`.",
     }
 
@@ -363,10 +419,18 @@ def _source_details(info: dict[str, Any]) -> str:
     """Summarize optional source attributes in one readable cell."""
 
     details: list[str] = []
+    if info.get("provider"):
+        details.append(f"provider: {info['provider']}")
+    if info.get("version"):
+        details.append(f"version: {info['version']}")
     if info.get("ocr_backend"):
         details.append(f"OCR: {info['ocr_backend']}")
     if info.get("window_backend"):
         details.append(f"window: {info['window_backend']}")
+    if info.get("fallback"):
+        details.append(f"fallback: {info['fallback']}")
+    if info.get("unavailable"):
+        details.append(f"unavailable: {', '.join(info['unavailable'])}")
     if info.get("reason"):
         details.append(f"reason: {info['reason']}")
     return ", ".join(details)

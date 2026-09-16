@@ -111,7 +111,7 @@ const SOURCE_HELP = {
   screen:'Screenshots, OCR text and window titles',
   context:'Paste box and wfrec note (no clipboard watching)',
   shell:'Shell commands, exit codes and durations',
-  agents:'Claude Code, Copilot and Cursor transcripts',
+  agents:'Codex, Claude Code, Copilot and Cursor transcripts',
   files:'Git-verified file changes in declared roots'
 };
 let STATE = null;
@@ -174,6 +174,22 @@ async function doExport(){
 
 function flash(msg){ document.getElementById('warnings').textContent = msg; }
 
+function sourceDetail(name, col){
+  const extra = col.extra || {};
+  const details = [];
+  if(name === 'shell' && extra.provider) details.push('provider: '+extra.provider);
+  if(name === 'agents' && extra.detected){
+    const active = Object.entries(extra.detected)
+      .filter(([, available]) => available)
+      .map(([provider]) => provider);
+    if(active.length) details.push('providers: '+active.join(', '));
+  }
+  if((extra.failed || []).length) details.push('failed: '+extra.failed.join(', '));
+  if(col.reason) details.push('reason: '+col.reason);
+  if(col.detail) details.push(col.detail);
+  return details.join(' · ');
+}
+
 function render(){
   if(!STATE) return;
   const s = STATE.session;
@@ -191,9 +207,10 @@ function render(){
   for(const [name, on] of Object.entries(STATE.sources || {})){
     const col = (STATE.collectors||{})[name] || {};
     const unavailable = col.available === false;
+    const statusDetail = sourceDetail(name, col);
     const why = unavailable
-      ? (col.reason ? col.reason + (col.detail? ' — '+col.detail : '') : 'unavailable')
-      : (col.backend ? SOURCE_HELP[name] + ' · ' + col.backend : SOURCE_HELP[name] || '');
+      ? (statusDetail || 'unavailable')
+      : [SOURCE_HELP[name], col.backend, statusDetail].filter(Boolean).join(' · ');
     const div = document.createElement('div');
     div.className = 'src';
     div.innerHTML = `<div class="meta"><span class="name">${name}</span>

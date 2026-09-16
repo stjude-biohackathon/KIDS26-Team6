@@ -381,6 +381,7 @@ def test_one_failing_adapter_does_not_stop_the_others(store):
     # The broken adapter is quarantined, not retried forever.
     collector._run_once()
     assert len([e for e in session.writer.read() if e.type == "agent.adapter.failed"]) == 1
+    assert collector.status.extra["failed"] == ["broken"]
 
 
 def test_turns_are_deduped_and_redacted(store):
