@@ -679,9 +679,11 @@ def _pull(args: argparse.Namespace, as_json: bool) -> int:
 
     # Ingest the pulled spool through the same collector the local path uses,
     # so remote and local commands are normalized identically.
-    collector = ShellCollector(session)
-    collector.add_spool(Path(pulled["dir"]), f"remote:{args.host}")
-    collector.safe_probe()
+    collector = ShellCollector(
+        session,
+        extra_spools={Path(pulled["dir"]): f"remote:{args.host}"},
+        local_backend=session.manifest.shell_backend,
+    )
     collector._run_once()
 
     result = {

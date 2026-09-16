@@ -168,8 +168,9 @@ def test_restart_reports_persisted_devsql_backend_as_degraded(
         recorder.stop_session()
 
 
-def test_devsql_collector_does_not_drain_local_spool(
+def test_devsql_collector_reads_remote_without_draining_local_spool(
     store: SessionStore,
+    tmp_path: Path,
 ) -> None:
     session, _ = store.start(
         title="No duplicate spool",
@@ -189,9 +190,25 @@ def test_devsql_collector_does_not_drain_local_spool(
             "1",
         ),
     )
+    remote_dir = tmp_path / "remote"
+    spool.append(
+        spool.spool_file(remote_dir, "login2", 20),
+        spool.encode(
+            spool.KIND_COMMAND,
+            "2",
+            "/scratch",
+            "0",
+            "2",
+            "remote-command",
+            "sh",
+            "20",
+            "1",
+        ),
+    )
     selection = _devsql_selection()
     collector = ShellCollector(
         session,
+        extra_spools={remote_dir: "remote:hpc"},
         devsql_client=selection.client,
         local_backend=SHELL_BACKEND_DEVSQL,
         devsql_version=selection.devsql_version,
@@ -202,7 +219,9 @@ def test_devsql_collector_does_not_drain_local_spool(
     shell_events = [
         event for event in session.writer.read() if event.type == SHELL_COMMAND
     ]
-    assert shell_events == []
+    assert len(shell_events) == 1
+    assert shell_events[0].origin == "remote:hpc"
+    assert shell_events[0].payload["command"] == "remote-command"
 
 
 def _devsql_selection() -> ShellBackendSelection:
