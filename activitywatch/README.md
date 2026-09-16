@@ -163,6 +163,22 @@ Built as `scripts/screenshot_ocr_watcher.py` (same folder). Three off-the-shelf 
 
 **Real privacy lesson from the first live capture**: the OCR text pulled in genuinely unrelated content from screen — sidebar project names from an unrelated notes app (`TigerMind`, `CheXnet_FL`, `IPP_Project handoff rev`, etc.), alongside the actual Claude Code conversation. This is a live demonstration, not a hypothetical, of why raw screen-capture OCR output must never be shared/exported/committed without passing through redaction first — it captures everything visible, indiscriminately, with zero awareness of what's actually relevant. Test bucket should be deleted after experimentation (`DELETE /api/0/buckets/<id>?force=1`) rather than left sitting around.
 
+## Custom dashboard visualization (built and verified working)
+
+Our OCR bucket doesn't have to sit as raw JSON in Raw Data view — AW supports **custom visualizations**, a real (if under-documented) feature: a watcher can ship its own static HTML/JS page, and `aw-server` will serve it directly, discoverable from inside the dashboard's own view editor (Activity view → **Edit view** → **Add visualization** → cogwheel → **Custom visualization**). Confirmed via a real precedent already shipping in the ecosystem — `aw-watcher-input` ships one — so this isn't speculative.
+
+**No build step needed** — despite `aw-watcher-input`'s example using a Pug+browserify pipeline, plain vanilla HTML/JS is explicitly supported ("as long as you have static content at the end"). Built as one self-contained file: [`visualization/index.html`](visualization/index.html) — plain `fetch()` calls against `aw-server`'s own REST API (same-origin, since `aw-server` serves the page itself, so no CORS issues), rendering a simple dark-themed table of timestamp/label/OCR-text.
+
+**Wiring it up**:
+1. In `aw-server.toml` (**not** `aw-qt.toml`) — at `~/Library/Application Support/activitywatch/aw-server/aw-server.toml`, **outside this repo**, AW's own local config — add under `[server.custom_static]`:
+   ```toml
+   [server.custom_static]
+   aw-watcher-screenocr = "/absolute/path/to/activitywatch/visualization"
+   ```
+2. Restart AW (`killall aw-qt` then `open -a ActivityWatch`) for the config to take effect.
+
+**Confirmed working end-to-end (2026-09-16)**: verified the static file is actually served (`curl -L localhost:5600/pages/aw-watcher-screenocr/` → HTTP 200, correct content, redirected from the `.../index.html` form). Loaded it in a real browser: empty-state message rendered correctly with no bucket present, no console errors; then ran the watcher for one real capture and reloaded — the table populated with the correct timestamp, label, and OCR text, fetched live from the real API. Test bucket deleted afterward per the cleanup habit below.
+
 ## Task-scoped recording (start with the task, stop with the task)
 
 The script runs continuously once started, which isn't what we want by default — the goal is to capture *one task's slot*, not the whole day. So start it right when a task begins and stop it right when it ends, tagging it with `--label` so it's clear afterward which task each event belongs to.

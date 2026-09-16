@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Screenshot OCR Watcher</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; margin: 1em; background: #1e1e1e; color: #ddd; }
+    h2 { font-weight: 500; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #444; vertical-align: top; }
+    th { color: #999; font-weight: 500; }
+    .label { color: #6cf; }
+    .text { white-space: pre-wrap; font-family: monospace; font-size: 0.85em; max-width: 60em; }
+    .empty { color: #888; }
+  </style>
+</head>
+<body>
+  <h2>Screenshot OCR Watcher — recent captures</h2>
+  <div id="status" class="empty">Loading…</div>
+  <table id="events" style="display:none">
+    <thead><tr><th>Time</th><th>Label</th><th>OCR text</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    // No build step, no framework — plain fetch() against aw-server's own REST API,
+    // the same API any external script (like our watcher) already uses.
+    async function loadEvents() {
+      const statusEl = document.getElementById('status');
+      const tableEl = document.getElementById('events');
+      const tbodyEl = tableEl.querySelector('tbody');
+
+      const bucketsRes = await fetch('/api/0/buckets/');
+      const buckets = await bucketsRes.json();
+      const bucketId = Object.keys(buckets).find(id => id.startsWith('aw-watcher-screenocr'));
+
+      if (!bucketId) {
+        statusEl.textContent = 'No aw-watcher-screenocr bucket found yet — run the watcher first.';
+        return;
+      }
+
+      const eventsRes = await fetch(`/api/0/buckets/${bucketId}/events?limit=50`);
+      const events = await eventsRes.json();
+
+      if (events.length === 0) {
+        statusEl.textContent = `Bucket "${bucketId}" exists but has no events yet.`;
+        return;
+      }
+
+      statusEl.style.display = 'none';
+      tableEl.style.display = '';
+      tbodyEl.innerHTML = '';
+      for (const event of events) {
+        const row = document.createElement('tr');
+        const time = new Date(event.timestamp).toLocaleString();
+        const label = event.data.label || '(no label)';
+        const text = event.data.text || '';
+        row.innerHTML = `
+          <td>${time}</td>
+          <td class="label">${label}</td>
+          <td class="text">${text.slice(0, 300)}${text.length > 300 ? '…' : ''}</td>
+        `;
+        tbodyEl.appendChild(row);
+      }
+    }
+
+    loadEvents().catch(err => {
+      document.getElementById('status').textContent = 'Error loading events: ' + err;
+    });
+  </script>
+</body>
+</html>
