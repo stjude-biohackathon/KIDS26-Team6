@@ -36,6 +36,7 @@ src/redaction/                  Privacy redaction helpers
 src/triage_console/             Minimal review queue support
 src/pr_generator/               PR-ready draft export
 tests/                          Unit and pipeline tests
+skills/setup-activity-tracking/ Maintained local activity-tracking setup skill
 skills/generated-drafts/        Generated output folders from demo runs
 ```
 
@@ -43,14 +44,52 @@ skills/generated-drafts/        Generated output folders from demo runs
 
 - `data/sample_workflow_traces.json`: synthetic workflow traces
 - `data/sample_screen_capture.json`: pre-exported screen activity timeline example
-- `data/sample_terminal_session.log`: sample terminal workflow log
 - `data/sample_skill_catalog.json`: curated sample skill catalog
 - `docs/proposal/AutoCAB-challenge-description.docx`: project challenge brief
 - `docs/team/registration.md`: registration notes
 - `docs/team/team_member_info.md`: team member details
 - `docs/mgatta42/plan.md`: design plan for the `wfrec` workflow recorder
+- `skills/setup-activity-tracking/SKILL.md`: maintained DevSQL and Atuin setup skill
+
+## Set Up Activity Tracking with Codex or Claude
+
+The maintained skill lives in `skills/setup-activity-tracking/`. Installing the
+skill makes its workflow available to the agent. DevSQL and Atuin are installed
+separately only after the agent displays the planned changes and receives
+explicit approval. ActivityWatch and optional agent hooks are not installed.
+
+### Codex
+
+Ask Codex to install the skill from this repository:
+
+```text
+Use $skill-installer to install:
+https://github.com/stjude-biohackathon/KIDS26-Team6/tree/main/skills/setup-activity-tracking
+```
+
+On the next turn, invoke the installed skill:
+
+```text
+$setup-activity-tracking verify and set up activity tracking
+```
+
+### Claude Code
+
+Ask Claude Code to copy `skills/setup-activity-tracking/` to
+`~/.claude/skills/setup-activity-tracking/`. It should stop rather than
+overwrite an existing installation. Then invoke the installed skill:
+
+```text
+/setup-activity-tracking verify and set up activity tracking
+```
 
 ## Quick Start
+
+Install the project and test dependencies:
+
+```bash
+uv pip install --python .venv/bin/python -e '.[dev]'
+```
 
 Run the default demo pipeline:
 
@@ -63,14 +102,14 @@ Run with explicit input modes:
 ```bash
 PYTHONPATH=src python3 -m autocab demo --input-mode trace --trace-file data/sample_workflow_traces.json
 PYTHONPATH=src python3 -m autocab demo --input-mode screen-capture --capture-file data/sample_screen_capture.json
-PYTHONPATH=src python3 -m autocab demo --input-mode terminal-log --log-file data/sample_terminal_session.log
+PYTHONPATH=src python3 -m autocab demo --input-mode terminal-log --log-file path/to/terminal-session.txt
 PYTHONPATH=src python3 -m autocab demo --input-mode session --session-dir ~/.wfrec/sessions/<id>
 ```
 
 Convert a terminal log into normalized trace JSON:
 
 ```bash
-PYTHONPATH=src python3 -m autocab ingest-terminal-log data/sample_terminal_session.log --output /tmp/generated_terminal_trace.json
+PYTHONPATH=src python3 -m autocab ingest-terminal-log path/to/terminal-session.txt --output /tmp/generated_terminal_trace.json
 ```
 
 Generated proposals are written to `skills/generated-drafts/` by default.

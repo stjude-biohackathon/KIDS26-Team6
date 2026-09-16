@@ -42,11 +42,11 @@ def test_terminal_session_to_trace_infers_tags_and_steps():
     assert "report" in trace.tags
 
 
-def test_convert_terminal_log_and_input_loader_use_sample_file():
-    trace = convert_terminal_log(
-        Path("data/sample_terminal_session.log")
-    )
-    bundle = load_terminal_log_input()
+def test_convert_terminal_log_and_input_loader_use_explicit_file(
+    terminal_log_path: Path,
+):
+    trace = convert_terminal_log(terminal_log_path)
+    bundle = load_terminal_log_input(terminal_log_path)
 
     assert trace.workflow_family == "hg008 qc report assembly"
     assert len(trace.steps) == 4

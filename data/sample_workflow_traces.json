@@ -1,0 +1,65 @@
+[
+  {
+    "trace_id": "trace-001",
+    "analyst": "analyst-a",
+    "title": "HG008 QC and report assembly",
+    "summary": "Review GIAB HG008 benchmark outputs, summarize QC metrics, assemble figures, and package a markdown report for collaborators.",
+    "tags": ["giab", "qc", "figure", "report", "hg008"],
+    "source": "synthetic",
+    "workflow_family": "hg008 qc report assembly",
+    "steps": [
+      {
+        "timestamp": "2026-07-21T09:00:00",
+        "tool": "terminal",
+        "action": "inspect",
+        "detail": "Opened HG008 QC output tables and benchmark summaries."
+      },
+      {
+        "timestamp": "2026-07-21T09:12:00",
+        "tool": "notebook",
+        "action": "plot",
+        "detail": "Generated figure panels for GIAB report and draft markdown notes."
+      }
+    ]
+  },
+  {
+    "trace_id": "trace-002",
+    "analyst": "analyst-b",
+    "title": "HG008 QC and report assembly",
+    "summary": "Prepare a public-data QC update for GIAB HG008, bundle tables and figures, and send a note to analyst.team@example.org for review.",
+    "tags": ["giab", "qc", "report", "tables", "hg008"],
+    "source": "synthetic",
+    "workflow_family": "hg008 qc report assembly",
+    "steps": [
+      {
+        "timestamp": "2026-07-21T13:05:00",
+        "tool": "terminal",
+        "action": "summarize",
+        "detail": "Summarized benchmark tables and attached MRN 123456 in a scratch note by mistake."
+      },
+      {
+        "timestamp": "2026-07-21T13:19:00",
+        "tool": "editor",
+        "action": "bundle",
+        "detail": "Bundled plots and markdown into a shareable report package."
+      }
+    ]
+  },
+  {
+    "trace_id": "trace-003",
+    "analyst": "analyst-c",
+    "title": "Variant review benchmarking",
+    "summary": "Compare GIAB variant benchmarks, inspect VCF differences, and record final review notes for a public test run.",
+    "tags": ["giab", "variant", "benchmark", "vcf"],
+    "source": "synthetic",
+    "workflow_family": "variant review benchmarking",
+    "steps": [
+      {
+        "timestamp": "2026-07-21T16:00:00",
+        "tool": "terminal",
+        "action": "compare",
+        "detail": "Compared VCF benchmark outputs against the GIAB reference set."
+      }
+    ]
+  }
+]

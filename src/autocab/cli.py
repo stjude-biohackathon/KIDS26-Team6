@@ -57,7 +57,7 @@ def build_parser() -> argparse.ArgumentParser:
     demo.add_argument(
         "--log-file",
         type=Path,
-        help="Optional terminal workflow log file used when --input-mode terminal-log.",
+        help="Terminal workflow log file required when --input-mode terminal-log.",
     )
     demo.add_argument(
         "--session-dir",

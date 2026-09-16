@@ -68,19 +68,23 @@ def test_screen_capture_pipeline_exports_approved_proposals(tmp_path: Path):
     assert "[REDACTED_MRN]" in proposals[0].sanitized_summary
 
 
-def test_terminal_log_input_maps_log_to_trace():
-    bundle = load_terminal_log_input()
+def test_terminal_log_input_maps_log_to_trace(terminal_log_path: Path):
+    bundle = load_terminal_log_input(terminal_log_path)
 
     assert bundle.mode == "terminal-log"
     assert len(bundle.traces) == 1
     assert bundle.traces[0].steps[0].tool == "terminal"
-    assert "sample_terminal_session.log" in bundle.source_note
+    assert terminal_log_path.name in bundle.source_note
 
 
-def test_terminal_log_pipeline_exports_approved_proposal(tmp_path: Path):
+def test_terminal_log_pipeline_exports_approved_proposal(
+    tmp_path: Path,
+    terminal_log_path: Path,
+):
     proposals = run_pipeline(
         output_dir=tmp_path,
         input_mode="terminal-log",
+        log_path=terminal_log_path,
         approve=True,
     )
 

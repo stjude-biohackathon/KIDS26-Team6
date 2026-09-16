@@ -11,13 +11,13 @@ A cross-platform native recorder that captures a bioinformatician's real working
 AutoCAB's pipeline (`src/autocab/framework/pipeline.py`) runs *ingest → normalize → cluster → redact → match → propose → review → export*. Every stage after ingest works. **Nothing in this repo actually captures a session.** Both existing input adapters are passive consumers of artifacts somebody else produced:
 
 - `load_screen_capture_input()` in `src/autocab/input_sources.py` reads a pre-exported screenpipe-style JSON. Its own docstring concedes: *"This demo expects pre-exported local events rather than controlling a recorder directly."*
-- `load_terminal_log_input()` reads `data/sample_terminal_session.log` — **which is not in the repo.** `.gitignore` contains `*.log` (lines 10 and 85), so the fixture was silently dropped in commit `045d19d`. This breaks `tests/test_terminal_logs.py` plus three tests across `test_pipeline.py` / `test_framework.py`, and the commands documented at `README.md:40,59,65`.
+- `load_terminal_log_input()` parses a caller-supplied timestamped terminal log.
 
 The challenge brief makes real observation load-bearing:
 
 > "in the room, a CAB analyst watches AutoCAB process an observed workflow, opens the triage console, picks a proposal, edits it, approves it, and AutoCAB opens a correctly formatted draft pull request… **The full loop, observation to reviewed skill, runs live.**"
 
-Today the observation end of that loop is a missing fixture file. `wfrec` makes it genuine.
+Today the observation end of that loop still depends on artifacts produced elsewhere. `wfrec` makes it genuine.
 
 It also **displaces the screenpipe dependency** the proposal names. Screenpipe is a heavy Rust daemon, weakest on Windows — a non-starter for a team split across Windows, macOS, and Linux. A pure-Python recorder that every teammate can `pip install` is worth more than a richer one only half the team can run.
 
@@ -280,7 +280,6 @@ This follows the extension point `docs/biohackathon-framework.md` already docume
 
 ### Repo fixes this unblocks *(applied)*
 
-- The recorder regenerates the missing `data/sample_terminal_session.log`, repairing four broken tests. Requires a `!data/sample_terminal_session.log` negation in `.gitignore`.
 - `docs/ai-guidance.md` links to a nonexistent `AGENTS.md`.
 - `README.md` and `docs/biohackathon-framework.md` both reference `AutoCAB-challenge.docx`; the real filenames are `AutoCAB-challenge-description.docx` and `AutoCAB-challenge-submission-questions.docx`.
 

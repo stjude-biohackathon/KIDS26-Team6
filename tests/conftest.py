@@ -20,6 +20,28 @@ if str(SRC) not in sys.path:
 
 
 @pytest.fixture()
+def terminal_log_path(tmp_path: Path) -> Path:
+    """Create a synthetic terminal log without storing user activity."""
+
+    path = tmp_path / "terminal-session.txt"
+    path.write_text(
+        "\n".join(
+            [
+                "# analyst: analyst-a",
+                "# workflow_family: hg008 qc report assembly",
+                "2026-07-21T09:00:00 ls results/hg008",
+                "2026-07-21T09:05:00 python3 scripts/qc_summary.py --sample HG008",
+                "2026-07-21T09:10:00 python3 scripts/build_report.py --output reports/hg008.md",
+                "2026-07-21T09:15:00 tar -czf reports/hg008.tar.gz reports/hg008.md",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+@pytest.fixture()
 def wfrec_home(tmp_path, monkeypatch):
     """Redirect wfrec's durable and runtime roots into a temp directory."""
 
