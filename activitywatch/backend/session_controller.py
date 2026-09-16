@@ -324,9 +324,20 @@ def build_skill_prompt(merged: dict) -> str:
 
 @app.route("/api/task/<task_name>/draft_skill", methods=["POST"])
 def draft_skill(task_name: str):
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    # .strip() clears leading/trailing whitespace/newlines from a pasted key,
+    # but can't fix a *mid-string* corruption (embedded newline, homoglyph
+    # characters swapped in from a bad copy/paste) — that still needs a
+    # cleanly re-copied key from the user, caught explicitly below with a
+    # clear message rather than leaking a raw exception.
+    api_key = (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
     if not api_key:
         return jsonify({"error": "ANTHROPIC_API_KEY is not set in this backend's environment."}), 400
+    if not api_key.isascii():
+        return jsonify({
+            "error": "ANTHROPIC_API_KEY contains non-ASCII characters (likely a corrupted copy/paste — "
+                     "check for look-alike characters from a different alphabet). Re-copy it fresh from "
+                     "the Anthropic Console and re-export it."
+        }), 400
 
     merged = merge_task(task_name)
     if merged["event_count"] == 0:
@@ -336,11 +347,19 @@ def draft_skill(task_name: str):
 
     client = anthropic.Anthropic(api_key=api_key)
     prompt = build_skill_prompt(merged)
-    response = client.messages.create(
-        model="claude-sonnet-4-5",
-        max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.APIError as e:
+        return jsonify({"error": f"Anthropic API error: {e}"}), 502
+    except Exception as e:
+        # Catches things like the malformed-header case (httpcore raises its
+        # own error type before the request is even sent) that don't
+        # subclass anthropic.APIError.
+        return jsonify({"error": f"Could not call the Anthropic API: {e}"}), 502
     draft_text = "".join(block.text for block in response.content if hasattr(block, "text"))
 
     DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
