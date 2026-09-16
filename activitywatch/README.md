@@ -2,6 +2,26 @@
 
 Working notes on ActivityWatch — what it is, what it can and can't do, how it was installed and verified on this machine, and how it fits into AutoCAB. Lives on the `explore-activitywatch` branch and grows as more gets tested.
 
+## Custom dashboard fork (aw-webui) — building Start/Stop/session/merge/skill-drafting directly into the real UI
+
+Goal: rather than a separate small page, build session recording (screenshot+OCR and/or real video, toggleable), task-named resume, cross-session merge, and LLM-backed skill drafting **directly into AW's actual dashboard**. `activitywatch/aw-webui/` is a fork of the real dashboard source (`ActivityWatch/aw-webui`), flattened into this repo (no nested git/submodule) so it's tracked as plain source under `explore-activitywatch`.
+
+**Running it**:
+```bash
+cd activitywatch/aw-webui
+npm install          # first time only
+npm run serve        # dev server at http://localhost:27180
+```
+Needs the real `aw-server` already running (`open -a ActivityWatch`) — this fork talks to it directly, not a separate testing instance.
+
+**Two real issues hit and fixed while getting this working**:
+1. The upstream default points dev builds at an `aw-server --testing` instance (port 5666), which would show an empty database, not our real data. The intended override is an `AW_SERVER_URL` env var — but setting it reliably **breaks compilation** in this project's current `ts-loader`/`babel-loader` version combo (`Module parse failed: Unexpected token` on a core-js polyfill import), reproduced consistently across a cleared build cache and two Node versions (22 and 20 LTS via `fnm`) — ruling out cache staleness or Node version as the cause. Fixed by hardcoding our fork's dev-mode default straight to `http://127.0.0.1:5600` in [`src/util/awclient.ts`](aw-webui/src/util/awclient.ts) instead of relying on that env var.
+2. The real `aw-server` has no CORS policy for cross-origin dev-server requests by default — only `--testing` mode auto-enables that. Fixed by adding `cors_origins = "http://localhost:27180"` under `[server]` in `aw-server.toml` (both the live one and [`aw-server.toml.reference`](aw-server.toml.reference)).
+
+**Verified working (2026-09-16)**: compiles cleanly, loads in a real browser with zero console errors (checked in a fresh tab specifically, since the tab used during debugging accumulated stale errors from earlier failed attempts), and the Activity view genuinely renders today's real usage data (`Claude 1h 17m`, `Google Chrome 13m 38s`, `Terminal`, `Slack`, etc.) pulled live from the real `aw-server`.
+
+**Next up**: Start/Stop session UI with task naming and resume-under-same-name, video recording via `ffmpeg` (already installed) toggleable alongside the existing OCR script, a merge-sessions feature, and an LLM-backed (not template-based) skill-drafting step on merged sessions.
+
 ## What it is
 
 ActivityWatch is a free, open-source, **local-first automated time tracker** (activitywatch.net), MPL-2.0 licensed. It runs on Windows, macOS, Linux, and Android. All data is stored on the device it runs on and is never uploaded anywhere — there's no account, no cloud sync, no server component outside your own machine.
