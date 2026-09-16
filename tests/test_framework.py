@@ -26,10 +26,18 @@ def test_default_pipeline_exports_when_approved(tmp_path: Path):
     assert (result.proposals[0].export_path / "SKILL.md").exists()
 
 
-def test_default_pipeline_supports_terminal_logs(tmp_path: Path):
+def test_default_pipeline_supports_terminal_logs(
+    tmp_path: Path,
+    terminal_log_path: Path,
+):
     pipeline = build_default_pipeline(PipelineConfig(default_output_dir=tmp_path))
 
-    result = pipeline.run(output_dir=tmp_path, input_mode="terminal-log", approve=False)
+    result = pipeline.run(
+        output_dir=tmp_path,
+        input_mode="terminal-log",
+        log_path=terminal_log_path,
+        approve=False,
+    )
 
     assert len(result.proposals) == 1
     assert result.context.input_bundle is not None

@@ -44,7 +44,6 @@ skills/generated-drafts/        Generated output folders from demo runs
 
 - `data/sample_workflow_traces.json`: synthetic workflow traces
 - `data/sample_screen_capture.json`: pre-exported screen activity timeline example
-- `data/sample_terminal_session.log`: sample terminal workflow log
 - `data/sample_skill_catalog.json`: curated sample skill catalog
 - `docs/proposal/AutoCAB-challenge-description.docx`: project challenge brief
 - `docs/team/registration.md`: registration notes
@@ -103,14 +102,14 @@ Run with explicit input modes:
 ```bash
 PYTHONPATH=src python3 -m autocab demo --input-mode trace --trace-file data/sample_workflow_traces.json
 PYTHONPATH=src python3 -m autocab demo --input-mode screen-capture --capture-file data/sample_screen_capture.json
-PYTHONPATH=src python3 -m autocab demo --input-mode terminal-log --log-file data/sample_terminal_session.log
+PYTHONPATH=src python3 -m autocab demo --input-mode terminal-log --log-file path/to/terminal-session.txt
 PYTHONPATH=src python3 -m autocab demo --input-mode session --session-dir ~/.wfrec/sessions/<id>
 ```
 
 Convert a terminal log into normalized trace JSON:
 
 ```bash
-PYTHONPATH=src python3 -m autocab ingest-terminal-log data/sample_terminal_session.log --output /tmp/generated_terminal_trace.json
+PYTHONPATH=src python3 -m autocab ingest-terminal-log path/to/terminal-session.txt --output /tmp/generated_terminal_trace.json
 ```
 
 Generated proposals are written to `skills/generated-drafts/` by default.

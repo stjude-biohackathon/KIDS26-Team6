@@ -121,10 +121,15 @@ def load_screen_capture_input(capture_path: Path | None = None) -> InputBundle:
 def load_terminal_log_input(log_path: Path | None = None) -> InputBundle:
     """Load a terminal workflow log and convert it into one workflow trace."""
 
-    resolved_path = log_path or Path(__file__).resolve().parents[2] / "data" / "sample_terminal_session.log"
-    trace = convert_terminal_log(resolved_path)
+    if log_path is None:
+        raise ValueError("Terminal log input requires an explicit path.")
+
+    trace = convert_terminal_log(log_path)
     return InputBundle(
         mode="terminal-log",
         traces=[trace],
-        source_note=f"Loaded terminal workflow log from {resolved_path} and converted it into trace JSON.",
+        source_note=(
+            f"Loaded terminal workflow log from {log_path} and converted it "
+            "into trace JSON."
+        ),
     )
