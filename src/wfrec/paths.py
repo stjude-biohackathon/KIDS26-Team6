@@ -31,7 +31,6 @@ SESSION_SUBDIRS = (
     "screen/frames",
     "screen/ocr",
     "screen/video",
-    "shell/output",
     "shell/remote",
     "spool",
     "agents",

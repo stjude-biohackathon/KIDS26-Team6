@@ -47,8 +47,10 @@ def test_shell_status_reports_devsql_provider_and_fallback() -> None:
     assert status["available"] is True
     assert status["backend"] == "devsql"
     assert status["provider"] == "atuin"
+    assert status["shell_output_available"] is False
     assert "provider: atuin" in _source_details(status)
     assert "fallback: hook-spool available" in _source_details(status)
+    assert "output: unavailable" in _source_details(status)
 
 
 def test_agent_diagnostics_only_probe_devsql_schema() -> None:

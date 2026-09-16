@@ -39,14 +39,25 @@ SOURCE_FLAGS: dict[str, str] = {
     "screen": "c",
 }
 
-#: Extra flag set when opt-in full shell-output capture is enabled.
-FLAG_SHELL_OUTPUT = "O"
-
 FLAG_TO_SOURCE = {flag: source for source, flag in SOURCE_FLAGS.items()}
 
 SHELL_BACKEND_DEVSQL = "devsql"
 SHELL_BACKEND_SPOOL = "hook-spool"
 SHELL_BACKENDS = {SHELL_BACKEND_DEVSQL, SHELL_BACKEND_SPOOL}
+
+
+def shell_output_unavailable_reason(backend: str) -> str:
+    """Explain why the selected backend cannot capture terminal output."""
+
+    if backend == SHELL_BACKEND_DEVSQL:
+        return (
+            "Full shell output capture is unavailable with DevSQL. DevSQL "
+            "records commands and execution metadata, not stdout or stderr."
+        )
+    return (
+        "Full shell output capture is unavailable with hook-spool. Installed "
+        "hooks record commands and execution metadata, not stdout or stderr."
+    )
 
 
 @dataclass(slots=True)
@@ -128,8 +139,6 @@ class RecorderState:
                 name == "shell" and self.shell_backend == SHELL_BACKEND_DEVSQL
             )
         ]
-        if self.shell_output:
-            enabled.append(FLAG_SHELL_OUTPUT)
         return "".join(enabled) or "-"
 
     # ------------------------------------------------------------------ save

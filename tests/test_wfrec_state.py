@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from wfrec import paths
 from wfrec.state import (
-    FLAG_SHELL_OUTPUT,
     RecorderState,
     SHELL_BACKEND_DEVSQL,
     SHELL_BACKEND_SPOOL,
@@ -61,12 +60,15 @@ def test_flags_reflect_each_source(wfrec_home):
     assert sentinel_enables(flags, "files")
 
 
-def test_shell_output_flag_is_separate(wfrec_home):
+def test_legacy_shell_output_does_not_change_hook_flags(wfrec_home):
     state = RecorderState.load()
     state.active_session = "s1"
     state.shell_output = True
     state.save()
-    assert FLAG_SHELL_OUTPUT in read_sentinel()[1]
+
+    restored = RecorderState.load()
+    assert restored.shell_output is True
+    assert "O" not in read_sentinel()[1]
 
 
 def test_devsql_backend_suppresses_only_the_shell_hook(wfrec_home):

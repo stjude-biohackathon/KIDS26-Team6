@@ -64,6 +64,19 @@ def test_toggle_source_over_http(client):
     assert result["sources"]["screen"] is True
 
 
+def test_shell_output_endpoint_reports_unsupported_backend(client):
+    client.post("/sessions/start", json={"title": "A"})
+
+    response = client.post("/shell-output", json={"enabled": True})
+    status = client.get("/status").json()
+
+    assert response.status_code == 400
+    assert "hook-spool" in response.json()["detail"]
+    assert status["shell_output"] is False
+    assert status["shell_output_available"] is False
+    assert "stdout or stderr" in status["shell_output_reason"]
+
+
 def test_unknown_source_is_a_400(client):
     client.post("/sessions/start", json={"title": "A"})
     response = client.post("/sources/telepathy", json={"enabled": True})
@@ -158,6 +171,17 @@ def test_cli_source_accepts_on_off_words(wfrec_home, capsys):
     assert main(["source", "shell", "off"]) == 0
     assert "shell" not in capsys.readouterr().out.split("capturing:")[1]
     assert main(["source", "shell", "on"]) == 0
+
+
+def test_cli_shell_output_reports_unsupported_backend(wfrec_home, capsys):
+    main(["start", "--title", "A", "--no-daemon"])
+    capsys.readouterr()
+
+    assert main(["shell-output", "on"]) == 1
+    assert "unavailable with hook-spool" in capsys.readouterr().err
+
+    assert main(["shell-output", "off"]) == 0
+    assert "Shell output capture is off" in capsys.readouterr().out
 
 
 def test_cli_rejects_bad_toggle_word(wfrec_home):

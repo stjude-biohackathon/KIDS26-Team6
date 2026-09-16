@@ -92,7 +92,7 @@ def build_parser() -> argparse.ArgumentParser:
     source.add_argument("state", type=_bool_arg, help="on or off")
 
     output = sub.add_parser(
-        "shell-output", help="Toggle opt-in full shell output capture."
+        "shell-output", help="Report or clear unsupported shell output capture."
     )
     output.add_argument("state", type=_bool_arg, help="on or off")
 
@@ -463,6 +463,11 @@ def _report(command: str, result: dict, as_json: bool, *, daemon: bool) -> None:
                 print(f"  ! {name}: {info.get('reason')} -- {info.get('detail', '')[:100]}")
         return
 
+    if command == "shell-output":
+        print("Shell output capture is off.")
+        print(f"  {result.get('shell_output_reason', '')}")
+        return
+
     if command == "note":
         redactions = result.get("redactions") or []
         suffix = f" (redacted: {', '.join(redactions)})" if redactions else ""
@@ -500,8 +505,9 @@ def _print_status(result: dict) -> None:
         elif on and info.get("backend"):
             note = f"  ({info['backend']})"
         print(f"    {mark} {name}{note}")
-    if result.get("shell_output"):
-        print("    on  shell-output (full terminal output capture)")
+    if result.get("shell_output_available") is False:
+        print("    -- shell-output unavailable")
+        print(f"       {result.get('shell_output_reason', '')}")
 
 
 def _note_text(args: argparse.Namespace) -> str:

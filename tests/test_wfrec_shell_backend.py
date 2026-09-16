@@ -6,6 +6,8 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from wfrec import spool
 from wfrec.collectors.shell import (
     DEVSQL_SHELL_SOURCE,
@@ -87,7 +89,11 @@ def test_recorder_selects_devsql_and_suppresses_local_hook(
         assert session.manifest.shell_backend == SHELL_BACKEND_DEVSQL
         assert status["shell_backend"] == SHELL_BACKEND_DEVSQL
         assert status["collectors"]["shell"]["backend"] == "devsql"
+        assert status["shell_output_available"] is False
+        assert "DevSQL" in status["shell_output_reason"]
         assert not sentinel_enables(flags, "shell")
+        with pytest.raises(ValueError, match="DevSQL"):
+            recorder.set_shell_output(True)
     finally:
         recorder.stop_session()
 

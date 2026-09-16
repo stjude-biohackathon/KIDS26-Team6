@@ -32,6 +32,7 @@ from .state import (
     RecorderState,
     read_api,
     read_sentinel,
+    shell_output_unavailable_reason,
 )
 
 
@@ -63,7 +64,12 @@ def diagnose() -> dict[str, Any]:
             "active_session": state.active_session,
             "paused_sessions": state.paused,
             "sources": state.sources,
-            "shell_output": state.shell_output,
+            "shell_output": False,
+            "shell_output_requested": state.shell_output,
+            "shell_output_available": False,
+            "shell_output_reason": shell_output_unavailable_reason(
+                state.shell_backend
+            ),
             "shell_backend": state.shell_backend,
         },
         "sentinel": None,
@@ -243,6 +249,10 @@ def _shell_status(selection: ShellBackendSelection) -> dict[str, Any]:
         "available": available,
         "provider": selection.provider,
         "version": selection.devsql_version,
+        "shell_output_available": False,
+        "shell_output_reason": shell_output_unavailable_reason(
+            selection.name
+        ),
         "reason": "" if available else "devsql-unavailable",
         "detail": selection.detail,
     }
@@ -429,6 +439,8 @@ def _source_details(info: dict[str, Any]) -> str:
         details.append(f"window: {info['window_backend']}")
     if info.get("fallback"):
         details.append(f"fallback: {info['fallback']}")
+    if info.get("shell_output_available") is False:
+        details.append("output: unavailable")
     if info.get("unavailable"):
         details.append(f"unavailable: {', '.join(info['unavailable'])}")
     if info.get("reason"):

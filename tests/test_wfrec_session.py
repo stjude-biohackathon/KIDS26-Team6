@@ -119,6 +119,21 @@ def test_source_toggle_updates_sentinel_for_open_shells(store):
     assert sentinel_enables(read_sentinel()[1], "shell")
 
 
+def test_shell_output_rejects_enable_and_clears_legacy_state(store):
+    session, _ = store.start(title="A")
+
+    with pytest.raises(ValueError, match="hook-spool"):
+        session.set_shell_output(True)
+
+    session.manifest.shell_output = True
+    session.save()
+    session._sync_state()
+    session.set_shell_output(False)
+
+    assert session.manifest.shell_output is False
+    assert RecorderState.load().shell_output is False
+
+
 def test_toggle_on_inactive_session_does_not_touch_live_sentinel(store):
     a, _ = store.start(title="A")
     b, _ = store.start(title="B")   # A is now paused

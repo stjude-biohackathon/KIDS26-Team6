@@ -25,7 +25,11 @@ from .collectors.shell import (
     resolve_shell_backend,
 )
 from .session import STATUS_ACTIVE, Session, SessionStore
-from .state import RecorderState, SHELL_BACKEND_SPOOL
+from .state import (
+    RecorderState,
+    SHELL_BACKEND_SPOOL,
+    shell_output_unavailable_reason,
+)
 
 #: How often to emit a `session.waiting` heartbeat while paused.
 WAITING_HEARTBEAT_SECONDS = 300.0
@@ -95,7 +99,12 @@ class Recorder:
                 "active_session": state.active_session,
                 "paused_sessions": list(state.paused),
                 "sources": dict(state.sources),
-                "shell_output": state.shell_output,
+                "shell_output": False,
+                "shell_output_requested": state.shell_output,
+                "shell_output_available": False,
+                "shell_output_reason": shell_output_unavailable_reason(
+                    state.shell_backend
+                ),
                 "shell_backend": state.shell_backend,
                 "collectors": self.statuses(),
                 "running": {

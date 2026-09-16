@@ -43,7 +43,12 @@ from .events import (
 )
 from .locking import atomic_write_text
 from .redaction import shared as shared_redactor
-from .state import SHELL_BACKENDS, SHELL_BACKEND_SPOOL, StateTransaction
+from .state import (
+    SHELL_BACKENDS,
+    SHELL_BACKEND_SPOOL,
+    StateTransaction,
+    shell_output_unavailable_reason,
+)
 
 STATUS_CREATED = "created"
 STATUS_ACTIVE = "active"
@@ -372,6 +377,12 @@ class Session:
         return event
 
     def set_shell_output(self, enabled: bool) -> Event:
+        if enabled:
+            raise ValueError(
+                shell_output_unavailable_reason(
+                    self.manifest.shell_backend
+                )
+            )
         self.manifest.shell_output = enabled
         self.manifest.toggles.append(
             {"source": "shell_output", "enabled": enabled, "at": utc_now()}
