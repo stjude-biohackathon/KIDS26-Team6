@@ -67,6 +67,18 @@ Third capture mode: `scripts/video_watcher.py`, real screen video via `ffmpeg` (
 
 **Verified end-to-end (2026-09-16)**: ran two real sessions for the same task across a gap (stop, wait, resume) — merge correctly combined 3 real events from both sessions, sorted by time, with correct session metadata. `draft_skill`'s error path verified via curl and via a real button click in the Sessions tab, error displayed correctly in a red alert box. `event_count == 0` guard (nothing to draft from) not yet exercised with a real key, but the code path is there.
 
+## TODO: MCP server, alongside the existing button (not a replacement)
+
+Decided direction (2026-09-16): keep the direct-API "Merge & Draft Skill" button as-is for the instant one-click path, and *add* an MCP server as a second way in — so drafting can also happen conversationally through any MCP-connected Claude client (this session, Claude Desktop, etc.) instead of only through the browser button. Not built yet — deliberately deferred, this is the plan for when we pick it back up:
+
+- [ ] New `backend/mcp_server.py` (or similar), exposing two tools over MCP:
+  - [ ] `get_merged_task(task_name)` — same data as the existing `GET /api/task/<task_name>/merge` endpoint; refactor `merge_task()` out so both the Flask route and the MCP tool call the same shared function instead of duplicating the logic.
+  - [ ] `save_drafted_skill(task_name, draft_markdown)` — writes to `backend/drafted_skills/<task-slug>.md`, same effect as what `draft_skill` does today after generation. Reuse the same save path/slug logic so a draft saved via either route shows up the same way to the dashboard.
+- [ ] Decide the transport (stdio for local Claude Desktop/Code config vs. an HTTP-based MCP transport if it needs to be reachable from elsewhere) — stdio is probably right for a local dev tool like this.
+- [ ] Document the Claude Desktop / Claude Code config snippet needed to actually connect to it (an MCP server entry pointing at `python3 backend/mcp_server.py`).
+- [ ] No `ANTHROPIC_API_KEY` needed for this path — whatever Claude client connects brings its own authenticated access, which is the whole point of doing it this way.
+- [ ] Once built, the Sessions tab could optionally show "drafted via MCP" entries too (same `drafted_skills/` folder, either path writes there) — no UI change strictly required, just worth noting the two paths converge on the same output location.
+
 ## What it is
 
 ActivityWatch is a free, open-source, **local-first automated time tracker** (activitywatch.net), MPL-2.0 licensed. It runs on Windows, macOS, Linux, and Android. All data is stored on the device it runs on and is never uploaded anywhere — there's no account, no cloud sync, no server component outside your own machine.

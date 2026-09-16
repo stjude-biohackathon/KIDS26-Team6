@@ -72,3 +72,5 @@ kill "$(cat /tmp/aw_ocr.pid)" && rm /tmp/aw_ocr.pid
 ## Status
 
 This is being filled in as we go — check [KNOWLEDGE_BASE.md](KNOWLEDGE_BASE.md)'s Running Log for what's actually been built and verified so far vs. what's still planned.
+
+**Next up (not started)**: an MCP server alongside the existing "Merge & Draft Skill" button, so drafting can also happen conversationally through a connected Claude client instead of only the browser button — see the TODO checklist in [KNOWLEDGE_BASE.md](KNOWLEDGE_BASE.md#todo-mcp-server-alongside-the-existing-button-not-a-replacement).
