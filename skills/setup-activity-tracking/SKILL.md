@@ -4,7 +4,7 @@ description: Set up, verify, and safely remove local DevSQL and Atuin activity t
 license: MIT
 metadata:
   author: AutoCAB Team
-  version: "0.4.0"
+  version: "0.4.1"
   status: experimental
   last_reviewed: "2026-09-16"
 allowed-tools: shell python
@@ -50,8 +50,8 @@ Atuin. Verification and uninstall are local.
 - Treat commands, local paths, and activity records as sensitive. Report status
   without printing queried commands, history contents, or local paths.
 - Do not install Atuin hooks for Claude Code, Codex, or other agents
-  automatically. DevSQL already reads native Claude Code and Codex histories,
-  so hooks can create duplicate command records.
+  automatically. `wfrec` reads Codex through DevSQL and Claude Code directly,
+  so Atuin hooks can create duplicate records.
 - Detect ActivityWatch through its local service only. Do not install it.
 
 ## Workflow
@@ -135,7 +135,7 @@ approval.
 ## Optional Agent Hooks
 
 Only discuss these commands when the user explicitly wants agent-attributed
-Atuin records and accepts possible duplication with DevSQL's native histories:
+Atuin records and accepts possible duplication with `wfrec` agent capture:
 
 ```bash
 atuin hook install claude-code

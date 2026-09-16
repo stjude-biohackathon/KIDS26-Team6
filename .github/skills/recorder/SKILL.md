@@ -22,7 +22,7 @@ clicks do the same thing. Never edit files under `~/.wfrec/` directly.
 | "stop screen recording" | `wfrec source screen off` |
 | "stop logging my bash history" | `wfrec source shell off` |
 | "start capturing my commands again" | `wfrec source shell on` |
-| "also record command output" | `wfrec shell-output on` |
+| "also record command output" | Explain that current backends do not capture terminal stdout or stderr |
 | "pause, I'm waiting on the alignment job" | `wfrec pause --reason "waiting on alignment" --expect 6h` |
 | "resume" / "I'm back" | `wfrec resume` |
 | "note that I reran this because the BAM was truncated" | `wfrec note "..." --label why` |
@@ -73,13 +73,13 @@ already has open.
 ## Setup, once per machine
 
 ```bash
-wfrec hooks install      # adds a guarded two-line source block to the user's rc file
 wfrec doctor             # confirms which backend each source resolved to, and why
+wfrec hooks install      # only when doctor selects the hook-spool fallback
 ```
 
-Shell capture requires the hook. Installing it only affects *new* terminals; to
-start capturing in a terminal that is already open, run `wfrec hooks eval` and
-have the user paste the line it prints.
+DevSQL with Atuin is the primary local shell backend. The fallback hook only
+affects new terminals when first installed. To load it in an existing terminal,
+run `wfrec hooks eval` and have the user paste the line it prints.
 
 ## Handing off to AutoCAB
 

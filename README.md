@@ -15,8 +15,9 @@ AutoCAB is a BioHackathon 2026 project for turning repeated CAB bioinformatics w
 The maintained skill in `skills/setup-activity-tracking/` helps Codex or Claude
 verify and install DevSQL and Atuin. The agent shows the planned changes and
 waits for approval before installing anything. The skill configures Atuin for
-shell history and leaves ActivityWatch unchanged. DevSQL reads Claude Code and
-Codex histories directly, so no agent hooks are required.
+shell history and leaves ActivityWatch unchanged. `wfrec` reads Codex messages
+through DevSQL and Claude Code transcripts directly. Atuin agent hooks are not
+required.
 
 ### Codex
 
@@ -83,13 +84,15 @@ Generated proposals are written to `skills/generated-drafts/` by default.
 input adapters read. This connects observation to a reviewed skill proposal
 without relying on demo data.
 
-After completing the setup above, check wfrec and install the shell hook once:
+After completing the setup above, check which backends are available:
 
 ```bash
 wfrec doctor                  # which backend each source resolved to, and why
-wfrec hooks install           # one guarded block appended to your shell rc file
-wfrec hooks status
 ```
+
+DevSQL with Atuin is the primary local shell backend. If `wfrec doctor` selects
+`hook-spool`, install the fallback hook with `wfrec hooks install` and confirm
+it with `wfrec hooks status`.
 
 Then record:
 
@@ -112,9 +115,9 @@ the current session and records the handover in both timelines.
 
 Five sources can be toggled independently: `screen` (frames, OCR text, window
 titles), `context` (pasted text with no background clipboard access), `shell`
-(commands, exit codes, durations, optional output), `agents` (Claude Code,
-Copilot Chat, Cursor transcripts), and `files` (git-verified changes in
-declared roots).
+(commands, exit codes, and durations), `agents` (Codex, Claude Code, Copilot
+Chat, and Cursor transcripts), and `files` (git-verified changes in declared
+roots). Current shell backends do not capture terminal stdout or stderr.
 
 ### Session data and exports
 

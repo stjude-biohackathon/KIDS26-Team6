@@ -16,14 +16,17 @@ use it.
 
 ## Install
 
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then
+create the project environment:
+
 ```bash
-python3 -m venv .venv
+uv venv
 source .venv/bin/activate
-pip install -e '.[macos,gui]'      # Linux: '.[linux,gui]'   Windows: '.[gui]'
+uv pip install -e '.[macos,gui]'   # Linux: '.[linux,gui]'   Windows: '.[gui]'
 ```
 
-**Quote the extras.** In zsh, `pip install -e .[macos,gui]` fails with
-`zsh: no matches found` — brackets are glob characters.
+**Quote the extras.** In zsh, `uv pip install -e .[macos,gui]` fails with
+`zsh: no matches found` because brackets are glob characters.
 
 Extras are optional but worth having:
 
@@ -48,7 +51,10 @@ between diagnosing a problem and describing symptoms over Slack. With three
 operating systems and two display servers, "works on my machine" is the most
 expensive bug class here.
 
-## Install the shell hook (once per machine)
+## Install the fallback shell hook when needed
+
+DevSQL with Atuin is the primary local shell backend. Run `wfrec doctor` first.
+Install a hook only when the reported shell backend is `hook-spool`:
 
 ```bash
 wfrec hooks install                # detects zsh/bash/fish, or PowerShell on Windows
@@ -68,9 +74,8 @@ you are already sitting in:
 eval "$(wfrec hooks eval --shell zsh)"
 ```
 
-Hooks are installed once and left alone. Every later start, stop, pause and
-per-source toggle is a state change that already-open shells pick up on their
-next prompt.
+Fallback hooks are installed once and left alone. Every later start, stop,
+pause, and source toggle reaches already-open shells at their next prompt.
 
 ## Record
 
@@ -84,15 +89,14 @@ AutoCAB clusters on, and `--analyst` (defaulting to your OS username) is what
 makes multi-analyst aggregation work.
 
 `start` auto-spawns the background daemon; its log is `~/.wfrec/daemon.log`.
-Pass `--no-daemon` to skip that (shell capture still works, since the hooks
-write to disk themselves).
+Pass `--no-daemon` to skip background collectors. Installed fallback hooks can
+still spool commands for later ingestion.
 
 Then, at any point mid-session:
 
 ```bash
 wfrec source screen on            # or off -- any source, any time
 wfrec source shell off            # "stop logging my bash history"
-wfrec shell-output on             # opt-in full terminal output capture
 wfrec note "reran because the BAM was truncated" --label why
 wfrec mark "QC finished"
 wfrec watch ../other-project
@@ -113,9 +117,9 @@ distinguish *"the analyst waited six hours on an alignment job"* from
 
 | Source | Captures | Notes |
 |---|---|---|
-| `shell` | Commands, cwd, exit codes, durations | Needs the hook. Full output is a separate opt-in toggle |
+| `shell` | Commands, cwd, exit codes, durations | DevSQL with Atuin is primary; installed hooks provide the fallback. Stdout and stderr are not captured |
 | `files` | Git-verified changes and diffs in declared roots | `watchdog` triggers, `git` verifies. Genomics binaries are metadata-only, never opened |
-| `agents` | Claude Code, Copilot Chat and Cursor transcripts | Best-effort per tool; `attach-transcript` always works |
+| `agents` | Codex, Claude Code, Copilot Chat and Cursor transcripts | Codex uses DevSQL; Claude Code uses its local JSONL transcripts; `attach-transcript` is the manual fallback |
 | `screen` | Frames, OCR text, active-window titles, optional video | OCR is the part a downstream LLM can read; video is for humans |
 | `context` | A paste box and `wfrec note` | Everything captured is deliberate. There is no background clipboard watching, by design |
 
@@ -140,7 +144,7 @@ teammate:
 ├── manifest.json     # title, analyst, host, lifecycle log, toggle history
 ├── events.jsonl      # the verbose timeline (source of truth)
 ├── screen/           # frames, ocr text, video
-├── shell/            # hook spool, opt-in output, pulled-back remote spools
+├── shell/            # DevSQL cursor and pulled-back remote spools
 ├── agents/           # transcript captures
 ├── files/            # change events and diffs
 ├── context/          # pasted notes
@@ -231,7 +235,7 @@ a real cluster. Try it early.
 
 | Source | macOS | Windows | Linux X11 | Linux Wayland |
 |---|---|---|---|---|
-| shell | zsh / bash / fish | **PowerShell only** — `cmd.exe` cannot be hooked | zsh / bash / fish | same |
+| shell | DevSQL + Atuin; hook fallback | **PowerShell hook fallback**; `cmd.exe` cannot be hooked | DevSQL + Atuin; hook fallback | same |
 | screen frames | `mss` (needs Screen Recording) | `mss` | `mss` | **unavailable unattended** |
 | window titles | Quartz (needs Screen Recording) | ctypes GDI | `python-xlib` | **unavailable** |
 | OCR | Apple Vision or RapidOCR | RapidOCR | RapidOCR | RapidOCR |
@@ -273,8 +277,8 @@ the control API binds to `127.0.0.1` behind a token.
 
 | Symptom | Cause and fix |
 |---|---|
-| No shell commands captured | Hook not loaded in *that* terminal. Run `eval "$(wfrec hooks eval)"` |
-| `ImportError: libGL.so.1` | `opencv-python` shadowed the headless build. `pip install --force-reinstall opencv-python-headless` |
+| No shell commands captured | Run `wfrec doctor`. For `devsql`, verify Atuin setup. For `hook-spool`, run `eval "$(wfrec hooks eval)"` |
+| `ImportError: libGL.so.1` | `opencv-python` shadowed the headless build. `uv pip install --force-reinstall opencv-python-headless` |
 | `files` source records nothing | No watch root. `wfrec watch <dir>` |
 | `agents` says `no-agent-tools-found` | No transcripts found. `wfrec attach-transcript <file> --tool <name>` |
 | Screen capture disabled on Linux | Wayland. See the platform table above |
@@ -293,7 +297,7 @@ rather than reimplementing anything.
 ## Development
 
 ```bash
-pytest                       # 132 tests; no PYTHONPATH needed after `pip install -e .`
+pytest                       # no PYTHONPATH needed after `uv pip install -e .`
 pytest tests/test_wfrec_spool.py -v
 ```
 
