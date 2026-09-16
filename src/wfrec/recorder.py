@@ -282,7 +282,12 @@ class Recorder:
         if source == "screen":
             return ScreenCollector(session)
         if source == "agents":
-            return AgentCollector(session)
+            devsql_client = (
+                self._shell_backend.client
+                if self._shell_backend is not None
+                else None
+            )
+            return AgentCollector(session, devsql_client=devsql_client)
         # `context` needs no background collector: notes arrive by explicit
         # user action through the API, never by polling.
         return None
