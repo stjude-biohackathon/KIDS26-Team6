@@ -86,6 +86,12 @@ overwrite an existing installation. Then invoke the installed skill:
 
 ## Quick Start
 
+Install the project and test dependencies:
+
+```bash
+uv pip install --python .venv/bin/python -e '.[dev]'
+```
+
 Run the default demo pipeline:
 
 ```bash
