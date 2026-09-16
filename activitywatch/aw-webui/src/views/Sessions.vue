@@ -23,6 +23,12 @@ div
     | Can't reach the session backend at #[code http://localhost:5677] —
     | is it running? (#[code cd activitywatch/backend && python3 session_controller.py])
 
+  div.mb-3(v-else)
+    b-badge(:variant="anthropicConfigured ? 'success' : 'secondary'")
+      | LLM drafting: {{ anthropicConfigured ? 'configured' : 'not configured' }}
+    span.text-muted.ml-2(style="font-size: 0.85em", v-if="!anthropicConfigured")
+      | Set #[code ANTHROPIC_API_KEY] in the shell running the backend, then restart it, to enable "Merge & Draft Skill".
+
   div.mb-2
     b-form-checkbox-group(v-model="selectedModes", :options="modeOptions")
 
@@ -111,6 +117,7 @@ export default {
     return {
       loading: true,
       backendError: false,
+      anthropicConfigured: false,
       taskName: '',
       tasks: [] as Array<{ task_name: string; session_count: number; sessions: any[] }>,
       modeOptions: [] as Array<{ text: string; value: string }>,
@@ -123,6 +130,7 @@ export default {
   },
   mounted: async function () {
     await this.loadCaptureModes();
+    await this.loadStatus();
     await this.refresh();
     this.poller = setInterval(() => this.refresh(), 3000);
   },
@@ -141,6 +149,15 @@ export default {
           text: `${m.mode} — ${m.description}`,
           value: m.mode,
         }));
+      } catch (e) {
+        this.backendError = true;
+      }
+    },
+    loadStatus: async function () {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/status`);
+        const body = await res.json();
+        this.anthropicConfigured = !!body.anthropic_configured;
       } catch (e) {
         this.backendError = true;
       }

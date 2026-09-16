@@ -104,6 +104,14 @@ def any_process_alive(session: dict) -> bool:
     return any(is_pid_alive(p["pid"]) for p in session["processes"])
 
 
+@app.route("/api/status", methods=["GET"])
+def status():
+    # Never returns the key itself, just whether one is present — so the UI
+    # can show "ready" vs "not configured" without a round-trip that burns
+    # an actual API call just to check.
+    return jsonify({"anthropic_configured": bool(os.environ.get("ANTHROPIC_API_KEY"))})
+
+
 @app.route("/api/capture_modes", methods=["GET"])
 def list_capture_modes():
     return jsonify(
