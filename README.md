@@ -36,6 +36,7 @@ src/redaction/                  Privacy redaction helpers
 src/triage_console/             Minimal review queue support
 src/pr_generator/               PR-ready draft export
 tests/                          Unit and pipeline tests
+skills/setup-activity-tracking/ Maintained local activity-tracking setup skill
 skills/generated-drafts/        Generated output folders from demo runs
 ```
 
@@ -49,6 +50,39 @@ skills/generated-drafts/        Generated output folders from demo runs
 - `docs/team/registration.md`: registration notes
 - `docs/team/team_member_info.md`: team member details
 - `docs/mgatta42/plan.md`: design plan for the `wfrec` workflow recorder
+- `skills/setup-activity-tracking/SKILL.md`: maintained DevSQL and Atuin setup skill
+
+## Set Up Activity Tracking with Codex or Claude
+
+The maintained skill lives in `skills/setup-activity-tracking/`. Installing the
+skill makes its workflow available to the agent. DevSQL and Atuin are installed
+separately only after the agent displays the planned changes and receives
+explicit approval. ActivityWatch and optional agent hooks are not installed.
+
+### Codex
+
+Ask Codex to install the skill from this repository:
+
+```text
+Use $skill-installer to install:
+https://github.com/stjude-biohackathon/KIDS26-Team6/tree/main/skills/setup-activity-tracking
+```
+
+On the next turn, invoke the installed skill:
+
+```text
+$setup-activity-tracking verify and set up activity tracking
+```
+
+### Claude Code
+
+Ask Claude Code to copy `skills/setup-activity-tracking/` to
+`~/.claude/skills/setup-activity-tracking/`. It should stop rather than
+overwrite an existing installation. Then invoke the installed skill:
+
+```text
+/setup-activity-tracking verify and set up activity tracking
+```
 
 ## Quick Start
 
