@@ -25,6 +25,9 @@ from pathlib import Path
 ENV_HOME = "WFREC_HOME"
 ENV_RUN = "WFREC_RUN"
 ENV_SESSION = "WFREC_SESSION"
+ENV_BIND_HOST = "WFREC_BIND_HOST"
+ENV_ADVERTISE_URL = "WFREC_ADVERTISE_URL"
+ENV_ALLOW_REMOTE = "WFREC_ALLOW_REMOTE"
 
 #: Sub-directories created inside every session folder.
 SESSION_SUBDIRS = (

@@ -8,6 +8,7 @@
 *.key
 *.pem
 *.log
+nohup.out
 
 # Large or sensitive data: store these outside Git unless sharing is permitted.
 *.bam

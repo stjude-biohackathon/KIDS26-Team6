@@ -169,6 +169,26 @@ def build_parser() -> argparse.ArgumentParser:
 
     daemon = sub.add_parser("daemon", help="Run the recorder daemon.")
     daemon.add_argument("--port", type=int, default=None)
+    daemon.add_argument(
+        "--host",
+        default=None,
+        help="Listen address (default 127.0.0.1, or WFREC_BIND_HOST).",
+    )
+    daemon.add_argument(
+        "--bind-all",
+        action="store_true",
+        help="Listen on all interfaces (0.0.0.0). Requires --allow-remote.",
+    )
+    daemon.add_argument(
+        "--advertise-url",
+        default=None,
+        help="Base URL for browsers and wfrec gui (WFREC_ADVERTISE_URL).",
+    )
+    daemon.add_argument(
+        "--allow-remote",
+        action="store_true",
+        help="Opt in to non-loopback bind (or set WFREC_ALLOW_REMOTE=1).",
+    )
     daemon.add_argument("--gui", action="store_true", help="Open the UI on start.")
     daemon.add_argument(
         "--stop", action="store_true",
@@ -225,7 +245,14 @@ def _dispatch(args: argparse.Namespace, as_json: bool) -> int:
             else:
                 warning(f"No daemon stopped: {result['reason']}")
             return 0 if result["stopped"] else 1
-        return run(port=args.port, open_gui=args.gui)
+        return run(
+            port=args.port,
+            host=args.host,
+            bind_all=args.bind_all,
+            advertise_url=args.advertise_url,
+            allow_remote=args.allow_remote,
+            open_gui=args.gui,
+        )
 
     if command == "gui":
         from .daemon import launch_gui
@@ -345,8 +372,10 @@ def _spawn_daemon(timeout: float = 15.0) -> Client | None:
     try:
         paths.ensure_home()
         handle = log_path.open("a", encoding="utf-8")
+        from .bind import daemon_spawn_argv
+
         subprocess.Popen(
-            [sys.executable, "-m", "wfrec", "daemon"],
+            daemon_spawn_argv(),
             stdout=handle,
             stderr=handle,
             stdin=subprocess.DEVNULL,

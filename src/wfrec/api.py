@@ -5,9 +5,11 @@ The single place recorder operations are implemented. The CLI, the GUI and the
 "start screen recording" behaves identically whether it was typed as a command,
 clicked in the window, or asked for in natural language.
 
-Binds to 127.0.0.1 only and requires a bearer token read from a file that is
-mode 0600 in the runtime directory. The recorder makes no outbound network
-requests at all; that property is worth keeping easy to verify.
+Binds to loopback by default (``127.0.0.1``). Optional non-loopback bind is
+available via ``wfrec daemon --bind-all`` / ``--host`` with ``--allow-remote``
+and requires a bearer token read from a file that is mode 0600 in the runtime
+directory. The recorder makes no outbound network requests at all; that property
+is worth keeping easy to verify.
 """
 
 from __future__ import annotations
