@@ -380,6 +380,68 @@ def test_cli_hooks_install_is_idempotent(wfrec_home, tmp_path, monkeypatch, caps
     assert "export EDITOR=vim" in rc
 
 
+def test_cli_powershell_hook_installs_both_profile_generations(
+    wfrec_home, tmp_path, monkeypatch, capsys
+):
+    from wfrec import hookinstall
+
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    monkeypatch.setattr("pathlib.Path.home", lambda: fake_home)
+    profile_paths = (
+        fake_home / "Documents/PowerShell/profile.ps1",
+        fake_home / "Documents/WindowsPowerShell/profile.ps1",
+    )
+
+    for _ in range(2):
+        assert main(["hooks", "install", "--shell", "powershell"]) == 0
+    capsys.readouterr()
+
+    for profile_path in profile_paths:
+        profile = profile_path.read_text(encoding="utf-8")
+        assert profile.count(">>> wfrec hook >>>") == 1
+        assert "wfrec.ps1" in profile
+
+    powershell_status = next(
+        entry
+        for entry in hookinstall.status()
+        if entry["shell"] == "powershell"
+    )
+    assert powershell_status["installed"] is True
+    assert powershell_status["missing_rc_files"] == []
+
+    assert main(["hooks", "uninstall", "--shell", "powershell"]) == 0
+    for profile_path in profile_paths:
+        assert "wfrec" not in profile_path.read_text(encoding="utf-8")
+
+
+def test_powershell_hook_status_reports_a_missing_profile(
+    wfrec_home, tmp_path, monkeypatch, capsys
+):
+    from wfrec import hookinstall
+
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    monkeypatch.setattr("pathlib.Path.home", lambda: fake_home)
+
+    assert main(["hooks", "install", "--shell", "powershell"]) == 0
+    capsys.readouterr()
+    windows_powershell_profile = (
+        fake_home / "Documents/WindowsPowerShell/profile.ps1"
+    )
+    windows_powershell_profile.unlink()
+
+    powershell_status = next(
+        entry
+        for entry in hookinstall.status()
+        if entry["shell"] == "powershell"
+    )
+    assert powershell_status["installed"] is False
+    assert powershell_status["missing_rc_files"] == [
+        str(windows_powershell_profile)
+    ]
+
+
 def test_cli_doctor_renders(wfrec_home, capsys):
     assert main(["doctor"]) == 0
     out = capsys.readouterr().out
