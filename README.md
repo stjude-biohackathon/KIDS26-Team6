@@ -2,24 +2,64 @@
 
 AutoCAB is a BioHackathon 2026 project for turning repeated CAB bioinformatics workflows into governed, privacy-conscious AI agent skill proposals.
 
-## Project Focus
+## Project Background
 
-- Detect repeated workflow patterns from safe demo inputs
-- Redact obvious sensitive content before proposal generation
-- Match workflow summaries against a curated skill catalog
-- Draft reviewable `SKILL.md` proposals
-- Export approved proposals as PR-ready folders
+Agent skills package instructions, scripts, examples, and validation steps so AI
+agents can perform scientific workflows consistently. CAB already publishes
+these skills. Creating one currently requires maintainers to recognize a
+repeated workflow, document it, test it, and contribute it to the shared
+library. As a result, recurring work in data preparation, quality control,
+analysis, reporting, and troubleshooting can remain tacit or duplicated.
 
-## Set Up Activity Tracking with Codex or Claude
+AutoCAB addresses this gap through a governed observation-to-review workflow.
+People review, edit, and approve every proposal before it becomes a shared
+skill.
+
+The BioHackathon prototype uses public or synthetic data and
+volunteer-consented sessions involving public data only. `wfrec` provides the
+current recording layer. Input adapters can extend collection to ActivityWatch,
+Screenpipe, and future activity sources.
+
+```text
+Workflow evidence
+  -> normalize and cluster
+  -> redact and compare with existing skills
+  -> draft SKILL.md
+  -> human review
+  -> PR-ready skill folder
+```
+
+See the [challenge description](docs/proposal/AutoCAB-challenge-description.docx)
+and [framework documentation](docs/biohackathon-framework.md) for the project
+rationale and architecture.
+
+## Install & Setup
+
+### Install AutoCAB
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then
+create a local environment and install the project with its test dependencies:
+
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install -e '.[dev]'
+```
+
+AutoCAB requires Python 3.10 or newer. Its Python packages are installed from
+`pyproject.toml`. Live shell and Codex capture use DevSQL and Atuin, which are
+installed separately from the Python environment. Use the activity-tracking
+skill below to manage their setup and removal.
+
+### Set Up Activity Tracking with Codex or Claude
 
 The maintained skill in `skills/setup-activity-tracking/` helps Codex or Claude
-verify and install DevSQL and Atuin. The agent shows the planned changes and
-waits for approval before installing anything. The skill configures Atuin for
-shell history and leaves ActivityWatch unchanged. `wfrec` reads Codex messages
-through DevSQL and Claude Code transcripts directly. Atuin agent hooks are not
-required.
+verify and install DevSQL and Atuin. It configures Atuin for shell history.
+Agent-attributed Atuin hooks remain opt-in because `wfrec` reads Codex messages
+through DevSQL and Claude Code transcripts directly. The agent shows the
+planned changes and waits for approval before changing the system.
 
-### Codex
+#### Codex
 
 Ask Codex to install the skill from this repository:
 
@@ -34,55 +74,48 @@ On the next turn, invoke the installed skill:
 $setup-activity-tracking verify and set up activity tracking
 ```
 
-### Claude Code
+#### Claude Code
 
 Ask Claude Code to copy `skills/setup-activity-tracking/` to
-`~/.claude/skills/setup-activity-tracking/` without overwriting an existing
+`~/.claude/skills/setup-activity-tracking/` while preserving an existing
 installation. Then invoke the installed skill:
 
 ```text
 /setup-activity-tracking verify and set up activity tracking
 ```
 
-## Quick Start
+## Usage
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then
-create a local environment and install the project with its test dependencies:
-
-```bash
-uv venv
-source .venv/bin/activate
-uv pip install -e '.[dev]'
-```
+### Run the Demo Pipeline
 
 Run the default demo pipeline:
 
 ```bash
-PYTHONPATH=src python3 -m autocab demo
+uv run autocab demo
 ```
 
 Run with explicit input modes:
 
 ```bash
-PYTHONPATH=src python3 -m autocab demo --input-mode trace --trace-file data/sample_workflow_traces.json
-PYTHONPATH=src python3 -m autocab demo --input-mode screen-capture --capture-file data/sample_screen_capture.json
-PYTHONPATH=src python3 -m autocab demo --input-mode terminal-log --log-file path/to/terminal-session.txt
-PYTHONPATH=src python3 -m autocab demo --input-mode session --session-dir ~/.wfrec/sessions/<id>
+uv run autocab demo --input-mode trace --trace-file data/sample_workflow_traces.json
+uv run autocab demo --input-mode screen-capture --capture-file data/sample_screen_capture.json
+uv run autocab demo --input-mode terminal-log --log-file path/to/terminal-session.txt
+uv run autocab demo --input-mode session --session-dir ~/.wfrec/sessions/<id>
 ```
 
 Convert a terminal log into normalized trace JSON:
 
 ```bash
-PYTHONPATH=src python3 -m autocab ingest-terminal-log path/to/terminal-session.txt --output /tmp/generated_terminal_trace.json
+uv run autocab ingest-terminal-log path/to/terminal-session.txt --output /tmp/generated_terminal_trace.json
 ```
 
 Generated proposals are written to `skills/generated-drafts/` by default.
 
-## Recording a live session (`wfrec`)
+### Collect Workflow Evidence
 
 `wfrec` records live work and produces the session artifacts that AutoCAB's
-input adapters read. This connects observation to a reviewed skill proposal
-without relying on demo data.
+input adapters read. Recorded sessions follow the same path to a reviewed skill
+proposal as the supplied demo inputs.
 
 After completing the setup above, check which backends are available:
 
@@ -107,25 +140,26 @@ wfrec stop
 wfrec export --format autocab --format trace
 ```
 
-### Capture controls and sources
+#### Capture Sources and Boundaries
 
-Toggles and pause apply to already-open terminals at the next prompt, with no
-restart. Only one session can be active; starting or resuming another pauses
-the current session and records the handover in both timelines.
+Toggles and pause apply to already-open terminals at the next prompt. One
+session is active at a time; starting or resuming another pauses the current
+session and records the handover in both timelines.
 
 Five sources can be toggled independently: `screen` (frames, OCR text, window
-titles), `context` (pasted text with no background clipboard access), `shell`
+titles), `context` (text deliberately added through the paste box), `shell`
 (commands, exit codes, and durations), `agents` (Codex, Claude Code, Copilot
 Chat, and Cursor transcripts), and `files` (git-verified changes in declared
-roots). Current shell backends do not capture terminal stdout or stderr.
+roots). Local shell collection stores command metadata; bounded Slurm output
+enters through remote job-log collection.
 
-### Session data and exports
+#### Session Data and Exports
 
 Each session stores an append-only `events.jsonl` timeline plus frames, diffs,
 notes, and job logs. `wfrec export` creates three **lossy** adapter formats;
 the timeline remains the source of truth.
 
-### Remote and team workflows
+#### Remote and Team Workflows
 
 `wfrec ssh <host>` and `wfrec pull <host>` add remote commands, SLURM metadata,
 and bounded `slurm-*.out` slices through a POSIX hook on the HPC login node.
@@ -133,23 +167,24 @@ For multiple analysts, `wfrec merge` or a session folder passed to
 `--session-dir` combines sessions and separates repeated workflows from
 one-off work.
 
-### Help and detailed documentation
+#### Help and Detailed Documentation
 
 Run `wfrec --help`, or use the `recorder` skill in
 `.claude/skills/recorder/` from Claude Code or Copilot.
 
-**Full usage guide: [`src/wfrec/README.md`](src/wfrec/README.md)** — install,
+**Full usage guide: [`src/wfrec/README.md`](src/wfrec/README.md)**: install,
 per-platform notes (including the macOS Screen Recording restart and the
 Wayland limits), multi-analyst and HPC workflows, and troubleshooting.
 See [`docs/mgatta42/plan.md`](docs/mgatta42/plan.md) for the design rationale
 and the per-OS backend matrix.
 
-## Current Status
+## Development and Testing
 
-- Working local-first proof of concept migrated into this repository
-- Team and proposal documentation kept in the new project structure
-- Human review remains explicit in the workflow
-- Automated test coverage is available under `tests/`
+Run the test suite from the repository-local environment:
+
+```bash
+.venv/bin/python -m pytest
+```
 
 ## Repository Layout
 
@@ -189,6 +224,11 @@ skills/generated-drafts/        Generated output folders from demo runs
 - `docs/team/team_member_info.md`: team member details
 - `docs/mgatta42/plan.md`: design plan for the `wfrec` workflow recorder
 - `skills/setup-activity-tracking/SKILL.md`: maintained DevSQL and Atuin setup skill
+
+## Team
+
+See [`docs/team/team_member_info.md`](docs/team/team_member_info.md) for the
+project leads and team members.
 
 ## License
 
