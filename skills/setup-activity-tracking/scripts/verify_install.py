@@ -40,8 +40,8 @@ LOG_COLORS = {
 ANSI_RESET = "\033[0m"
 
 
-class OrthoStyleFormatter(logging.Formatter):
-    """Reproduce the OrthoEvolution console layout using standard logging."""
+class ConsoleFormatter(logging.Formatter):
+    """Format readable console messages with optional terminal color."""
 
     def __init__(self, *, use_color: bool) -> None:
         super().__init__(fmt=LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
@@ -63,7 +63,7 @@ def configure_logging() -> None:
 
     use_color = sys.stderr.isatty() and "NO_COLOR" not in os.environ
     handler = logging.StreamHandler()
-    handler.setFormatter(OrthoStyleFormatter(use_color=use_color))
+    handler.setFormatter(ConsoleFormatter(use_color=use_color))
 
     logger.handlers.clear()
     logger.addHandler(handler)
