@@ -77,11 +77,22 @@ takes a timestamped backup first. The hook body itself lives in
 `~/.wfrec/hooks/`, so your rc file gains two reviewable lines rather than a few
 hundred of someone else's code.
 
+On Windows, one installation updates the current-user all-hosts profiles for
+both PowerShell 7 (`Documents/PowerShell/profile.ps1`) and Windows PowerShell
+5.1 (`Documents/WindowsPowerShell/profile.ps1`). This keeps the hook available
+when teammates use different PowerShell generations on the same machine.
+
 Installing only affects **new** terminals. To start capturing in the terminal
 you are already sitting in:
 
 ```bash
 eval "$(wfrec hooks eval --shell zsh)"
+```
+
+In PowerShell, run:
+
+```powershell
+Invoke-Expression (wfrec hooks eval --shell powershell)
 ```
 
 Fallback hooks are installed once and left alone. Every later start, stop,

@@ -194,6 +194,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--stop", action="store_true",
         help="Stop a running daemon (needed on macOS after granting Screen Recording).",
     )
+    daemon.add_argument(
+        "--no-indicator", action="store_true",
+        help="Don't show the menu-bar/tray recording indicator.",
+    )
 
     sub.add_parser("gui", help="Open the control window.")
 
@@ -252,6 +256,7 @@ def _dispatch(args: argparse.Namespace, as_json: bool) -> int:
             advertise_url=args.advertise_url,
             allow_remote=args.allow_remote,
             open_gui=args.gui,
+            show_indicator=not args.no_indicator,
         )
 
     if command == "gui":
@@ -695,10 +700,14 @@ def _hooks(args: argparse.Namespace, as_json: bool) -> int:
         table = status_table("Shell", "Configuration")
         for entry in report:
             installed = bool(entry["installed"])
+            locations = list(entry["rc_files"])
+            missing = list(entry.get("missing_rc_files") or [])
+            if missing:
+                locations.append(f"Missing: {', '.join(missing)}")
             table.add_row(
                 status_text(installed),
                 plain_text(entry["shell"]),
-                plain_text(", ".join(entry["rc_files"]) or "Not installed"),
+                plain_text(", ".join(locations) or "Not installed"),
             )
         console.print(Text("Shell hooks", style="bold cyan"), table)
     return 0
