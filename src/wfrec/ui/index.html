@@ -19,7 +19,7 @@
   header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;
          align-items:baseline;gap:14px;flex-wrap:wrap}
   h1{font-size:16px;margin:0;letter-spacing:.02em}
-  .sid{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim)}
+  .session-title{font-size:12px;color:var(--dim)}
   .badge{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);
          text-transform:uppercase;letter-spacing:.06em}
   .badge.active{background:color-mix(in srgb,var(--on) 18%,transparent);
@@ -101,7 +101,7 @@
 <header>
   <h1>wfrec</h1>
   <span id="badge" class="badge">idle</span>
-  <span class="sid" id="sid">No active session</span>
+  <span class="session-title" id="session-title">No active session</span>
 </header>
 
 <main>
@@ -364,7 +364,10 @@ function render(){
   document.getElementById('end-session').disabled = !s;
   badge.textContent = status;
   badge.className = 'badge ' + (status==='active'?'active':status==='paused'?'paused':'');
-  document.getElementById('sid').textContent = s ? s.id : 'No active session';
+  const sessionTitle = s ? (s.title || '').trim() : '';
+  document.getElementById('session-title').textContent = s
+    ? (sessionTitle || 'Untitled session')
+    : 'No active session';
   renderSessionStats();
   if(!s) showEmptyLog('Start or resume a session to see activity.');
 
