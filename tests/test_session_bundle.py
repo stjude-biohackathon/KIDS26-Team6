@@ -14,7 +14,27 @@ from wfrec.events import Event
 from wfrec.merge import merge_sessions
 
 
-def _populate(session, commands, analyst=None):
+def _seal(session):
+    """Ingestion refuses an unsealed session, so every fixture seals.
+
+    That refusal is the point of the gate: `_trace_from_session_dir` rebuilds
+    from `events.jsonl` live, so gating only `exports/` would leave the timeline
+    ingestible by anyone pointing `--session-dir` at the folder.
+    """
+
+    from wfrec.seal import seal_session
+
+    return seal_session(session, key=b"\x2a" * 32, engine_label="regex", force=True)
+
+
+def _populate(session, commands, analyst=None, *, seal=True):
+    """Record commands and seal, because ingestion refuses an unsealed session.
+
+    ``seal=False`` is for the one test that needs to grow the timeline further;
+    a sealed session refuses appends, which is the whole point of
+    ``SessionSealed``.
+    """
+
     if analyst:
         session.manifest.analyst = analyst
         session.save()
@@ -28,6 +48,8 @@ def _populate(session, commands, analyst=None):
             for c in commands
         ]
     )
+    if seal:
+        _seal(session)
     return session
 
 
@@ -105,24 +127,60 @@ def test_non_session_directory_is_rejected_clearly(tmp_path):
 
 def test_empty_session_is_rejected(store):
     session, _ = store.start(title="A", analyst="a")
-    # Lifecycle events only -- nothing a skill could be drafted from.
+    _seal(session)
+    # Lifecycle events only -- nothing a skill could be drafted from. Sealed
+    # first so this asserts the *emptiness* refusal rather than the seal gate.
     with pytest.raises(SessionBundleError, match="no convertible workflow steps"):
         load_session_input(session.root)
 
 
+def test_an_unsealed_session_cannot_be_ingested(store):
+    """The gate that guards the timeline rather than the projection.
+
+    ``_trace_from_session_dir`` rebuilds from ``events.jsonl`` live, so gating
+    ``exports/`` alone would be trivially bypassable by pointing
+    ``--session-dir`` at the folder. This is what gives "fail closed" teeth: a
+    failed de-identification pass blocks the leak instead of permitting it.
+    """
+
+    from wfrec.seal import NotSealed
+
+    session, _ = store.start(title="A", analyst="a")
+    _populate(session, ["fastqc HG008.bam"], seal=False)
+
+    with pytest.raises(NotSealed, match="no seal.json"):
+        load_session_input(session.root)
+
+
 def test_adapter_rebuilds_rather_than_trusting_a_stale_export(store):
-    """A stale exports/trace.json must not shadow newer timeline content."""
+    """A stale exports/trace.json must not shadow the real timeline.
+
+    Originally this grew the timeline after exporting. A sealed session refuses
+    appends now (``SessionSealed``), so the staleness is injected directly --
+    which is a stronger test anyway: it asserts the rebuild wins even when the
+    export flatly contradicts the timeline, rather than only when it lags it.
+    """
+
+    import json as jsonlib
 
     from wfrec.exporters import export_session
 
     session, _ = store.start(title="A", analyst="a")
-    _populate(session, ["first"])
-    export_session(session, formats=["trace"])
+    _populate(session, ["fastqc HG008.bam"])
+    result = export_session(session, formats=["trace"])
 
-    _populate(session, ["second"])
+    stale = Path(result["details"]["trace"]["path"])
+    payload = jsonlib.loads(stale.read_text(encoding="utf-8"))
+    records = payload if isinstance(payload, list) else [payload]
+    for record in records:
+        for step in record.get("steps", []):
+            step["detail"] = "STALE-EXPORT-CONTENT"
+    stale.write_text(jsonlib.dumps(records), encoding="utf-8")
+
     bundle = load_session_input(session.root)
     details = " ".join(step.detail for step in bundle.traces[0].steps)
-    assert "second" in details
+    assert "fastqc" in details
+    assert "STALE-EXPORT-CONTENT" not in details
 
 
 def test_full_pipeline_run_from_a_session_folder(store, tmp_path):

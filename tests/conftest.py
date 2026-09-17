@@ -56,6 +56,13 @@ def wfrec_home(tmp_path, monkeypatch):
 
     redaction._SHARED = None
 
+    # Same treatment for the de-identification allowlist: it caches
+    # `~/.wfrec/deid-allowlist.txt` process-wide, so without this a test that
+    # plants a user allowlist leaks its entries into every later test.
+    from autocab.deid import allowlist as deid_allowlist
+
+    deid_allowlist._SHARED = None
+
     from wfrec import paths
 
     paths.ensure_home()
@@ -67,3 +74,37 @@ def store(wfrec_home):
     from wfrec.session import SessionStore
 
     return SessionStore()
+
+
+@pytest.fixture()
+def seal_now():
+    """Seal a session so the export gates let it through.
+
+    ``export_session`` and ``autocab.session_bundle`` both refuse an unsealed
+    session -- that refusal is the control, so tests that exercise *export* have
+    to seal first rather than have the gate weakened for them. A fixed key keeps
+    surrogates stable across a test run, which makes assertions on them
+    possible.
+    """
+
+    def _seal(session, **kwargs):
+        from wfrec.seal import seal_session
+
+        kwargs.setdefault("key", b"\x2a" * 32)
+        kwargs.setdefault("engine_label", "regex")
+        # Test sessions are usually still active; --force stops them first.
+        kwargs.setdefault("force", True)
+        return seal_session(session, **kwargs)
+
+    return _seal
+
+
+@pytest.fixture()
+def fixed_key() -> bytes:
+    """A deterministic pseudonym key. **Tests only.**
+
+    Production always mints ``secrets.token_bytes(32)`` and discards it; a
+    caller-supplied key exists so that a surrogate can be asserted on.
+    """
+
+    return b"\x2a" * 32

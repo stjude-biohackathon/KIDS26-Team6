@@ -1,0 +1,64 @@
+# US place names with their state. Public domain: USGS GNIS and Census place
+# lists are works of the US federal government. The generator pairs a city with
+# an *independently drawn* ZIP code, so the resulting city/state/ZIP triple is
+# deliberately not a real deliverable address.
+Memphis,TN
+Nashville,TN
+Knoxville,TN
+Chattanooga,TN
+Little Rock,AR
+Jackson,MS
+Birmingham,AL
+Atlanta,GA
+Louisville,KY
+St Louis,MO
+Kansas City,MO
+Indianapolis,IN
+Columbus,OH
+Cleveland,OH
+Cincinnati,OH
+Detroit,MI
+Chicago,IL
+Milwaukee,WI
+Minneapolis,MN
+Des Moines,IA
+Omaha,NE
+Denver,CO
+Salt Lake City,UT
+Phoenix,AZ
+Albuquerque,NM
+Las Vegas,NV
+Portland,OR
+Seattle,WA
+Boise,ID
+Sacramento,CA
+Fresno,CA
+San Diego,CA
+Houston,TX
+Dallas,TX
+Austin,TX
+San Antonio,TX
+El Paso,TX
+Oklahoma City,OK
+Tulsa,OK
+New Orleans,LA
+Baton Rouge,LA
+Tampa,FL
+Orlando,FL
+Miami,FL
+Jacksonville,FL
+Charlotte,NC
+Raleigh,NC
+Columbia,SC
+Charleston,SC
+Richmond,VA
+Norfolk,VA
+Baltimore,MD
+Philadelphia,PA
+Pittsburgh,PA
+Newark,NJ
+Hartford,CT
+Providence,RI
+Boston,MA
+Buffalo,NY
+Rochester,NY

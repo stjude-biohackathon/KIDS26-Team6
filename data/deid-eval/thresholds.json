@@ -1,0 +1,104 @@
+{
+  "_README": [
+    "Recall floors for the de-identification detector, keyed on corpus_fingerprint.",
+    "",
+    "These live in data rather than in test source so that changing one is a",
+    "reviewable diff in a file whose entire purpose is to be argued about. A test",
+    "that hard-codes 0.95 gets edited to 0.90 in a hurry and nobody notices.",
+    "",
+    "THESE ARE REGRESSION GATES, NOT SAFETY CLAIMS. `NAME: 0.10` does not mean a",
+    "10% name recall is acceptable. It means 'the regex tier does not detect",
+    "names' is now a tested, blame-able fact instead of an assumption, and it is",
+    "the baseline the model tier has to beat. The rows that look absurd are the",
+    "most valuable lines in this file.",
+    "",
+    "Floors are deliberately well below measured performance. They catch a",
+    "catastrophic regression; they do not catch a slide from 0.98 to 0.91. That is",
+    "what scorecard.regex.json is for -- CI asserts computed == snapshot, so any",
+    "pattern change fails with a diff naming the label that moved.",
+    "",
+    "Computed over the `easy` and `medium` difficulty tiers only. Gating `easy`",
+    "alone would be a tautology (the generator and the regex table share an",
+    "understanding of the same shapes); gating `hard` would fail the suite for the",
+    "wrong reason. The `hard` tier is reported in docs/deid-evaluation.md.",
+    "",
+    "Precision gets a CEILING, not a floor. A precision floor would let a detector",
+    "trade recall away; max_over_redaction_rate only stops it trading the other",
+    "way, which is what prevents a `.*` patch gaming recall to 1.00."
+  ],
+  "corpus_fingerprint": "ccfbf64eb85ed3027e7a038a7d052100c914b55411d37f599e1d4245a2547b91",
+  "corpus_version": "v1",
+  "gated_difficulties": ["easy", "medium"],
+  "engines": {
+    "regex": {
+      "_note": "stdlib only; always on; the only tier that runs inline at capture",
+      "per_label_recall_strict": {
+        "EMAIL": 1.0,
+        "IP": 1.0,
+        "URL": 1.0,
+        "SSN": 1.0,
+        "MRN": 1.0,
+        "DOB_LABELLED": 1.0,
+        "SUBJECT_ID": 1.0,
+        "ACCESSION": 0.9,
+        "ACCOUNT": 0.9,
+        "DEVICE": 0.9,
+        "HEALTH_PLAN_ID": 0.9,
+        "LICENSE": 0.9,
+        "PHONE": 0.95,
+        "SAMPLE_ID": 0.6,
+        "SLURM_JOB_NAME": 0.5,
+        "DATE_BARE": 0.3,
+        "NAME": 0.1,
+        "LOCATION": 0.05,
+        "AGE_OVER_89": 0.0
+      },
+      "overall_recall_strict": 0.55,
+      "safe_record_rate": 0.4,
+      "max_over_redaction_rate": 0.05,
+      "max_false_positive_spans_per_negative_record": 0.25,
+      "must_survive_violations": 0
+    },
+    "gliner": {
+      "_note": [
+        "The default model tier (build spec step 8). Not yet implemented, so",
+        "these floors are unenforced until engines/gliner_onnx.py lands --",
+        "check_thresholds() reports a missing engine rather than passing",
+        "vacuously. Written down now because they are the acceptance criteria",
+        "for that step: the model tier's whole justification is beating the",
+        "regex tier's NAME 0.368 and LOCATION baseline."
+      ],
+      "per_label_recall_strict": {
+        "NAME": 0.95,
+        "LOCATION": 0.6,
+        "SLURM_JOB_NAME": 0.7,
+        "SAMPLE_ID": 0.8
+      },
+      "overall_recall_strict": 0.95,
+      "safe_record_rate": 0.85,
+      "max_over_redaction_rate": 0.08,
+      "max_false_positive_spans_per_negative_record": 0.5,
+      "must_survive_violations": 0
+    },
+    "gliner+llm": {
+      "_note": "Combined tier. Additive on top of the regex + GLiNER floor.",
+      "per_label_recall_strict": {
+        "NAME": 0.97,
+        "LOCATION": 0.7
+      },
+      "overall_recall_strict": 0.97,
+      "safe_record_rate": 0.9,
+      "max_over_redaction_rate": 0.1,
+      "max_false_positive_spans_per_negative_record": 0.6,
+      "must_survive_violations": 0
+    }
+  },
+  "hard_tier": {
+    "_note": [
+      "Reported, gated far lower. Real OCR garble is worse than what the",
+      "generator produces (at most two digit-lookalike substitutions per value),",
+      "so a number here is a floor on a floor."
+    ],
+    "overall_recall_strict": 0.3
+  }
+}

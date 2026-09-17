@@ -209,7 +209,9 @@
 
   <section>
     <h2>Notes and Context</h2>
-    <p class="stat">Add notes, errors, or decisions to the session timeline. Sensitive values are redacted before storage.</p>
+    <p class="stat">Add notes, errors, or decisions to the session timeline. Pattern-matched
+      identifiers are masked before storage; run <code>wfrec seal</code> after stopping for the
+      full pass. Measured recall and its limits: <code>docs/deid-evaluation.md</code>.</p>
     <div class="field">
       <textarea id="note" aria-label="Note" placeholder="Add an error, command, decision, or reason for rerunning…"></textarea>
     </div>

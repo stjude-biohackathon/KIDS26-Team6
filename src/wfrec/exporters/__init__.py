@@ -28,7 +28,18 @@ __all__ = [
 
 
 def export_session(session, formats: list[str] | None = None) -> dict[str, Any]:
-    """Write the requested export formats into ``<session>/exports/``."""
+    """Write the requested export formats into ``<session>/exports/``.
+
+    **Hard gate:** raises ``NotSealed`` unless ``<session>/seal.json`` exists.
+    This is what turns a failed de-identification pass into a blocked leak
+    rather than a permitted one -- an unsealed session simply cannot be
+    exported. ``autocab.session_bundle`` carries the matching gate on the
+    timeline itself, since gating ``exports/`` alone is bypassable.
+    """
+
+    from ..seal import require_sealed
+
+    seal = require_sealed(session.root, what="export_session")
 
     wanted = set(formats or ["autocab"])
     if "autocab" in wanted:
@@ -54,4 +65,14 @@ def export_session(session, formats: list[str] | None = None) -> dict[str, Any]:
         written.append(str(path))
         details["trace"] = {"path": str(path), "steps": steps}
 
-    return {"session": session.session_id, "written": written, "details": details}
+    return {
+        "session": session.session_id,
+        "written": written,
+        "details": details,
+        "seal": {
+            "assurance": seal.get("assurance"),
+            "generation": seal.get("generation"),
+            "engine": seal.get("engine"),
+            "sealed_at": seal.get("sealed_at"),
+        },
+    }

@@ -69,6 +69,22 @@ JOB_SUBMITTED = "job.submitted"
 JOB_COMPLETED = "job.completed"
 MARKER_USER = "marker.user"
 
+# De-identification
+DEID_SEALED = "deid.sealed"
+"""Appended as the **last line of the staged ``events.jsonl``, before hashing**,
+so the timeline self-documents that it was sealed and the seal record's
+``after_sha256`` covers the statement. ``exporters/trace.py`` skips it."""
+
+
+class SessionSealed(RuntimeError):
+    """An append was attempted on a sealed session.
+
+    This is what closes the ``wfrec pull`` / ``attach-transcript`` / ``merge``
+    hole. Without it a *stopped* session can still be appended to after being
+    scrubbed -- the seal would be genuine and the timeline would have grown
+    unredacted text underneath it.
+    """
+
 
 def utc_now() -> str:
     """Timestamp as UTC ISO-8601 with milliseconds, e.g. ``2026-09-16T14:22:03.418Z``."""
@@ -185,6 +201,7 @@ class EventWriter:
         session_id: str,
         analyst: str | None = None,
         host: str | None = None,
+        allow_sealed: bool = False,
     ) -> None:
         self._dir = session_dir
         self._path = session_dir / "events.jsonl"
@@ -193,6 +210,37 @@ class EventWriter:
         self._session_id = session_id
         self._analyst = analyst
         self._host = host or host_name()
+        self._allow_sealed = allow_sealed
+
+        # An interrupted seal is finished or discarded here, before anything
+        # reads or writes the timeline. Gated on one `stat` of the journal so
+        # the common case -- no seal in flight -- costs a single syscall per
+        # Session construction.
+        if (session_dir / ".seal" / "journal.json").exists():
+            try:
+                from .seal import recover
+
+                recover(session_dir)
+            except Exception:  # pragma: no cover - recovery must not break capture
+                pass
+
+        # One `stat` per Session construction. Cached rather than re-checked on
+        # every append: a session cannot become unsealed, and re-stating on the
+        # OCR path would add a syscall per frame.
+        self._sealed = (session_dir / "seal.json").exists()
+
+    @property
+    def sealed(self) -> bool:
+        return self._sealed
+
+    def _refuse_if_sealed(self) -> None:
+        if self._sealed and not self._allow_sealed:
+            raise SessionSealed(
+                f"session {self._session_id} is sealed ({self._dir / 'seal.json'}); "
+                "appending to it would add unredacted text underneath a seal that "
+                "says the timeline was scrubbed. Use `wfrec seal --reseal` if the "
+                "session genuinely needs to change."
+            )
 
     @property
     def path(self) -> Path:
@@ -201,6 +249,7 @@ class EventWriter:
     def append(self, event: Event) -> Event:
         """Assign a sequence number and append one event atomically."""
 
+        self._refuse_if_sealed()
         event.session = event.session or self._session_id
         event.host = event.host or self._host
         event.analyst = event.analyst or self._analyst
@@ -220,6 +269,7 @@ class EventWriter:
 
         if not events:
             return []
+        self._refuse_if_sealed()
         self._dir.mkdir(parents=True, exist_ok=True)
         with file_lock(self._lock_path):
             seq = self._next_seq_locked(count=len(events))

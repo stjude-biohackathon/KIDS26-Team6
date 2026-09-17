@@ -16,6 +16,9 @@ from typing import Any
 
 from rich.text import Text
 
+from autocab.deid.engines.registry import ENGINE_CHOICES
+from autocab.deid.policy import PROFILES
+
 from . import SOURCES, __version__, paths
 from .client import Client, DaemonUnavailable
 from .events import Event
@@ -185,6 +188,71 @@ def build_parser() -> argparse.ArgumentParser:
     pull.add_argument("host")
     pull.add_argument("--job", action="append", default=[], help="SLURM job id.")
 
+    seal = sub.add_parser(
+        "seal",
+        help="De-identify a stopped session in place. Required before export.",
+        description=(
+            "Detect identifiers across the whole session, rewrite them "
+            "destructively to per-run surrogates, and write seal.json. "
+            "Irreversible by design: no reverse map is kept and the key is "
+            "discarded. See docs/deid-evaluation.md for measured recall and, "
+            "more importantly, for what the numbers do not prove."
+        ),
+    )
+    seal.add_argument("session_id", nargs="?")
+    seal.add_argument(
+        "--engine",
+        default="regex",
+        choices=list(ENGINE_CHOICES),
+        help="Model tier. surrogate_guard and regex_rules always run regardless.",
+    )
+    seal.add_argument("--profile", default="balanced", choices=list(PROFILES))
+    seal.add_argument(
+        "--reseal",
+        action="store_true",
+        help="Re-run over an already-sealed session, minting generation-2 "
+        "surrogates only for what the first pass missed.",
+    )
+    seal.add_argument(
+        "--force",
+        action="store_true",
+        help="Stop the session first, then seal. Without this an active session "
+        "is refused rather than raced.",
+    )
+    seal.add_argument("--status", action="store_true", help="Report seal state and exit.")
+    seal.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Detect and report, stage nothing. The session is untouched.",
+    )
+    seal.add_argument(
+        "--pseudonymize-analyst",
+        action="store_true",
+        help="Also pseudonymize analyst/host. Off by default: they identify the "
+        "workforce, not the PHI subject, and WorkflowClusterer groups on analyst.",
+    )
+    seal.add_argument(
+        "--deny-term",
+        action="append",
+        default=[],
+        help="Repeatable. Adds to the default deny vocabulary.",
+    )
+
+    deid = sub.add_parser(
+        "deid", help="De-identification model weights and provider status."
+    )
+    deid_verbs = deid.add_subparsers(dest="deid_command", required=True)
+    fetch = deid_verbs.add_parser(
+        "fetch", help="Download and verify the pinned model weights."
+    )
+    fetch.add_argument("--bundle", type=Path, default=None, help="Write an air-gap bundle instead.")
+    load_weights = deid_verbs.add_parser("load", help="Install an air-gap bundle.")
+    load_weights.add_argument("bundle", type=Path)
+    deid_verbs.add_parser("verify", help="Re-verify every weight file's sha256.")
+    deid_verbs.add_parser(
+        "providers", help="List LLM providers with their resolved egress class."
+    )
+
     return parser
 
 
@@ -316,6 +384,17 @@ def _dispatch(args: argparse.Namespace, as_json: bool) -> int:
 
     if command == "export":
         return _export(args, as_json)
+
+    # `seal` and `deid` are routed here, **before** the daemon-preferring block
+    # below, exactly like `export`. The seal and any weight fetch run in the
+    # foreground CLI and never in the daemon: both can take minutes, both may
+    # need an interactive tty (a progress bar, a typed confirmation), and a
+    # daemon has neither.
+    if command == "seal":
+        return _seal(args, as_json)
+
+    if command == "deid":
+        return _deid(args, as_json)
 
     # ---- everything below prefers the daemon, falling back to direct mode ---
     client = Client.discover()
@@ -780,6 +859,133 @@ def _summarize(event: Event) -> str:
     if event.type == "git.snapshot":
         return f"{payload.get('branch')} {payload.get('changed_count')} changed"
     return ""
+
+
+def _seal(args: argparse.Namespace, as_json: bool) -> int:
+    from autocab.deid.engines.base import EngineUnavailable
+    from autocab.deid.engines.registry import load as load_engine
+    from autocab.deid.policy import Policy, RenderMode
+
+    from .seal import SealError, seal_session, seal_status
+
+    store = SessionStore()
+    try:
+        session = store.resolve(args.session_id)
+    except Exception as exc:
+        error(str(exc))
+        return 1
+
+    if args.status:
+        status = seal_status(session.root)
+        if as_json:
+            _emit(status, True)
+        else:
+            rows: list[tuple[str, object]] = [
+                ("Session", session.session_id),
+                ("Sealed", "yes" if status["sealed"] else "no"),
+            ]
+            if status.get("journal"):
+                rows.append(("Seal in progress", status["journal"]))
+            record = status.get("seal") or {}
+            for key in ("assurance", "generation", "engine", "findings", "distinct_values", "sealed_at"):
+                if key in record:
+                    rows.append((key.replace("_", " ").title(), record[key]))
+            summary(f"Seal status for {session.session_id}", rows)
+        return 0
+
+    detectors = []
+    names = [name for name in args.engine.split("+") if name and name != "regex"]
+    for name in names:
+        try:
+            detectors.append(load_engine(name))
+        except EngineUnavailable as exc:
+            # Fail closed. `Redacted.available`'s degraded mode is right for
+            # capture and wrong for a seal: the whole point of a seal is the
+            # guarantee, so a missing tier refuses rather than quietly
+            # producing a weaker artifact that still says `sealed`.
+            error(f"{exc}")
+            warning("Refusing to write a sealed artifact with a missing engine tier.")
+            return 1
+
+    policy = Policy(
+        profile=args.profile,
+        render=RenderMode.PSEUDONYMIZE,
+        pseudonymize_analyst=args.pseudonymize_analyst,
+    )
+    deny_terms = ("patient", "diagnosis", "pathology", *args.deny_term)
+
+    try:
+        result = seal_session(
+            session,
+            detectors=detectors,
+            deny_terms=deny_terms,
+            policy=policy,
+            engine_label=args.engine,
+            reseal=args.reseal,
+            force=args.force,
+            dry_run=args.dry_run,
+        )
+    except SealError as exc:
+        error(str(exc))
+        return 1
+
+    if as_json:
+        _emit({"session": session.session_id, "dry_run": result.dry_run, **result.record}, True)
+        return 0
+
+    record = result.record
+    summary(
+        f"{'Would seal' if result.dry_run else 'Sealed'} {session.session_id}",
+        [
+            ("Assurance", record["assurance"]),
+            ("Generation", record["generation"]),
+            ("Engine", record["engine"]),
+            ("Findings", record["findings"]),
+            ("Distinct values", record["distinct_values"]),
+            ("Masked at capture", record["masked_at_capture"]),
+            ("Targets", len(result.targets) if result.dry_run else len(record["targets"])),
+            ("Pseudonym key", record["pseudonym_key"]),
+            ("Reverse map", record["reverse_map"]),
+            ("Duration", f"{record['duration_seconds']}s"),
+        ],
+    )
+    if record["counts_by_label"]:
+        summary("Findings by label", sorted(record["counts_by_label"].items()))
+    if result.dry_run:
+        warning("Dry run: nothing was written and the session is unchanged.")
+    return 0
+
+
+def _deid(args: argparse.Namespace, as_json: bool) -> int:
+    from autocab.deid.engines.registry import available_engines
+
+    verb = args.deid_command
+    if verb == "providers":
+        from autocab.deid.egress import classify
+
+        rows: list[tuple[str, object]] = []
+        payload: dict[str, Any] = {}
+        for name, info in sorted(available_engines().items()):
+            payload[name] = info.to_dict()
+        if as_json:
+            _emit({"engines": payload}, True)
+            return 0
+        for name, info in sorted(available_engines().items()):
+            rows.append((name, "available" if info.available else f"unavailable: {info.reason}"))
+        summary("De-identification engines", rows)
+        warning(
+            "LLM providers are not yet implemented in this build (build spec "
+            "step 10). `classify` is available now for egress checks."
+        )
+        assert callable(classify)
+        return 0
+
+    error(
+        f"`wfrec deid {verb}` needs the packaged model tier, which is build spec "
+        "step 8 and is not implemented in this build. The regex tier works with "
+        "no weights: `wfrec seal --engine regex`."
+    )
+    return 1
 
 
 def _export(args: argparse.Namespace, as_json: bool) -> int:

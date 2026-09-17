@@ -48,6 +48,91 @@ def _probe_import(module: str) -> dict[str, Any]:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:160]}
 
 
+def _deid_status() -> dict[str, Any]:
+    """The ``deid`` row: which tiers are live, and what the LLM gate would say.
+
+    Reports the **resolved egress class** for each configured provider rather
+    than the provider's name, because the name carries no information about
+    where the bytes go -- ``ollama`` behind ``ALL_PROXY`` egresses everything.
+    Resolution happens here so the answer is the real one rather than a guess,
+    which is also why this can be the slowest row in the report.
+    """
+
+    status: dict[str, Any] = {}
+    try:
+        from autocab.deid import patterns_sha256
+        from autocab.deid.engines.registry import available_engines
+    except Exception as exc:  # pragma: no cover - only on a broken install
+        return {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:160]}
+
+    status["ok"] = True
+    # The regex tier is always on and needs nothing installed.
+    status["regex"] = {
+        "available": True,
+        "patterns_sha256": patterns_sha256(("patient", "diagnosis", "pathology"))[:16],
+    }
+    status["engines"] = {
+        name: {
+            "available": info.available,
+            **({} if info.available else {"unavailable": info.reason[:120]}),
+        }
+        for name, info in sorted(available_engines().items())
+    }
+
+    try:
+        from autocab.deid.config import load as load_config
+
+        config = load_config()
+    except Exception as exc:
+        status["config"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:160]}
+        config = None
+    else:
+        status["config"] = {
+            "ok": True,
+            "source": config.source or "(none)",
+            "profile": config.profile,
+            "llm_enabled": config.llm.enabled,
+        }
+
+    if config is not None and config.llm.base_url:
+        try:
+            from autocab.deid.egress import classify
+
+            resolved = classify(config.llm.base_url)
+            status["llm_egress"] = resolved.audit_dict()
+        except Exception as exc:
+            status["llm_egress"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
+    else:
+        status["llm_egress"] = {"egress_class": "none", "reason": "no LLM endpoint configured"}
+
+    try:
+        from autocab.deid.llm_gate import ack_filename, load_ack, policy_dir
+
+        directory = policy_dir()
+        acks: dict[str, Any] = {}
+        if directory is not None and directory.is_dir():
+            for provider in ("anthropic", "openai", "google", "ollama"):
+                try:
+                    ack = load_ack(provider)
+                except Exception as exc:
+                    acks[provider] = {"error": f"{type(exc).__name__}: {exc}"[:120]}
+                    continue
+                if ack is not None:
+                    acks[provider] = {
+                        "org": ack.org,
+                        "approver": ack.approver_name,
+                        "expires_at": ack.expires_at,
+                        "expired": ack.expired(),
+                    }
+        status["llm_acknowledgements"] = acks
+        status["policy_dir"] = str(directory) if directory else ""
+        assert callable(ack_filename)
+    except Exception as exc:  # pragma: no cover
+        status["llm_acknowledgements"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
+
+    return status
+
+
 def diagnose() -> dict[str, Any]:
     """Collect a full environment report."""
 
@@ -118,6 +203,9 @@ def diagnose() -> dict[str, Any]:
         libs["Quartz"] = _probe_import("Quartz")
         libs["ocrmac"] = _probe_import("ocrmac")
     report["libraries"] = libs
+
+    # ------------------------------------------------------- de-identification
+    report["deid"] = _deid_status()
 
     if not libs["rapidocr_onnxruntime"]["ok"] and "libGL" in str(
         libs["rapidocr_onnxruntime"].get("error", "")

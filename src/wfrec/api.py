@@ -69,6 +69,15 @@ class ExportRequest(BaseModel):
     formats: list[str] = Field(default_factory=lambda: ["autocab"])
 
 
+class SealRequest(BaseModel):
+    session_id: str | None = None
+    profile: str = "balanced"
+    reseal: bool = False
+    force: bool = False
+    dry_run: bool = False
+    status: bool = False
+
+
 def create_app(recorder: Recorder, token: str) -> FastAPI:
     """Build the control API around a live ``Recorder``."""
 
@@ -201,6 +210,38 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     @app.post("/watch", dependencies=guard)
     def watch(payload: WatchRequest) -> dict[str, Any]:
         return recorder.add_watch_root(Path(payload.root))
+
+    # ------------------------------------------------------------------- seal
+    @app.post("/sessions/seal", dependencies=guard)
+    def seal(payload: SealRequest) -> dict[str, Any]:
+        """Mirror of ``/export`` for the GUI and the recorder skill.
+
+        Runs in the API process, which is the daemon -- so this route is
+        deliberately limited to the **regex** tier. A model fetch or an
+        interactive confirmation has no tty here, and the build spec's rule is
+        that the seal and any weight fetch run in the foreground CLI. For a
+        model or LLM tier, the GUI points the operator at `wfrec seal`.
+        """
+
+        from autocab.deid.policy import Policy, RenderMode
+
+        from .seal import SealError, seal_session, seal_status
+
+        session = recorder.store.resolve(payload.session_id)
+        if payload.status:
+            return seal_status(session.root)
+        try:
+            result = seal_session(
+                session,
+                policy=Policy(profile=payload.profile, render=RenderMode.PSEUDONYMIZE),
+                engine_label="regex",
+                reseal=payload.reseal,
+                force=payload.force,
+                dry_run=payload.dry_run,
+            )
+        except SealError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        return {"session": session.session_id, "dry_run": result.dry_run, **result.record}
 
     # ----------------------------------------------------------------- export
     @app.post("/export", dependencies=guard)

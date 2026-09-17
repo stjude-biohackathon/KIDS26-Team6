@@ -220,8 +220,31 @@ def test_export_endpoint_writes_files(client):
     session.writer.append(
         Event(source="shell", type="shell.command.completed", payload={"command": "ls"})
     )
+    # /export refuses an unsealed session, and /sessions/seal is the route the
+    # GUI uses to satisfy it. Stop first: the route will not silently stop a
+    # live recording, so an active session needs an explicit `force`.
+    session_id = status["session"]["id"]
+    client.post("/sessions/stop", json={})
+    sealed = client.post("/sessions/seal", json={"session_id": session_id}).json()
+    assert sealed["assurance"] == "regex-only"
+
     result = client.post("/export", json={"formats": ["autocab"]}).json()
     assert len(result["written"]) == 2
+    assert result["seal"]["generation"] == 1
+
+
+def test_seal_endpoint_refuses_a_live_session(client):
+    """The GUI route will not silently stop a recording to seal it.
+
+    `--force` means "stop first, then seal", and deciding to stop somebody's
+    live recording is not a decision an API call should make implicitly.
+    """
+
+    client.post("/sessions/start", json={"title": "A", "analyst": "a"})
+    response = client.post("/sessions/seal", json={})
+
+    assert response.status_code == 409
+    assert "not idle" in response.json()["detail"]
 
 
 # ----------------------------------------------------------------------- cli
