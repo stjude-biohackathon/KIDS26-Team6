@@ -174,6 +174,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--stop", action="store_true",
         help="Stop a running daemon (needed on macOS after granting Screen Recording).",
     )
+    daemon.add_argument(
+        "--no-indicator", action="store_true",
+        help="Don't show the menu-bar/tray recording indicator.",
+    )
 
     sub.add_parser("gui", help="Open the control window.")
 
@@ -225,7 +229,7 @@ def _dispatch(args: argparse.Namespace, as_json: bool) -> int:
             else:
                 warning(f"No daemon stopped: {result['reason']}")
             return 0 if result["stopped"] else 1
-        return run(port=args.port, open_gui=args.gui)
+        return run(port=args.port, open_gui=args.gui, show_indicator=not args.no_indicator)
 
     if command == "gui":
         from .daemon import launch_gui
