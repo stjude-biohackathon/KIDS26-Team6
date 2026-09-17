@@ -168,6 +168,3 @@ activitywatch/backend/video_output/
 
 # LLM-drafted skill outputs - may contain content from captured sessions
 activitywatch/backend/drafted_skills/
-
-# Runtime session state, never committed
-activitywatch/backend/sessions.json

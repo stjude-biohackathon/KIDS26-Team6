@@ -34,7 +34,14 @@ BACKEND_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = BACKEND_DIR.parent / "scripts"
 SESSIONS_FILE = BACKEND_DIR / "sessions.json"
 DRAFTS_DIR = BACKEND_DIR / "drafted_skills"
+REDACTIONS_FILE = BACKEND_DIR / "redactions.json"
 AW_SERVER = "http://127.0.0.1:5600"
+
+# The real redaction module already built for the main pipeline — reused
+# here for auto-suggesting redactions in the post-stop review step, rather
+# than writing a second pattern-matching engine.
+sys.path.insert(0, str(BACKEND_DIR.parent.parent / "src"))
+from redaction import redact_text  # noqa: E402
 
 # Which AW bucket each capture mode posts events into. Used to pull a task's
 # data back out for merging — this is the other half of "add a capture mode
@@ -82,6 +89,21 @@ def load_sessions() -> list[dict]:
     if not SESSIONS_FILE.exists():
         return []
     return json.loads(SESSIONS_FILE.read_text(encoding="utf-8"))
+
+
+def load_redactions() -> dict[str, dict]:
+    """Confirmed redactions, keyed by "<bucket_id>:<event_id>". Stored
+    separately from AW's own database rather than rewriting AW events in
+    place — safer (nothing destructive happens to the raw capture) and
+    means merge/draft-skill can apply redactions without needing an
+    event-edit API from AW itself."""
+    if not REDACTIONS_FILE.exists():
+        return {}
+    return json.loads(REDACTIONS_FILE.read_text(encoding="utf-8"))
+
+
+def save_redactions(redactions: dict[str, dict]) -> None:
+    REDACTIONS_FILE.write_text(json.dumps(redactions, indent=2), encoding="utf-8")
 
 
 def save_sessions(sessions: list[dict]) -> None:
