@@ -51,6 +51,82 @@ AutoCAB requires Python 3.10 or newer. Its Python packages are installed from
 installed separately from the Python environment. Use the activity-tracking
 skill below to manage their setup and removal.
 
+#### Install without uv (pip / venv)
+
+On HPC and shared Linux hosts, default `python3` is often older than 3.10. Create
+the environment with **Python 3.10+** explicitly:
+
+```bash
+cd KIDS26-Team6
+python3.11 -m venv .venv          # not plain python3 if that is 3.6/3.8
+source .venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+pip install -e '.[linux,dev]'   # quote extras in zsh: '.[linux,dev]'
+python --version                # must be >= 3.10
+```
+
+If OCR fails with `libGL.so.1`, run `pip install --force-reinstall opencv-python-headless`
+and `wfrec doctor` again.
+
+#### Install and run on HPC (daemon + browser UI)
+
+On a cluster **login or interactive node**, run the recorder daemon in the
+background and open the web UI from your **laptop browser** (do not use
+`wfrec daemon --gui` on headless nodes; `BROWSER` is often `lynx`).
+
+1. **Install** (once per clone / venv) as above with `'.[linux,dev]'`.
+
+2. **Optional shell hooks** (if `wfrec doctor` reports `hook-spool`):
+
+   ```bash
+   wfrec hooks install
+   eval "$(wfrec hooks eval)"    # or add to ~/.bashrc for new shells
+   ```
+
+3. **Export remote-bind settings** (for UI via node IP; skip if you only use
+   SSH port forwarding to `127.0.0.1`):
+
+   ```bash
+   export WFREC_ALLOW_REMOTE=1
+   export WFREC_BIND_HOST=0.0.0.0
+   export WFREC_ADVERTISE_URL="http://YOUR_NODE_IP:8787"   # optional; see daemon summary
+   ```
+
+   Replace `YOUR_NODE_IP` with the **Public** or **Private** URL from the daemon
+   startup table (`hostname -I`: first field = site/public, second = internal/private).
+
+4. **Start the daemon in the background** (same shell session must keep these
+   exports if you set them):
+
+   ```bash
+   nohup wfrec daemon >> ~/.wfrec/daemon.log 2>&1 &
+   ```
+
+   Or in `tmux`/`screen` without `nohup`: `wfrec daemon` in the foreground.
+
+5. **Open the UI** on your laptop: use **Public** / **Private** from the log or
+   run `wfrec daemon` once in the foreground to print the summary. Alternative:
+   `ssh -L 8787:127.0.0.1:8787 you@login-node` and open `http://127.0.0.1:8787/`
+   (loopback bind only; no `WFREC_*` remote exports needed).
+
+6. **Record a session** (in terminals where hooks are active):
+
+   ```bash
+   wfrec start --title "My workflow" --watch /path/to/project
+   wfrec status
+   wfrec stop
+   wfrec export --format autocab --format trace
+   ```
+
+7. **Stop the background daemon** when finished:
+
+   ```bash
+   wfrec daemon --stop
+   ```
+
+See [`src/wfrec/README.md`](src/wfrec/README.md) for capture sources, security
+notes, and troubleshooting.
+
 ### Set Up Activity Tracking with Codex or Claude
 
 The maintained skill in `skills/setup-activity-tracking/` helps Codex or Claude

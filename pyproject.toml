@@ -38,6 +38,10 @@ dependencies = [
   "opencv-python-headless>=4.8",
   "psutil>=5.9",                   # process names for window attribution
   "rich>=15.0",                    # readable terminal status tables
+  # Menu-bar (macOS) / system-tray (Windows) recording indicator. Skipped on
+  # Linux for now: a working tray needs AppIndicator/GTK system packages pip
+  # cannot install, so it would fail at runtime rather than install cleanly.
+  "pystray>=0.19; sys_platform == 'darwin' or sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]

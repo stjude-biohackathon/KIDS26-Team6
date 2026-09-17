@@ -451,7 +451,11 @@ def render(report: dict[str, Any]) -> Group:
             )
             continue
         installed = bool(entry["installed"])
-        location = ", ".join(entry["rc_files"])
+        locations = list(entry["rc_files"])
+        missing = list(entry.get("missing_rc_files") or [])
+        if missing:
+            locations.append(f"Missing: {', '.join(missing)}")
+        location = ", ".join(locations)
         hooks.add_row(
             _status_text(installed),
             _plain_text(entry["shell"]),

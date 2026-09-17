@@ -25,6 +25,16 @@ source .venv/bin/activate
 uv pip install -e '.[macos,gui]'   # Linux: '.[linux,gui]'   Windows: '.[gui]'
 ```
 
+**Without uv** (typical on HPC — use Python **3.10+**, not the cluster default
+`python3` if it is 3.6/3.8):
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+pip install -e '.[linux,dev]'    # HPC login node; quote in zsh
+```
+
 **Quote the extras.** In zsh, `uv pip install -e .[macos,gui]` fails with
 `zsh: no matches found` because brackets are glob characters.
 
@@ -67,11 +77,22 @@ takes a timestamped backup first. The hook body itself lives in
 `~/.wfrec/hooks/`, so your rc file gains two reviewable lines rather than a few
 hundred of someone else's code.
 
+On Windows, one installation updates the current-user all-hosts profiles for
+both PowerShell 7 (`Documents/PowerShell/profile.ps1`) and Windows PowerShell
+5.1 (`Documents/WindowsPowerShell/profile.ps1`). This keeps the hook available
+when teammates use different PowerShell generations on the same machine.
+
 Installing only affects **new** terminals. To start capturing in the terminal
 you are already sitting in:
 
 ```bash
 eval "$(wfrec hooks eval --shell zsh)"
+```
+
+In PowerShell, run:
+
+```powershell
+Invoke-Expression (wfrec hooks eval --shell powershell)
 ```
 
 Fallback hooks are installed once and left alone. Every later start, stop,
@@ -190,6 +211,73 @@ possibly-stale export.
 wfrec daemon --gui        # start the daemon and open the window
 wfrec gui                 # attach to a daemon that is already running
 ```
+
+### Remote browser on HPC (cluster IP)
+
+By default the control API listens on **loopback only**. To open the web UI from
+your laptop while the daemon runs on a cluster node (similar to a Dash app on a
+node IP), bind all interfaces and publish a URL your browser can reach:
+
+```bash
+export WFREC_ALLOW_REMOTE=1
+export WFREC_BIND_HOST=0.0.0.0
+export WFREC_ADVERTISE_URL="http://YOUR_NODE_IP:8787"
+
+wfrec daemon              # or: wfrec start … (auto-spawn reads those env vars)
+```
+
+Or explicitly:
+
+```bash
+wfrec daemon --bind-all --allow-remote \
+  --advertise-url "http://YOUR_NODE_IP:8787" --port 8787
+```
+
+Do **not** rely on ``--gui`` on a headless login node: ``BROWSER`` is often
+``lynx``, which cannot run the control UI. Use ``wfrec daemon`` without
+``--gui`` and open the **Public** / **Private** URL from the summary in a
+browser on your laptop (or use SSH ``-L`` to loopback).
+
+Then open the **Public** or **Private** URL from the daemon summary (or
+**`WFREC_ADVERTISE_URL`**) on your machine. The startup table lists
+``hostname -I`` addresses: field 1 = site/public, field 2 = internal/private.
+Ensure the site firewall allows that port on the node.
+
+**Security:** the UI page embeds the API token. Non-loopback bind means anyone
+who can reach the port can control the recorder. Prefer **`ssh -L 8787:127.0.0.1:8787 login-node`**
+when that is enough. Only use `--bind-all` on trusted networks.
+
+#### HPC: background daemon and recording
+
+Keep the daemon running after you disconnect, then drive capture from the CLI or
+the web UI:
+
+```bash
+source /path/to/KIDS26-Team6/.venv/bin/activate
+
+export WFREC_ALLOW_REMOTE=1
+export WFREC_BIND_HOST=0.0.0.0
+# optional if auto-detect is wrong:
+# export WFREC_ADVERTISE_URL="http://10.x.x.x:8787"
+
+nohup wfrec daemon >> ~/.wfrec/daemon.log 2>&1 &
+# tail -f ~/.wfrec/daemon.log   # Host / Public / Private URLs appear at startup
+
+wfrec doctor
+wfrec hooks install             # if shell backend is hook-spool
+eval "$(wfrec hooks eval)"      # in each shell that should record commands
+
+wfrec start --title "HG008 QC" --watch .
+# … work …
+wfrec stop
+
+wfrec daemon --stop             # when done for the day
+```
+
+`wfrec start` can auto-spawn a daemon if none is running; on HPC it is clearer
+to start **`nohup wfrec daemon &`** first so background collectors stay up and
+the startup summary (with **Local**, **Private**, **Public** URLs) is in
+`~/.wfrec/daemon.log`.
 
 Per-source toggle switches, a paste box, session controls and a live event
 tail. It is a client of the same HTTP control API the CLI and the agent skill
@@ -325,7 +413,8 @@ One trap worth stating because it is easy to miss: if `HTTP_PROXY`,
 the text goes to the **proxy** — so `--llm-base-url http://localhost:11434`
 under `ALL_PROXY` is classified from the *proxy's* address, not loopback's, and
 is fully gated. Everything else here is local-only with no outbound network
-requests; the control API binds to `127.0.0.1` behind a token.
+requests; the control API binds to `127.0.0.1` behind a token unless you opt
+in to a non-loopback bind with `--allow-remote` / `WFREC_ALLOW_REMOTE=1`.
 
 ## Troubleshooting
 

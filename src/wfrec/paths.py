@@ -25,6 +25,9 @@ from pathlib import Path
 ENV_HOME = "WFREC_HOME"
 ENV_RUN = "WFREC_RUN"
 ENV_SESSION = "WFREC_SESSION"
+ENV_BIND_HOST = "WFREC_BIND_HOST"
+ENV_ADVERTISE_URL = "WFREC_ADVERTISE_URL"
+ENV_ALLOW_REMOTE = "WFREC_ALLOW_REMOTE"
 
 #: Sub-directories created inside every session folder.
 SESSION_SUBDIRS = (
@@ -121,6 +124,30 @@ def state_path() -> Path:
     """Authoritative rich state (JSON), read by the CLI, GUI and daemon."""
 
     return home() / "state.json"
+
+
+def overlay_pid_path() -> Path:
+    """PID of the currently running floating-badge process, if any.
+
+    Used only to check liveness (``os.kill(pid, 0)``), never trusted just for
+    existing: the badge can also exit on its own (it gives up if the daemon
+    goes unreachable for a few polls), and a stale file from that case must
+    not be mistaken for "still showing".
+    """
+
+    return runtime_dir() / "overlay.pid"
+
+
+def overlay_hidden_path() -> Path:
+    """Presence means the user dismissed the floating recording badge.
+
+    Lives under ``home()``, not ``runtime_dir()``: this is a durable
+    preference the user set deliberately, not ephemeral daemon state, so it
+    should survive a daemon restart or reboot until they turn the badge back
+    on.
+    """
+
+    return home() / "overlay_hidden"
 
 
 def state_lock_path() -> Path:

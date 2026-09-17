@@ -4,29 +4,27 @@ from __future__ import annotations
 
 import secrets
 import signal
-import socket
+import sys
 import threading
+import time
 from typing import Any
 
 from . import paths
+from .bind import resolve_daemon_bind, daemon_summary_rows
 from .output import summary, warning
 from .recorder import Recorder
 from .state import StateTransaction, clear_api, mark_boot, publish_api, read_api
 
 DEFAULT_PORT = 8787
+_GUI_READY_TIMEOUT = 30.0
 
 
-def free_port(preferred: int = DEFAULT_PORT) -> int:
+def free_port(preferred: int = DEFAULT_PORT, listen_host: str = "127.0.0.1") -> int:
     """Return ``preferred`` if bindable, otherwise an OS-assigned port."""
 
-    for candidate in (preferred, 0):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            try:
-                sock.bind(("127.0.0.1", candidate))
-                return sock.getsockname()[1]
-            except OSError:
-                continue
-    return preferred
+    from .bind import free_port as _free_port
+
+    return _free_port(preferred, listen_host)
 
 
 def daemon_alive(timeout: float = 1.0) -> str | None:
@@ -78,7 +76,74 @@ def stop() -> dict[str, object]:
     return {"stopped": True, "pid": pid}
 
 
-def run(port: int | None = None, *, open_gui: bool = False) -> int:
+def _spawn_module(module: str, label: str):
+    """Launch ``python -m <module>`` as its own detached process.
+
+    A separate process, not a thread: each recording-indicator surface needs
+    to own its platform's native GUI event loop (Cocoa/Win32 for the tray
+    icon, Tk for the floating badge) for its whole life, which would fight
+    the daemon's asyncio server -- and each other -- for the main thread if
+    run in-process. Each discovers the daemon itself via the published api
+    file, so nothing needs passing to it.
+    """
+
+    import subprocess
+
+    creation: dict[str, Any] = {}
+    if sys.platform == "win32":  # pragma: no cover - Windows
+        creation["creationflags"] = 0x00000008 | 0x00000200  # DETACHED | NEW_GROUP
+    else:
+        creation["start_new_session"] = True
+
+    try:
+        return subprocess.Popen(
+            [sys.executable, "-m", module],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            **creation,
+        )
+    except OSError as exc:
+        warning(f"Could not start the {label} ({exc}); continuing without it.")
+        return None
+
+
+def _spawn_indicator_processes() -> list:
+    """Launch every recording-indicator surface supported on this platform."""
+
+    if sys.platform not in ("darwin", "win32"):
+        return []  # no supported tray backend without extra system packages
+    procs = [
+        _spawn_module("wfrec.indicator", "menu-bar/tray indicator"),
+        _spawn_module("wfrec.overlay", "floating recording badge"),
+    ]
+    return [proc for proc in procs if proc is not None]
+
+
+def _stop_indicator_processes(procs: list) -> None:
+    for proc in procs:
+        if proc is None or proc.poll() is not None:
+            continue
+        try:
+            proc.terminate()
+            proc.wait(timeout=3)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+
+
+def run(
+    port: int | None = None,
+    *,
+    host: str | None = None,
+    bind_all: bool = False,
+    advertise_url: str | None = None,
+    allow_remote: bool = False,
+    open_gui: bool = False,
+    show_indicator: bool = True,
+) -> int:
     """Run the daemon in the foreground until interrupted."""
 
     import uvicorn
@@ -86,6 +151,19 @@ def run(port: int | None = None, *, open_gui: bool = False) -> int:
     from .api import create_app
 
     paths.ensure_home()
+
+    try:
+        bind = resolve_daemon_bind(
+            port,
+            host=host,
+            bind_all=bind_all,
+            advertise_url=advertise_url,
+            allow_remote_flag=allow_remote,
+            preferred_port=DEFAULT_PORT,
+        )
+    except ValueError as exc:
+        warning(str(exc))
+        return 1
 
     # A previous daemon that died without cleaning up leaves a stale sentinel
     # and api file. Recording the boot id makes that detectable, and adopting
@@ -102,16 +180,18 @@ def run(port: int | None = None, *, open_gui: bool = False) -> int:
         recorder._start_collectors()
 
     token = secrets.token_urlsafe(32)
-    chosen = port or free_port()
-    url = f"http://127.0.0.1:{chosen}"
-    publish_api(url, token)
+    publish_api(bind.public_url, token)
     with StateTransaction() as state:
-        state.api_url = url
+        state.api_url = bind.public_url
         state.api_token = token
 
     app = create_app(recorder, token)
     config = uvicorn.Config(
-        app, host="127.0.0.1", port=chosen, log_level="warning", access_log=False
+        app,
+        host=bind.listen_host,
+        port=bind.port,
+        log_level="warning",
+        access_log=False,
     )
     server = uvicorn.Server(config)
 
@@ -124,21 +204,35 @@ def run(port: int | None = None, *, open_gui: bool = False) -> int:
         except (ValueError, OSError):  # pragma: no cover - non-main thread
             pass
 
-    summary(
-        "wfrec daemon",
-        [
-            ("Listening", url),
-            ("Sessions", paths.sessions_dir()),
-            ("Open UI", "wfrec gui"),
-        ],
-    )
+    rows = daemon_summary_rows(bind)
+    if bind.listen_host not in ("127.0.0.1", "localhost"):
+        rows.append(
+            (
+                "Security",
+                "Non-loopback bind: only trusted networks; token is in the UI page",
+            )
+        )
+    if bind.listen_host == "0.0.0.0" and bind.public_url.startswith("http://127."):
+        warning(
+            "Could not guess a cluster IP for --advertise-url; set "
+            "WFREC_ADVERTISE_URL or --advertise-url so your browser can connect."
+        )
+
+    summary("wfrec daemon", rows)
 
     if open_gui:
-        threading.Thread(target=_launch_gui, args=(url, token), daemon=True).start()
+        threading.Thread(
+            target=_launch_gui_when_ready,
+            args=(bind.public_url, token),
+            daemon=True,
+        ).start()
+
+    indicators = _spawn_indicator_processes() if show_indicator else []
 
     try:
         server.run()
     finally:
+        _stop_indicator_processes(indicators)
         recorder.shutdown()
         clear_api()
         try:
@@ -146,6 +240,45 @@ def run(port: int | None = None, *, open_gui: bool = False) -> int:
         except FileNotFoundError:
             pass
     return 0
+
+
+def _wait_for_server(base_url: str, timeout: float = _GUI_READY_TIMEOUT) -> bool:
+    """Poll ``/health`` until the daemon accepts connections."""
+
+    import httpx
+
+    deadline = time.time() + timeout
+    health = f"{base_url.rstrip('/')}/health"
+    while time.time() < deadline:
+        try:
+            response = httpx.get(health, timeout=1.0)
+            if response.status_code == 200:
+                return True
+        except Exception:
+            pass
+        time.sleep(0.15)
+    return False
+
+
+def _prefer_manual_browser_open() -> bool:
+    """True when ``webbrowser`` would invoke a TUI client or there is no display."""
+
+    import os
+
+    browser = (os.environ.get("BROWSER") or "").lower()
+    if any(name in browser for name in ("lynx", "links", "w3m", "curl", "elinks")):
+        return True
+    return sys.platform == "linux" and not os.environ.get("DISPLAY")
+
+
+def _launch_gui_when_ready(url: str, token: str) -> None:  # pragma: no cover - UI
+    if not _wait_for_server(url):
+        warning(
+            f"Daemon did not respond within {_GUI_READY_TIMEOUT:.0f}s; "
+            f"open manually in a graphical browser: {url.rstrip('/')}/"
+        )
+        return
+    launch_gui(url, token)
 
 
 def _launch_gui(url: str, token: str) -> None:  # pragma: no cover - UI
@@ -160,9 +293,23 @@ def launch_gui(url: str, token: str) -> None:  # pragma: no cover - UI
     compiler plus GTK headers -- an unacceptable install blocker for a hybrid
     team. So pywebview is attempted first and the system browser is the
     fallback, which keeps the UI available everywhere.
+
+    On headless HPC nodes ``BROWSER`` is often ``lynx``; that cannot run the
+    control UI, so we print the URL for a browser on the user's laptop instead.
     """
 
+    page = f"{url.rstrip('/')}/"
     target = f"{url}/?token={token}"
+
+    if _prefer_manual_browser_open():
+        warning(
+            "No graphical browser on this host (often lynx on HPC). "
+            f"Open this URL from your laptop browser: {page} "
+            "(use Public/Private from the summary if bound with --bind-all, "
+            "or SSH port forwarding to 127.0.0.1)."
+        )
+        return
+
     try:
         import webview
 
@@ -176,4 +323,4 @@ def launch_gui(url: str, token: str) -> None:  # pragma: no cover - UI
 
         webbrowser.open(target)
     except Exception:
-        warning(f"Open this URL in a browser: {target}")
+        warning(f"Open this URL in a browser: {page}")
