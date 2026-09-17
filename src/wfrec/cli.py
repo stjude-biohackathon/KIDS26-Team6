@@ -376,7 +376,7 @@ def _via_daemon(client: Client, args: argparse.Namespace, as_json: bool) -> int:
             "/sessions/start",
             {
                 "title": args.title,
-                "analyst": args.analyst or _default_analyst(),
+                "analyst": args.analyst or paths.default_analyst(),
                 "workflow_family": args.workflow_family,
                 "tags": args.tag,
                 "watch": [str(p) for p in args.watch],
@@ -422,7 +422,7 @@ def _direct(args: argparse.Namespace, as_json: bool) -> int:
     if command == "start":
         result = recorder.start_session(
             title=args.title,
-            analyst=args.analyst or _default_analyst(),
+            analyst=args.analyst or paths.default_analyst(),
             workflow_family=args.workflow_family,
             tags=args.tag,
             watch=args.watch,
@@ -605,17 +605,6 @@ def _note_text(args: argparse.Namespace) -> str:
     if sys.stdin.isatty():
         raise ValueError("No text given. Pass it as an argument or pipe it on stdin.")
     return sys.stdin.read()
-
-
-def _default_analyst() -> str:
-    """Default the analyst id to the OS user, since it drives clustering."""
-
-    import getpass
-
-    try:
-        return getpass.getuser()
-    except Exception:  # pragma: no cover
-        return "unknown-analyst"
 
 
 def _hooks(args: argparse.Namespace, as_json: bool) -> int:

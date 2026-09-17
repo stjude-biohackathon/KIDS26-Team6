@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from . import SOURCES
+from . import SOURCES, paths
 from .collectors.agents import AgentCollector
 from .collectors.base import Collector, CollectorStatus
 from .collectors.files import FileCollector
@@ -97,6 +97,7 @@ class Recorder:
                 self._session = session
             payload: dict[str, Any] = {
                 "active_session": state.active_session,
+                "default_analyst": paths.default_analyst(),
                 "paused_sessions": list(state.paused),
                 "sources": dict(state.sources),
                 "shell_output": False,
@@ -134,7 +135,7 @@ class Recorder:
         self,
         *,
         title: str = "",
-        analyst: str = "unknown-analyst",
+        analyst: str = "",
         workflow_family: str = "",
         tags: list[str] | None = None,
         watch: list[Path] | None = None,
@@ -147,7 +148,7 @@ class Recorder:
             self._stop_collectors()
             session, preempted = self.store.start(
                 title=title,
-                analyst=analyst,
+                analyst=analyst.strip() or paths.default_analyst(),
                 workflow_family=workflow_family,
                 tags=tags,
                 shell_backend=shell_backend.name,

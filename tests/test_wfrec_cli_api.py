@@ -7,6 +7,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from wfrec import paths
 from wfrec.api import create_app
 from wfrec.cli import main
 from wfrec.recorder import NoActiveSession, Recorder
@@ -28,6 +29,31 @@ def test_health_is_unauthenticated(client):
     response = client.get("/health", headers={})
     assert response.status_code == 200
     assert response.json()["ok"] is True
+
+
+def test_status_reports_os_username_as_editable_default(client, monkeypatch):
+    monkeypatch.setattr(paths.getpass, "getuser", lambda: "system-user")
+
+    status = client.get("/status").json()
+
+    assert status["default_analyst"] == "system-user"
+
+
+def test_start_without_analyst_uses_os_username(client, monkeypatch):
+    monkeypatch.setattr(paths.getpass, "getuser", lambda: "system-user")
+
+    started = client.post("/sessions/start", json={"title": "A"}).json()
+
+    assert started["session"]["analyst"] == "system-user"
+
+
+def test_default_analyst_falls_back_when_username_is_unavailable(monkeypatch):
+    def unavailable_username() -> str:
+        raise OSError("user lookup failed")
+
+    monkeypatch.setattr(paths.getpass, "getuser", unavailable_username)
+
+    assert paths.default_analyst() == "unknown-analyst"
 
 
 def test_endpoints_require_the_token(wfrec_home):
