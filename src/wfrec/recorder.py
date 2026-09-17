@@ -114,6 +114,9 @@ class Recorder:
                 },
             }
             if session is not None:
+                active_seconds, paused_seconds = (
+                    session.manifest.duration_snapshot()
+                )
                 payload["session"] = {
                     "id": session.session_id,
                     "title": session.manifest.title,
@@ -122,8 +125,8 @@ class Recorder:
                     "root": str(session.root),
                     "watch_roots": list(session.manifest.watch_roots),
                     "events": _count_lines(session.writer.path),
-                    "active_seconds": round(session.manifest.active_seconds, 1),
-                    "paused_seconds": round(session.manifest.paused_seconds, 1),
+                    "active_seconds": round(active_seconds, 1),
+                    "paused_seconds": round(paused_seconds, 1),
                     "shell_backend": session.manifest.shell_backend,
                 }
             if state.active_session:

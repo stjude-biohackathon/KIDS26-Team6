@@ -92,6 +92,20 @@ class Manifest:
     paused_seconds: float = 0.0
     _last_transition: float = 0.0
 
+    def duration_snapshot(self, now: float | None = None) -> tuple[float, float]:
+        """Return current active and paused durations without changing state."""
+
+        active_seconds = self.active_seconds
+        paused_seconds = self.paused_seconds
+        current_time = time.time() if now is None else now
+        if self._last_transition:
+            elapsed = max(0.0, current_time - self._last_transition)
+            if self.status == STATUS_ACTIVE:
+                active_seconds += elapsed
+            elif self.status == STATUS_PAUSED:
+                paused_seconds += elapsed
+        return active_seconds, paused_seconds
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "session_id": self.session_id,
@@ -271,12 +285,9 @@ class Session:
         """
 
         now = time.time()
-        if self.manifest._last_transition:
-            elapsed = max(0.0, now - self.manifest._last_transition)
-            if self.manifest.status == STATUS_ACTIVE:
-                self.manifest.active_seconds += elapsed
-            elif self.manifest.status == STATUS_PAUSED:
-                self.manifest.paused_seconds += elapsed
+        active_seconds, paused_seconds = self.manifest.duration_snapshot(now)
+        self.manifest.active_seconds = active_seconds
+        self.manifest.paused_seconds = paused_seconds
         self.manifest._last_transition = now
 
     # --------------------------------------------------------------- lifecycle

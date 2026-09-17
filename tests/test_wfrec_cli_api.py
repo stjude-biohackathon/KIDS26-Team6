@@ -11,7 +11,7 @@ from wfrec import paths
 from wfrec.api import create_app
 from wfrec.cli import main
 from wfrec.recorder import NoActiveSession, Recorder
-from wfrec.session import Session, SessionStore
+from wfrec.session import Manifest, Session, SessionStore
 
 
 @pytest.fixture()
@@ -37,6 +37,19 @@ def test_status_reports_os_username_as_editable_default(client, monkeypatch):
     status = client.get("/status").json()
 
     assert status["default_analyst"] == "system-user"
+
+
+def test_status_reports_current_session_durations(client, monkeypatch):
+    def current_durations(_manifest: Manifest) -> tuple[float, float]:
+        return 5.4, 2.1
+
+    client.post("/sessions/start", json={"title": "A", "analyst": "a"})
+    monkeypatch.setattr(Manifest, "duration_snapshot", current_durations)
+
+    status = client.get("/status").json()
+
+    assert status["session"]["active_seconds"] == 5.4
+    assert status["session"]["paused_seconds"] == 2.1
 
 
 def test_start_without_analyst_uses_os_username(client, monkeypatch):
@@ -167,6 +180,8 @@ def test_ui_injects_the_token_not_a_placeholder(client):
     assert "startButton.disabled = Boolean(s)" in body
     assert "'Session Active'" in body
     assert "'Session Paused'" in body
+    assert "STATE_RECEIVED_AT = performance.now()" in body
+    assert "setInterval(renderSessionStats, 1000)" in body
     assert "appendInlineCode(sourceDescription, why)" in body
     assert "sourceName.textContent = displayName" in body
     assert "details.push('reason: '+col.reason)" not in body

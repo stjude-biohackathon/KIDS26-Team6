@@ -208,6 +208,7 @@ let ANALYST_INITIALIZED = false;
 let CONNECTED = true;
 let EVENT_LIMIT = EVENT_PAGE_SIZE;
 let EVENT_SESSION = '';
+let STATE_RECEIVED_AT = performance.now();
 
 async function api(path, body){
   const res = await fetch(path, {method: body?'POST':'GET', headers:H,
@@ -309,6 +310,7 @@ function appendInlineCode(parent, value){
 
 function render(){
   if(!STATE) return;
+  STATE_RECEIVED_AT = performance.now();
   if(!ANALYST_INITIALIZED){
     const analyst = document.getElementById('analyst');
     analyst.value = analyst.value || STATE.default_analyst || '';
@@ -328,9 +330,7 @@ function render(){
   badge.textContent = status;
   badge.className = 'badge ' + (status==='active'?'active':status==='paused'?'paused':'');
   document.getElementById('sid').textContent = s ? s.id : 'No active session';
-  document.getElementById('stats').textContent = s
-    ? `${s.events} events · ${s.active_seconds}s active · ${s.paused_seconds}s paused · ${s.root}`
-    : '';
+  renderSessionStats();
   if(!s) showEmptyLog('Start or resume a session to see activity.');
 
   const host = document.getElementById('sources');
@@ -375,6 +375,18 @@ function render(){
     div.appendChild(control);
     host.appendChild(div);
   }
+}
+
+function renderSessionStats(){
+  const stats = document.getElementById('stats');
+  const session = STATE && STATE.session;
+  if(!session){ stats.textContent = ''; return; }
+  const elapsed = Math.max(0, (performance.now() - STATE_RECEIVED_AT) / 1000);
+  const active = Number(session.active_seconds) || 0;
+  const paused = Number(session.paused_seconds) || 0;
+  const activeNow = active + (session.status === 'active' ? elapsed : 0);
+  const pausedNow = paused + (session.status === 'paused' ? elapsed : 0);
+  stats.textContent = `${session.events} events · ${Math.floor(activeNow)}s active · ${Math.floor(pausedNow)}s paused · ${session.root}`;
 }
 
 async function refresh(){
@@ -663,6 +675,7 @@ function changeDetail(payload){
 refresh().then(refreshLog);
 setInterval(refresh, 2000);
 setInterval(refreshLog, 3000);
+setInterval(renderSessionStats, 1000);
 </script>
 </body>
 </html>
