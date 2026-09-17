@@ -123,6 +123,30 @@ def state_path() -> Path:
     return home() / "state.json"
 
 
+def overlay_pid_path() -> Path:
+    """PID of the currently running floating-badge process, if any.
+
+    Used only to check liveness (``os.kill(pid, 0)``), never trusted just for
+    existing: the badge can also exit on its own (it gives up if the daemon
+    goes unreachable for a few polls), and a stale file from that case must
+    not be mistaken for "still showing".
+    """
+
+    return runtime_dir() / "overlay.pid"
+
+
+def overlay_hidden_path() -> Path:
+    """Presence means the user dismissed the floating recording badge.
+
+    Lives under ``home()``, not ``runtime_dir()``: this is a durable
+    preference the user set deliberately, not ephemeral daemon state, so it
+    should survive a daemon restart or reboot until they turn the badge back
+    on.
+    """
+
+    return home() / "overlay_hidden"
+
+
 def state_lock_path() -> Path:
     """Lock guarding read-modify-write cycles on the rich state file."""
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import secrets
 import signal
 import socket
+import sys
 import threading
 from typing import Any
 
@@ -78,7 +79,65 @@ def stop() -> dict[str, object]:
     return {"stopped": True, "pid": pid}
 
 
-def run(port: int | None = None, *, open_gui: bool = False) -> int:
+def _spawn_module(module: str, label: str):
+    """Launch ``python -m <module>`` as its own detached process.
+
+    A separate process, not a thread: each recording-indicator surface needs
+    to own its platform's native GUI event loop (Cocoa/Win32 for the tray
+    icon, Tk for the floating badge) for its whole life, which would fight
+    the daemon's asyncio server -- and each other -- for the main thread if
+    run in-process. Each discovers the daemon itself via the published api
+    file, so nothing needs passing to it.
+    """
+
+    import subprocess
+
+    creation: dict[str, Any] = {}
+    if sys.platform == "win32":  # pragma: no cover - Windows
+        creation["creationflags"] = 0x00000008 | 0x00000200  # DETACHED | NEW_GROUP
+    else:
+        creation["start_new_session"] = True
+
+    try:
+        return subprocess.Popen(
+            [sys.executable, "-m", module],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            **creation,
+        )
+    except OSError as exc:
+        warning(f"Could not start the {label} ({exc}); continuing without it.")
+        return None
+
+
+def _spawn_indicator_processes() -> list:
+    """Launch every recording-indicator surface supported on this platform."""
+
+    if sys.platform not in ("darwin", "win32"):
+        return []  # no supported tray backend without extra system packages
+    procs = [
+        _spawn_module("wfrec.indicator", "menu-bar/tray indicator"),
+        _spawn_module("wfrec.overlay", "floating recording badge"),
+    ]
+    return [proc for proc in procs if proc is not None]
+
+
+def _stop_indicator_processes(procs: list) -> None:
+    for proc in procs:
+        if proc is None or proc.poll() is not None:
+            continue
+        try:
+            proc.terminate()
+            proc.wait(timeout=3)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+
+
+def run(port: int | None = None, *, open_gui: bool = False, show_indicator: bool = True) -> int:
     """Run the daemon in the foreground until interrupted."""
 
     import uvicorn
@@ -136,9 +195,12 @@ def run(port: int | None = None, *, open_gui: bool = False) -> int:
     if open_gui:
         threading.Thread(target=_launch_gui, args=(url, token), daemon=True).start()
 
+    indicators = _spawn_indicator_processes() if show_indicator else []
+
     try:
         server.run()
     finally:
+        _stop_indicator_processes(indicators)
         recorder.shutdown()
         clear_api()
         try:
