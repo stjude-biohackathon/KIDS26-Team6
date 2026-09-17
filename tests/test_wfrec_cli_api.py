@@ -172,6 +172,7 @@ def test_ui_injects_the_token_not_a_placeholder(client):
     assert "details.push('reason: '+col.reason)" not in body
     assert '<label for="title">Session title</label>' in body
     assert '<label for="analyst">Analyst name or ID</label>' in body
+    assert 'class="row note-actions"' in body
     assert "btn.setAttribute('role', 'switch')" in body
     assert "btn.setAttribute('aria-checked', String(on))" in body
     assert 'id="feedback" role="status"' in body

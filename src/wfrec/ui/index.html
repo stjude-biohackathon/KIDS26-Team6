@@ -43,6 +43,7 @@
   textarea{min-height:110px;resize:vertical;font-family:ui-monospace,Menlo,monospace;font-size:13px}
   .field{display:grid;gap:4px}
   .field label{font-size:12px;color:var(--dim)}
+  .note-actions{align-items:end}
   .feedback{margin:10px 0 0;font-size:12px;white-space:pre-wrap}.feedback:empty{display:none}
   .feedback.success{color:var(--on)}.feedback.error{color:var(--danger)}
   .sources{display:grid;gap:8px}
@@ -132,7 +133,7 @@
       <label for="note">Note</label>
       <textarea id="note" placeholder="Add an error, command, decision, or reason for rerunning…"></textarea>
     </div>
-    <div class="row" style="margin-top:10px">
+    <div class="row note-actions" style="margin-top:10px">
       <div class="field" style="max-width:340px;flex:1 1 240px">
         <label for="label">Label (optional)</label>
         <input id="label" placeholder="e.g. Rerun reason">
