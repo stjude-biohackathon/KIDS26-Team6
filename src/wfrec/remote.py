@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from .events import JOB_COMPLETED, Event
+from .output import error
 
 REMOTE_DIR = "~/.wfrec"
 SSH_TIMEOUT = 60
@@ -104,7 +105,7 @@ def interactive_shell(host: str, session_id: str, extra_args: list[str] | None =
     try:
         return subprocess.call(cmd)
     except OSError as exc:
-        print(f"wfrec: ssh failed: {exc}")
+        error(f"SSH failed: {exc}")
         return 1
 
 

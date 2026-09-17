@@ -15,7 +15,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from rich import box
 from rich.console import Group
 from rich.table import Table
 from rich.text import Text
@@ -27,6 +26,11 @@ from .collectors.shell import (
 )
 from .devsql import DevSQLClient
 from .events import platform_summary
+from .output import (
+    plain_text as _plain_text,
+    status_table as _status_table,
+    status_text as _status_text,
+)
 from .state import (
     SHELL_BACKEND_DEVSQL,
     RecorderState,
@@ -393,36 +397,6 @@ def render(report: dict[str, Any]) -> Group:
             [Text(""), Text("Warnings", style="bold yellow"), warnings]
         )
     return Group(*sections)
-
-
-def _status_table(*columns: str) -> Table:
-    """Return the shared compact table used by doctor sections."""
-
-    table = Table(
-        box=box.SIMPLE_HEAVY,
-        expand=False,
-        header_style="bold dim",
-        pad_edge=False,
-        show_edge=False,
-    )
-    table.add_column("Status", no_wrap=True)
-    for column in columns:
-        table.add_column(column, overflow="fold")
-    return table
-
-
-def _status_text(available: bool) -> Text:
-    """Represent availability with both text and color."""
-
-    if available:
-        return Text("OK", style="bold green")
-    return Text("--", style="yellow")
-
-
-def _plain_text(value: object, style: str = "") -> Text:
-    """Render dynamic values literally rather than as Rich markup."""
-
-    return Text(str(value), style=style)
 
 
 def _source_details(info: dict[str, Any]) -> str:

@@ -14,15 +14,28 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from rich.text import Text
+
 from . import SOURCES, __version__, paths
 from .client import Client, DaemonUnavailable
+from .output import (
+    console,
+    data_table,
+    error,
+    plain_text,
+    status_table,
+    status_text,
+    success,
+    summary,
+    warning,
+)
 from .recorder import NoActiveSession, Recorder
 from .session import SessionNotFound, SessionStore
 
 
 def _emit(payload: Any, as_json: bool) -> None:
     if as_json:
-        print(json.dumps(payload, indent=2, default=str))
+        sys.stdout.write(json.dumps(payload, indent=2, default=str) + "\n")
 
 
 def _bool_arg(value: str) -> bool:
@@ -181,16 +194,16 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return _dispatch(args, as_json)
     except NoActiveSession as exc:
-        print(f"wfrec: {exc}", file=sys.stderr)
+        error(exc)
         return 2
     except SessionNotFound as exc:
-        print(f"wfrec: {exc}", file=sys.stderr)
+        error(exc)
         return 3
     except DaemonUnavailable as exc:
-        print(f"wfrec: {exc}", file=sys.stderr)
+        error(exc)
         return 4
     except (ValueError, RuntimeError) as exc:
-        print(f"wfrec: {exc}", file=sys.stderr)
+        error(exc)
         return 1
 
 
@@ -205,9 +218,9 @@ def _dispatch(args: argparse.Namespace, as_json: bool) -> int:
             if as_json:
                 _emit(result, True)
             elif result["stopped"]:
-                print(f"Stopped daemon (pid {result['pid']}).")
+                summary("Stopped daemon", [("PID", result["pid"])])
             else:
-                print(f"No daemon stopped: {result['reason']}")
+                warning(f"No daemon stopped: {result['reason']}")
             return 0 if result["stopped"] else 1
         return run(port=args.port, open_gui=args.gui)
 
@@ -219,15 +232,13 @@ def _dispatch(args: argparse.Namespace, as_json: bool) -> int:
         return 0
 
     if command == "doctor":
-        from rich.console import Console
-
         from .doctor import diagnose, render
 
         report = diagnose()
         if as_json:
             _emit(report, True)
         else:
-            Console(highlight=False).print(render(report))
+            console.print(render(report))
         return 0
 
     if command == "hooks":
@@ -250,13 +261,29 @@ def _dispatch(args: argparse.Namespace, as_json: bool) -> int:
         if as_json:
             _emit(result, True)
         else:
-            print(f"Merged {result['traces']} traces -> {result['path']}")
-            print(f"  analysts: {', '.join(result['analysts']) or '(none)'}")
+            summary(
+                "Merged sessions",
+                [
+                    ("Traces", result["traces"]),
+                    ("Output", result["path"]),
+                    ("Analysts", ", ".join(result["analysts"]) or "None"),
+                ],
+            )
+            families = data_table("Workflow family", "Analysts", "Coverage")
             for family, people in result["workflow_families"].items():
-                shared = " <- shared" if len(people) > 1 else ""
-                print(f"  {family}: {len(people)} analyst(s){shared}")
+                coverage = (
+                    Text("Shared", style="green")
+                    if len(people) > 1
+                    else Text("Single analyst", style="dim")
+                )
+                families.add_row(
+                    plain_text(family),
+                    plain_text(", ".join(people) or "None"),
+                    coverage,
+                )
+            console.print(Text("\nWorkflow families", style="bold"), families)
             for entry in result["skipped"]:
-                print(f"  skipped {entry['session']}: {entry['error']}")
+                warning(f"Skipped {entry['session']}: {entry['error']}")
         return 0
 
     if command == "ssh":
@@ -274,7 +301,14 @@ def _dispatch(args: argparse.Namespace, as_json: bool) -> int:
         if as_json:
             _emit(result, True)
         else:
-            print(f"Attached {len(events)} turns from {args.path} to {session.session_id}")
+            summary(
+                "Attached transcript",
+                [
+                    ("Turns", len(events)),
+                    ("Source", args.path),
+                    ("Session", session.session_id),
+                ],
+            )
         return 0
 
     if command == "export":
@@ -316,7 +350,7 @@ def _spawn_daemon(timeout: float = 15.0) -> Client | None:
             **creation,
         )
     except OSError as exc:
-        print(f"wfrec: could not start daemon ({exc}); continuing without one.", file=sys.stderr)
+        warning(f"Could not start daemon ({exc}); continuing without one.")
         return None
 
     deadline = time.time() + timeout
@@ -325,10 +359,9 @@ def _spawn_daemon(timeout: float = 15.0) -> Client | None:
         if client is not None:
             return client
         time.sleep(0.25)
-    print(
-        f"wfrec: daemon did not come up within {timeout:.0f}s; see {log_path}. "
-        "Continuing without background capture.",
-        file=sys.stderr,
+    warning(
+        f"Daemon did not start within {timeout:.0f}s; see {log_path}. "
+        "Continuing without background capture."
     )
     return None
 
@@ -431,83 +464,136 @@ def _report(command: str, result: dict, as_json: bool, *, daemon: bool) -> None:
         return
 
     if command == "start":
-        print(f"Recording session {session.get('id')}  ({session.get('title')})")
-        print(f"  folder: {session.get('root')}")
+        rows: list[tuple[str, object]] = [
+            ("Session", session.get("id")),
+            ("Title", session.get("title") or "Untitled"),
+            ("Folder", session.get("root")),
+        ]
         if result.get("preempted"):
-            print(f"  auto-paused previously active session {result['preempted']}")
+            rows.append(("Paused", result["preempted"]))
         flags = ", ".join(n for n, on in (result.get("sources") or {}).items() if on)
-        print(f"  capturing: {flags or 'nothing'}")
+        rows.append(("Capturing", flags or "Nothing"))
+        summary("Recording session", rows)
         if not daemon:
-            print(
-                "  note: no daemon running, so shell/file/screen/agent capture is "
-                "not active.\n        Start one with `wfrec daemon` (or `wfrec daemon --gui`)."
+            warning(
+                "No daemon is running, so background collectors are inactive. "
+                "Start one with `wfrec daemon` or `wfrec daemon --gui`."
             )
         return
 
     if command == "stop":
-        print(f"Stopped {result.get('stopped')}")
-        print(f"  folder: {result.get('root')}")
-        print("  export with: wfrec export --format autocab")
+        summary(
+            "Stopped session",
+            [
+                ("Session", result.get("stopped")),
+                ("Folder", result.get("root")),
+                ("Export", "wfrec export --format autocab"),
+            ],
+        )
         return
 
     if command in {"pause", "resume"}:
-        print(f"Session {session.get('id')} is now {session.get('status')}")
+        summary(
+            "Updated session",
+            [
+                ("Session", session.get("id")),
+                ("Status", session.get("status")),
+            ],
+        )
         return
 
     if command == "source":
         flags = ", ".join(n for n, on in (result.get("sources") or {}).items() if on)
-        print(f"capturing: {flags or 'nothing'}")
+        summary("Updated capture sources", [("Capturing", flags or "Nothing")])
         collectors = result.get("collectors") or {}
         for name, info in collectors.items():
             if info.get("available") is False:
-                print(f"  ! {name}: {info.get('reason')} -- {info.get('detail', '')[:100]}")
+                warning(
+                    f"{name}: {info.get('reason')} "
+                    f"{info.get('detail', '')[:100]}".rstrip()
+                )
         return
 
     if command == "shell-output":
-        print("Shell output capture is off.")
-        print(f"  {result.get('shell_output_reason', '')}")
+        summary(
+            "Shell output capture",
+            [
+                ("Status", Text("Off", style="yellow")),
+                ("Reason", result.get("shell_output_reason", "")),
+            ],
+        )
         return
 
     if command == "note":
         redactions = result.get("redactions") or []
         suffix = f" (redacted: {', '.join(redactions)})" if redactions else ""
-        print(f"Added note to timeline{suffix}")
+        success(f"Added note to timeline{suffix}")
         return
 
-    print(json.dumps(result, indent=2, default=str))
+    if command == "mark":
+        success(f"Added marker to timeline at event {result.get('seq')}.")
+        return
+
+    if command == "watch":
+        roots = session.get("watch_roots") or []
+        summary(
+            "Updated watched roots",
+            [("Root", roots[-1] if roots else "None")],
+        )
+        return
+
+    console.print_json(json.dumps(result, indent=2, default=str))
 
 
 def _print_status(result: dict) -> None:
     session = result.get("session") or {}
     if not result.get("active_session"):
-        print("No active session.")
+        rows: list[tuple[str, object]] = [
+            ("Session", Text("None", style="dim")),
+        ]
         if result.get("paused_sessions"):
-            print(f"  paused: {', '.join(result['paused_sessions'])}")
-        print("  start one with: wfrec start --title '...'")
+            rows.append(("Paused", ", ".join(result["paused_sessions"])))
+        rows.append(("Start with", "wfrec start --title '...'"))
+        summary("Recorder status", rows)
         return
 
-    print(f"session {session.get('id')}  [{session.get('status')}]")
-    print(f"  title:   {session.get('title')}")
-    print(f"  analyst: {session.get('analyst')}")
-    print(f"  events:  {session.get('events')}")
-    print(f"  folder:  {session.get('root')}")
+    rows = [
+        ("Session", session.get("id")),
+        ("Status", session.get("status")),
+        ("Title", session.get("title") or "Untitled"),
+        ("Analyst", session.get("analyst")),
+        ("Events", session.get("events")),
+        ("Folder", session.get("root")),
+    ]
     if result.get("pause_reason"):
-        print(f"  paused because: {result['pause_reason']}")
-    print("  sources:")
+        rows.append(("Pause reason", result["pause_reason"]))
+    summary("Recorder status", rows)
+
+    sources = data_table("State", "Source", "Backend", "Details")
     collectors = result.get("collectors") or {}
     for name in SOURCES:
         on = (result.get("sources") or {}).get(name)
         info = collectors.get(name) or {}
-        mark = "on " if on else "off"
-        note = ""
+        state = Text("ON", style="bold green") if on else Text("OFF", style="dim")
+        backend = info.get("backend") or ""
+        detail = ""
         if on and info.get("available") is False:
-            note = f"  ! {info.get('reason')}"
-        elif on and info.get("backend"):
-            note = f"  ({info['backend']})"
-        print(f"    {mark} {name}{note}")
+            detail = str(info.get("reason") or "Unavailable")
+            state = Text("--", style="yellow")
+        sources.add_row(
+            state,
+            plain_text(name),
+            plain_text(backend),
+            plain_text(detail),
+        )
     if result.get("shell_output_available") is False:
-        print("    -- shell-output unavailable")
-        print(f"       {result.get('shell_output_reason', '')}")
+        sources.add_row(
+            Text("--", style="yellow"),
+            Text("shell-output"),
+            Text(""),
+            plain_text(result.get("shell_output_reason", "")),
+        )
+    console.print(Text("\nSources", style="bold"), sources)
 
 
 def _note_text(args: argparse.Namespace) -> str:
@@ -538,41 +624,62 @@ def _hooks(args: argparse.Namespace, as_json: bool) -> int:
         if as_json:
             _emit(result, True)
         else:
+            table = data_table("Shell", "Result", "RC file", "Backup")
             for entry in result:
-                print(f"{entry['shell']}: {entry['status']}")
-                if entry.get("rc_file"):
-                    print(f"  rc file: {entry['rc_file']}")
-                if entry.get("backup"):
-                    print(f"  backup:  {entry['backup']}")
-            print(
-                "\nOpen a new terminal, or run this in an existing one to start "
-                "recording there immediately:"
+                table.add_row(
+                    plain_text(entry["shell"]),
+                    plain_text(entry["status"]),
+                    plain_text(entry.get("rc_file") or ""),
+                    plain_text(entry.get("backup") or ""),
+                )
+            console.print(Text("Shell hooks", style="bold cyan"), table)
+            console.print(
+                Text(
+                    "\nOpen a new terminal, or run this in an existing one:",
+                    style="bold",
+                )
             )
-            print(f"  {hookinstall.eval_line(shells[0] if shells else 'bash')}")
+            console.print(
+                plain_text(
+                    hookinstall.eval_line(shells[0] if shells else "bash"),
+                    "cyan",
+                )
+            )
         return 0
 
     if args.action == "uninstall":
         result = hookinstall.uninstall(shells)
-        _emit(result, as_json) if as_json else [
-            print(f"{e['shell']}: removed from {e['rc_file']}") for e in result
-        ]
-        if not as_json and not result:
-            print("No wfrec hooks were installed.")
+        if as_json:
+            _emit(result, True)
+        elif result:
+            table = data_table("Shell", "Removed from")
+            for entry in result:
+                table.add_row(
+                    plain_text(entry["shell"]),
+                    plain_text(entry["rc_file"]),
+                )
+            console.print(Text("Removed shell hooks", style="bold cyan"), table)
+        else:
+            success("No wfrec hooks were installed.")
         return 0
 
     if args.action == "eval":
-        print(hookinstall.eval_line(shells[0] if shells else "bash"))
+        sys.stdout.write(hookinstall.eval_line(shells[0] if shells else "bash") + "\n")
         return 0
 
     report = hookinstall.status()
     if as_json:
         _emit(report, True)
     else:
+        table = status_table("Shell", "Configuration")
         for entry in report:
-            mark = "installed" if entry["installed"] else "not installed"
-            print(f"{entry['shell']:<11} {mark}")
-            for rc in entry["rc_files"]:
-                print(f"  {rc}")
+            installed = bool(entry["installed"])
+            table.add_row(
+                status_text(installed),
+                plain_text(entry["shell"]),
+                plain_text(", ".join(entry["rc_files"]) or "Not installed"),
+            )
+        console.print(Text("Shell hooks", style="bold cyan"), table)
     return 0
 
 
@@ -594,10 +701,28 @@ def _sessions(as_json: bool) -> int:
         )
         return 0
     if not sessions:
-        print(f"No sessions yet under {paths.sessions_dir()}")
+        summary(
+            "Sessions",
+            [
+                ("Status", Text("None", style="dim")),
+                ("Folder", paths.sessions_dir()),
+            ],
+        )
         return 0
+    table = data_table("Session", "Status", "Analyst", "Title")
     for s in sessions:
-        print(f"{s.session_id}  {s.manifest.status:<8} {s.manifest.analyst:<14} {s.manifest.title}")
+        status = (
+            Text(s.manifest.status, style="green")
+            if s.manifest.status == "active"
+            else plain_text(s.manifest.status)
+        )
+        table.add_row(
+            plain_text(s.session_id),
+            status,
+            plain_text(s.manifest.analyst),
+            plain_text(s.manifest.title or "Untitled"),
+        )
+    console.print(Text("Sessions", style="bold cyan"), table)
     return 0
 
 
@@ -613,9 +738,17 @@ def _events(args: argparse.Namespace, as_json: bool) -> int:
     if as_json:
         _emit([e.to_dict() for e in events], True)
         return 0
+    table = data_table("Seq", "Time", "Type", "Summary")
+    table.columns[0].justify = "right"
     for event in events:
-        summary = _summarize(event)
-        print(f"{event.seq:>5}  {event.ts[11:23]}  {event.type:<26} {summary}")
+        event_summary = _summarize(event)
+        table.add_row(
+            plain_text(event.seq),
+            plain_text(event.ts[11:23]),
+            plain_text(event.type),
+            plain_text(event_summary),
+        )
+    console.print(Text("Timeline events", style="bold cyan"), table)
     return 0
 
 
@@ -641,18 +774,27 @@ def _export(args: argparse.Namespace, as_json: bool) -> int:
     if as_json:
         _emit(result, True)
         return 0
-    print(f"Exported session {result['session']}:")
-    for path in result["written"]:
-        print(f"  {path}")
     details = result.get("details", {})
+    rows: list[tuple[str, object]] = [("Session", result["session"])]
     if "terminal_log" in details:
-        print(f"  {details['terminal_log']['commands']} shell commands")
+        rows.append(("Shell commands", details["terminal_log"]["commands"]))
     if "screen_capture" in details:
-        print(f"  {details['screen_capture']['events']} capture events")
+        rows.append(("Capture events", details["screen_capture"]["events"]))
     if "trace" in details:
-        print(f"  {details['trace']['steps']} workflow steps")
-    print("\nFeed it to AutoCAB with:")
-    print(f"  autocab demo --input-mode session --session-dir {session.root}")
+        rows.append(("Workflow steps", details["trace"]["steps"]))
+    summary("Exported session", rows)
+
+    files = data_table("Written file")
+    for path in result["written"]:
+        files.add_row(plain_text(path))
+    console.print(Text("\nFiles", style="bold"), files)
+    console.print(Text("\nRun with AutoCAB", style="bold"))
+    console.print(
+        plain_text(
+            f"autocab demo --input-mode session --session-dir {session.root}",
+            "cyan",
+        )
+    )
     return 0
 
 
@@ -662,13 +804,22 @@ def _ssh(args: argparse.Namespace, as_json: bool) -> int:
     session = SessionStore().resolve(None)
     boot = remote.bootstrap(args.host)
     if not boot["ok"]:
-        print(f"wfrec: could not bootstrap {args.host}: {boot.get('error') or boot.get('stderr')}", file=sys.stderr)
+        error(
+            f"Could not bootstrap {args.host}: "
+            f"{boot.get('error') or boot.get('stderr')}"
+        )
         return 1
     if args.host not in session.manifest.remote_hosts:
         session.manifest.remote_hosts.append(args.host)
         session.save()
-    print(f"wfrec: recording remote shell on {args.host} into {session.session_id}")
-    print("       run `wfrec pull <host>` afterwards to fold the commands in")
+    summary(
+        "Recording remote shell",
+        [
+            ("Host", args.host),
+            ("Session", session.session_id),
+            ("Next", "wfrec pull <host>"),
+        ],
+    )
     extra = [a for a in (args.ssh_args or []) if a != "--"]
     return remote.interactive_shell(args.host, session.session_id, extra)
 
@@ -701,9 +852,18 @@ def _pull(args: argparse.Namespace, as_json: bool) -> int:
     if as_json:
         _emit(result, True)
     else:
-        print(f"Pulled {len(pulled['pulled'])} spool file(s) from {args.host}")
-        for name in pulled["pulled"]:
-            print(f"  {name}")
-        if events:
-            print(f"  {len(events)} scheduler event(s)")
+        summary(
+            "Pulled remote activity",
+            [
+                ("Host", args.host),
+                ("Spool files", len(pulled["pulled"])),
+                ("Scheduler events", len(events)),
+                ("Session", session.session_id),
+            ],
+        )
+        if pulled["pulled"]:
+            files = data_table("Spool file")
+            for name in pulled["pulled"]:
+                files.add_row(plain_text(name))
+            console.print(Text("\nFiles", style="bold"), files)
     return 0

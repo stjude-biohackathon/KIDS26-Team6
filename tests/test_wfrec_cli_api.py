@@ -169,7 +169,9 @@ def test_cli_source_accepts_on_off_words(wfrec_home, capsys):
     main(["start", "--title", "A", "--no-daemon"])
     capsys.readouterr()
     assert main(["source", "shell", "off"]) == 0
-    assert "shell" not in capsys.readouterr().out.split("capturing:")[1]
+    output = capsys.readouterr().out
+    assert "Updated capture sources" in output
+    assert "shell" not in output
     assert main(["source", "shell", "on"]) == 0
 
 
@@ -181,7 +183,9 @@ def test_cli_shell_output_reports_unsupported_backend(wfrec_home, capsys):
     assert "unavailable with hook-spool" in capsys.readouterr().err
 
     assert main(["shell-output", "off"]) == 0
-    assert "Shell output capture is off" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "Shell output capture" in output
+    assert "Status" in output and "Off" in output
 
 
 def test_cli_rejects_bad_toggle_word(wfrec_home):
@@ -202,6 +206,36 @@ def test_cli_events_filters_by_source(wfrec_home, capsys):
     out = capsys.readouterr().out
     assert "marker.user" in out
     assert "session.created" not in out
+
+
+def test_cli_lists_sessions_and_events_in_tables(wfrec_home, capsys):
+    main(["start", "--title", "Table test", "--analyst", "tester", "--no-daemon"])
+    capsys.readouterr()
+
+    assert main(["sessions"]) == 0
+    sessions_output = capsys.readouterr().out
+    assert "Sessions" in sessions_output
+    assert all(
+        heading in sessions_output
+        for heading in ("Session", "Status", "Analyst", "Title")
+    )
+    assert "Table test" in sessions_output
+
+    assert main(["events"]) == 0
+    events_output = capsys.readouterr().out
+    assert "Timeline events" in events_output
+    assert all(
+        heading in events_output
+        for heading in ("Seq", "Time", "Type", "Summary")
+    )
+
+
+def test_cli_renders_user_text_literally(wfrec_home, capsys):
+    title = "[bold]literal title[/bold]"
+
+    assert main(["start", "--title", title, "--no-daemon"]) == 0
+
+    assert title in capsys.readouterr().out
 
 
 def test_cli_hooks_install_is_idempotent(wfrec_home, tmp_path, monkeypatch, capsys):
