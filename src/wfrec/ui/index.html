@@ -243,7 +243,8 @@ async function act(kind){
 }
 
 async function pause(){
-  const reason = prompt('Why are you pausing this session? (e.g. "waiting on the alignment job")') || '';
+  const reason = prompt('Why are you pausing this session? (e.g. "waiting on the alignment job")');
+  if(reason === null) return;
   try{ STATE = await api('/sessions/pause', {reason}); render(); }
   catch(e){ flash(e.message, 'error'); }
 }
