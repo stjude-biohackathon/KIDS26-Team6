@@ -40,16 +40,19 @@ class ShellTarget:
     hook_filename: str
     rc_candidates: tuple[str, ...]
     source_line: str
+    install_all_rc_files: bool = False
 
-    def rc_path(self) -> Path:
-        """Pick the rc file to edit, preferring one that already exists."""
+    def rc_paths(self) -> tuple[Path, ...]:
+        """Return the rc files that must receive this shell's hook."""
 
         home = Path.home()
-        for candidate in self.rc_candidates:
-            path = home / candidate
+        candidates = tuple(home / candidate for candidate in self.rc_candidates)
+        if self.install_all_rc_files:
+            return candidates
+        for path in candidates:
             if path.exists():
-                return path
-        return home / self.rc_candidates[0]
+                return (path,)
+        return (candidates[0],)
 
 
 def _powershell_profiles() -> tuple[str, ...]:
@@ -94,6 +97,10 @@ TARGETS: dict[str, ShellTarget] = {
         hook_filename="wfrec.ps1",
         rc_candidates=_powershell_profiles(),
         source_line='if (Test-Path "{hook}") {{ . "{hook}" }}',
+        # PowerShell 7 and Windows PowerShell 5.1 load different all-hosts
+        # profiles. Install both because Python cannot reliably identify which
+        # parent shell launched wfrec.
+        install_all_rc_files=True,
     ),
 }
 
@@ -175,32 +182,34 @@ def install(shells: list[str] | None = None) -> list[dict[str, str]]:
             continue
 
         hook_path = materialize_hook(target)
-        rc = target.rc_path()
-        rc.parent.mkdir(parents=True, exist_ok=True)
-        existing = rc.read_text(encoding="utf-8") if rc.exists() else ""
+        for rc in target.rc_paths():
+            rc.parent.mkdir(parents=True, exist_ok=True)
+            existing = rc.read_text(encoding="utf-8") if rc.exists() else ""
 
-        if existing:
-            backup = rc.with_name(f"{rc.name}.wfrec-backup-{int(time.time())}")
-            backup.write_text(existing, encoding="utf-8")
-        else:
-            backup = None
+            if existing:
+                backup = rc.with_name(
+                    f"{rc.name}.wfrec-backup-{int(time.time())}"
+                )
+                backup.write_text(existing, encoding="utf-8")
+            else:
+                backup = None
 
-        cleaned = _strip_block(existing)
-        # Append rather than prepend: frameworks like oh-my-zsh and
-        # powerlevel10k rewrite hook arrays as they load, so running last is
-        # the only way to be sure our registration survives.
-        if cleaned and not cleaned.endswith("\n"):
-            cleaned += "\n"
-        rc.write_text(cleaned + _block(target, hook_path), encoding="utf-8")
-        results.append(
-            {
-                "shell": name,
-                "status": "installed",
-                "rc_file": str(rc),
-                "hook": str(hook_path),
-                "backup": str(backup) if backup else "",
-            }
-        )
+            cleaned = _strip_block(existing)
+            # Append rather than prepend: frameworks like oh-my-zsh and
+            # powerlevel10k rewrite hook arrays as they load, so running last
+            # is the only way to be sure our registration survives.
+            if cleaned and not cleaned.endswith("\n"):
+                cleaned += "\n"
+            rc.write_text(cleaned + _block(target, hook_path), encoding="utf-8")
+            results.append(
+                {
+                    "shell": name,
+                    "status": "installed",
+                    "rc_file": str(rc),
+                    "hook": str(hook_path),
+                    "backup": str(backup) if backup else "",
+                }
+            )
     return results
 
 
@@ -231,16 +240,21 @@ def status() -> list[dict[str, object]]:
     for name, target in TARGETS.items():
         hook_path = paths.hooks_dir() / target.hook_filename
         installed_in: list[str] = []
+        missing_from: list[str] = []
         for candidate in target.rc_candidates:
             rc = Path.home() / candidate
             if rc.exists() and MARKER_BEGIN in rc.read_text(encoding="utf-8"):
                 installed_in.append(str(rc))
+            elif target.install_all_rc_files:
+                missing_from.append(str(rc))
+        profiles_complete = bool(installed_in) and not missing_from
         report.append(
             {
                 "shell": name,
                 "hook_present": hook_path.exists(),
                 "rc_files": installed_in,
-                "installed": bool(installed_in) and hook_path.exists(),
+                "missing_rc_files": missing_from,
+                "installed": profiles_complete and hook_path.exists(),
             }
         )
     return report
