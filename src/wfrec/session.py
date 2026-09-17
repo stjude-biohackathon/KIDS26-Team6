@@ -43,7 +43,12 @@ from .events import (
 )
 from .locking import atomic_write_text
 from .redaction import shared as shared_redactor
-from .state import StateTransaction
+from .state import (
+    SHELL_BACKENDS,
+    SHELL_BACKEND_SPOOL,
+    StateTransaction,
+    shell_output_unavailable_reason,
+)
 
 STATUS_CREATED = "created"
 STATUS_ACTIVE = "active"
@@ -83,6 +88,7 @@ class Manifest:
         default_factory=lambda: {name: True for name in SOURCES}
     )
     shell_output: bool = False
+    shell_backend: str = SHELL_BACKEND_SPOOL
     watch_roots: list[str] = field(default_factory=list)
     remote_hosts: list[str] = field(default_factory=list)
     lifecycle: list[dict[str, Any]] = field(default_factory=list)
@@ -105,6 +111,7 @@ class Manifest:
             "updated_at": self.updated_at,
             "sources": dict(self.sources),
             "shell_output": self.shell_output,
+            "shell_backend": self.shell_backend,
             "watch_roots": list(self.watch_roots),
             "remote_hosts": list(self.remote_hosts),
             "lifecycle": list(self.lifecycle),
@@ -120,6 +127,9 @@ class Manifest:
         for name, enabled in (payload.get("sources") or {}).items():
             if name in sources:
                 sources[name] = bool(enabled)
+        shell_backend = payload.get("shell_backend", SHELL_BACKEND_SPOOL)
+        if shell_backend not in SHELL_BACKENDS:
+            shell_backend = SHELL_BACKEND_SPOOL
         manifest = cls(
             session_id=payload["session_id"],
             title=payload.get("title", ""),
@@ -133,6 +143,7 @@ class Manifest:
             updated_at=payload.get("updated_at") or utc_now(),
             sources=sources,
             shell_output=bool(payload.get("shell_output", False)),
+            shell_backend=shell_backend,
             watch_roots=list(payload.get("watch_roots") or []),
             remote_hosts=list(payload.get("remote_hosts") or []),
             lifecycle=list(payload.get("lifecycle") or []),
@@ -190,6 +201,7 @@ class Session:
         workflow_family: str = "",
         tags: list[str] | None = None,
         sources: dict[str, bool] | None = None,
+        shell_backend: str = SHELL_BACKEND_SPOOL,
     ) -> "Session":
         """Create a new session folder, manifest and timeline."""
 
@@ -202,6 +214,7 @@ class Session:
             analyst=analyst,
             workflow_family=workflow_family,
             tags=list(tags or []),
+            shell_backend=shell_backend,
         )
         if sources:
             for name, enabled in sources.items():
@@ -217,6 +230,7 @@ class Session:
                 "analyst": manifest.analyst,
                 "platform": manifest.platform,
                 "sources": dict(manifest.sources),
+                "shell_backend": manifest.shell_backend,
             },
         )
         return session
@@ -277,13 +291,20 @@ class Session:
         if resumed:
             self._log_lifecycle("resumed", {"gap_ms": gap_ms})
             event = self.record(
-                SESSION_RESUMED, payload={"gap_ms": gap_ms}
+                SESSION_RESUMED,
+                payload={
+                    "gap_ms": gap_ms,
+                    "shell_backend": self.manifest.shell_backend,
+                },
             )
         else:
             self._log_lifecycle("started", {})
             event = self.record(
                 SESSION_STARTED,
-                payload={"sources": dict(self.manifest.sources)},
+                payload={
+                    "sources": dict(self.manifest.sources),
+                    "shell_backend": self.manifest.shell_backend,
+                },
             )
         self.save()
         return event
@@ -356,6 +377,12 @@ class Session:
         return event
 
     def set_shell_output(self, enabled: bool) -> Event:
+        if enabled:
+            raise ValueError(
+                shell_output_unavailable_reason(
+                    self.manifest.shell_backend
+                )
+            )
         self.manifest.shell_output = enabled
         self.manifest.toggles.append(
             {"source": "shell_output", "enabled": enabled, "at": utc_now()}
@@ -368,6 +395,15 @@ class Session:
         self.save()
         self._sync_state()
         return event
+
+    def set_shell_backend(self, backend: str) -> None:
+        """Persist the backend selected for the next active interval."""
+
+        if backend not in SHELL_BACKENDS:
+            raise ValueError(f"Unknown shell backend: {backend}")
+        self.manifest.shell_backend = backend
+        self.save()
+        self._sync_state()
 
     def _sync_state(self) -> None:
         """Push this session's toggles into the shared state and sentinel.
@@ -385,6 +421,7 @@ class Session:
                 return
             state.sources = dict(self.manifest.sources)
             state.shell_output = self.manifest.shell_output
+            state.shell_backend = self.manifest.shell_backend
 
     # -------------------------------------------------------------- user input
     def add_note(
@@ -489,16 +526,26 @@ class SessionStore:
         analyst: str = "unknown-analyst",
         workflow_family: str = "",
         tags: list[str] | None = None,
+        shell_backend: str = SHELL_BACKEND_SPOOL,
     ) -> tuple[Session, Session | None]:
         """Create and activate a session, preempting any currently active one."""
 
         session = Session.create(
-            title=title, analyst=analyst, workflow_family=workflow_family, tags=tags
+            title=title,
+            analyst=analyst,
+            workflow_family=workflow_family,
+            tags=tags,
+            shell_backend=shell_backend,
         )
         preempted = self._activate(session, resumed=False)
         return session, preempted
 
-    def resume(self, session_id: str | None = None) -> tuple[Session, Session | None]:
+    def resume(
+        self,
+        session_id: str | None = None,
+        *,
+        shell_backend: str | None = None,
+    ) -> tuple[Session, Session | None]:
         """Reactivate a paused session, preempting any currently active one."""
 
         session = self.resolve(session_id)
@@ -506,6 +553,8 @@ class SessionStore:
             raise ValueError(
                 f"Session {session.session_id} is stopped and cannot be resumed."
             )
+        if shell_backend is not None:
+            session.set_shell_backend(shell_backend)
         gap_ms = None
         if session.manifest._last_transition:
             gap_ms = int((time.time() - session.manifest._last_transition) * 1000)
@@ -534,6 +583,7 @@ class SessionStore:
             state.active_session = session.session_id
             state.sources = dict(session.manifest.sources)
             state.shell_output = session.manifest.shell_output
+            state.shell_backend = session.manifest.shell_backend
             if session.session_id in state.paused:
                 state.paused.remove(session.session_id)
 

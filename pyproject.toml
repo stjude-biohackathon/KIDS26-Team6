@@ -37,6 +37,7 @@ dependencies = [
   # opencv-python-headless` resolves it.
   "opencv-python-headless>=4.8",
   "psutil>=5.9",                   # process names for window attribution
+  "rich>=15.0",                    # readable terminal status tables
 ]
 
 [project.optional-dependencies]

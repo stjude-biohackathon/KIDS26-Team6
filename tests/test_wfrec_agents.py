@@ -4,16 +4,78 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Collection, Iterator
+from datetime import timedelta
+from typing import Any
 
 from wfrec.collectors.agents import (
     AgentCollector,
     ClaudeCodeAdapter,
     CursorAdapter,
+    DEVSQL_CODEX_COLUMNS,
+    DevSQLCodexAdapter,
     Turn,
     _flatten_content,
     _iso,
     attach_transcript,
 )
+from wfrec.collectors.shell import (
+    active_interval_start,
+    datetime_to_iso,
+    parse_devsql_timestamp,
+)
+from wfrec.devsql import DevSQLClient, DevSQLUnavailableError
+from wfrec.events import AGENT_MESSAGE
+
+
+class FakeDevSQLClient:
+    """Expose deterministic Codex rows while retaining submitted SQL."""
+
+    def __init__(self, rows: list[dict[str, Any]]) -> None:
+        self.rows = rows
+        self.queries: list[str] = []
+
+    def query(
+        self,
+        sql: str,
+        *,
+        required_columns: Collection[str] = (),
+    ) -> list[dict[str, Any]]:
+        self.queries.append(sql)
+        if sql.endswith("LIMIT 0"):
+            return []
+        assert tuple(required_columns) == DEVSQL_CODEX_COLUMNS
+        return [dict(row) for row in self.rows]
+
+
+def _codex_row(
+    timestamp: str,
+    *,
+    record_index: int = 1,
+    role: str = "user",
+    text: str = "inspect the samples",
+) -> dict[str, Any]:
+    return {
+        "thread_id": "thread-1",
+        "record_index": record_index,
+        "timestamp": timestamp,
+        "role": role,
+        "text": text,
+        "parent_thread_id": "parent-1",
+        "parent_record_index": 8,
+        "source_kind": "codex-cli",
+        "agent_path": "agents/reviewer",
+        "agent_role": "reviewer",
+        "originator": "codex",
+        "cwd": "/work/project",
+        "git_branch": "feature/capture",
+    }
+
+
+def _after(timestamp: str, seconds: int) -> str:
+    moment = parse_devsql_timestamp(timestamp)
+    assert moment is not None
+    return datetime_to_iso(moment + timedelta(seconds=seconds))
 
 
 def test_flatten_handles_every_content_shape():
@@ -124,6 +186,161 @@ def test_cursor_adapter_opens_sqlite_read_only(tmp_path):
         read_only.close()
 
 
+def test_devsql_codex_adapter_joins_normalized_message_metadata(
+    store: Any,
+) -> None:
+    session, _ = store.start(title="A", analyst="a")
+    interval_start = active_interval_start(session)
+    client = FakeDevSQLClient(
+        [
+            _codex_row(interval_start, record_index=4),
+            _codex_row(
+                _after(interval_start, 1),
+                record_index=5,
+                role="assistant",
+                text="The sample sheet is valid.",
+            ),
+        ]
+    )
+    adapter = DevSQLCodexAdapter(client, since=interval_start)
+
+    assert adapter.available() is True
+    turns = list(adapter.turns(0.0))
+
+    assert [turn.role for turn in turns] == ["user", "assistant"]
+    assert turns[0].key == "codex:thread-1:4"
+    assert turns[0].cwd == "/work/project"
+    assert turns[0].meta == {
+        "provider": "devsql",
+        "session_id": "thread-1",
+        "source_id": "4",
+        "parent_session_id": "parent-1",
+        "parent_record_index": 8,
+        "source_kind": "codex-cli",
+        "agent_id": "agents/reviewer",
+        "agent_role": "reviewer",
+        "originator": "codex",
+        "git_branch": "feature/capture",
+    }
+    assert "JOIN codex_threads AS thread" in client.queries[0]
+    assert client.queries[0].endswith("LIMIT 0")
+    assert "message.is_canonical = 1" in client.queries[1]
+    assert "message.role IN ('user', 'assistant')" in client.queries[1]
+    assert "command_events" not in client.queries[1]
+
+
+def test_collector_captures_claude_and_codex_together(
+    store: Any, monkeypatch: Any
+) -> None:
+    session, _ = store.start(title="A", analyst="a")
+    interval_start = active_interval_start(session)
+    client = FakeDevSQLClient([_codex_row(interval_start)])
+
+    monkeypatch.setattr(ClaudeCodeAdapter, "available", lambda self: True)
+    monkeypatch.setattr(ClaudeCodeAdapter, "seek_to_end", lambda self: None)
+
+    def claude_turns(
+        self: ClaudeCodeAdapter, since: float
+    ) -> Iterator[Turn]:
+        yield Turn(
+            "claude-code",
+            "assistant",
+            "Claude is still captured.",
+            key="claude:a1",
+        )
+
+    monkeypatch.setattr(ClaudeCodeAdapter, "turns", claude_turns)
+    collector = AgentCollector(session, devsql_client=client)
+
+    status = collector.probe()
+    collector._run_once()
+
+    messages = [
+        event
+        for event in session.writer.read()
+        if event.type == AGENT_MESSAGE
+    ]
+    assert status.backend.startswith("devsql-codex,claude-code")
+    assert {event.payload["tool"] for event in messages} == {
+        "claude-code",
+        "codex",
+    }
+
+
+def test_devsql_probe_failure_keeps_direct_claude(
+    store: Any, monkeypatch: Any
+) -> None:
+    session, _ = store.start(title="A", analyst="a")
+    client = FakeDevSQLClient([])
+
+    def fail_query(
+        sql: str, *, required_columns: Collection[str] = ()
+    ) -> list[dict[str, Any]]:
+        raise RuntimeError("schema changed")
+
+    client.query = fail_query
+    monkeypatch.setattr(ClaudeCodeAdapter, "available", lambda self: True)
+    monkeypatch.setattr(ClaudeCodeAdapter, "seek_to_end", lambda self: None)
+
+    status = AgentCollector(session, devsql_client=client).probe()
+
+    assert status.available is True
+    assert "claude-code" in status.backend.split(",")
+    assert "devsql-codex" not in status.backend.split(",")
+    assert status.extra["detected"]["devsql-codex"] is False
+
+
+def test_devsql_codex_dedupes_across_polls_and_restart(
+    store: Any,
+) -> None:
+    session, _ = store.start(title="A", analyst="a")
+    interval_start = active_interval_start(session)
+    event_time = _after(interval_start, 5)
+    client = FakeDevSQLClient([_codex_row(event_time)])
+
+    first = AgentCollector(session)
+    first._adapters = [DevSQLCodexAdapter(client, since=interval_start)]
+    first._run_once()
+    first._run_once()
+
+    restarted = AgentCollector(session)
+    restarted._adapters = [
+        DevSQLCodexAdapter(
+            client,
+            since=interval_start,
+            existing_events=session.writer.read(),
+        )
+    ]
+    restarted._run_once()
+
+    messages = [
+        event
+        for event in session.writer.read()
+        if event.type == AGENT_MESSAGE
+    ]
+    assert len(messages) == 1
+    assert messages[0].payload["capture_id"] == "codex:thread-1:1"
+    assert event_time[:19] in client.queries[-1]
+
+
+def test_devsql_codex_excludes_messages_before_active_interval(
+    store: Any,
+) -> None:
+    session, _ = store.start(title="A", analyst="a")
+    interval_start = active_interval_start(session)
+    client = FakeDevSQLClient(
+        [
+            _codex_row(_after(interval_start, -1), record_index=1),
+            _codex_row(_after(interval_start, 1), record_index=2),
+        ]
+    )
+    adapter = DevSQLCodexAdapter(client, since=interval_start)
+
+    turns = list(adapter.turns(0.0))
+
+    assert [turn.key for turn in turns] == ["codex:thread-1:2"]
+
+
 def test_one_failing_adapter_does_not_stop_the_others(store):
     session, _ = store.start(title="A", analyst="a")
     collector = AgentCollector(session)
@@ -164,6 +381,7 @@ def test_one_failing_adapter_does_not_stop_the_others(store):
     # The broken adapter is quarantined, not retried forever.
     collector._run_once()
     assert len([e for e in session.writer.read() if e.type == "agent.adapter.failed"]) == 1
+    assert collector.status.extra["failed"] == ["broken"]
 
 
 def test_turns_are_deduped_and_redacted(store):
@@ -211,6 +429,10 @@ def test_attach_transcript_handles_jsonl_json_and_plain_text(store, tmp_path):
 def test_no_agent_tools_degrades_with_manual_hint(store, monkeypatch, tmp_path):
     session, _ = store.start(title="A", analyst="a")
     monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path / "empty")
-    status = AgentCollector(session).safe_probe()
+
+    def missing_devsql() -> DevSQLClient:
+        raise DevSQLUnavailableError("DevSQL executable is not available.")
+
+    status = AgentCollector(session, devsql_discover=missing_devsql).safe_probe()
     assert status.available is False
     assert "attach-transcript" in status.detail

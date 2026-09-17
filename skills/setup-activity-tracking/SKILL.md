@@ -1,10 +1,10 @@
 ---
 name: setup-activity-tracking
-description: Set up, verify, and safely remove local DevSQL and Atuin activity tracking for AutoCAB on Linux. Use when preparing a workstation for local Claude Code or Codex history detection, checking ActivityWatch or VS Code watcher availability, or uninstalling only artifacts previously installed by AutoCAB.
+description: Set up, verify, and safely remove local DevSQL and Atuin activity tracking for AutoCAB on Linux or macOS. Use when preparing a workstation for local Claude Code or Codex history detection, checking ActivityWatch or VS Code watcher availability, or uninstalling only artifacts previously installed by AutoCAB.
 license: MIT
 metadata:
   author: AutoCAB Team
-  version: "0.3.0"
+  version: "0.4.1"
   status: experimental
   last_reviewed: "2026-09-16"
 allowed-tools: shell python
@@ -14,9 +14,9 @@ allowed-tools: shell python
 
 ## Purpose
 
-Prepare a Linux workstation for local AutoCAB activity evidence using DevSQL and
-Atuin. Keep dependency setup separate from activity collection, workflow
-inference, and skill generation.
+Prepare a Linux or macOS workstation for local AutoCAB activity evidence using
+DevSQL and Atuin. Keep dependency setup separate from activity collection,
+workflow inference, and skill generation.
 
 ## When to Use
 
@@ -31,16 +31,16 @@ Use this skill when the user asks to:
 
 Do not use this skill to:
 
-- install dependencies on a non-Linux host,
+- install dependencies outside Linux or macOS,
 - create an Atuin account, synchronize history, or import existing history,
 - install ActivityWatch or its VS Code watcher, or
 - collect activity, infer workflows, or promote generated skill proposals.
 
 ## Compatibility
 
-Installation requires Linux, Bash, Python 3.10 or newer, `curl`, `tar`, and
-`xz`. Network access is required only to download DevSQL and Atuin. Verification
-and uninstall are local.
+Installation supports Linux and macOS and requires Bash, Python 3.10 or newer,
+`curl`, `tar`, and `xz`. Network access is required only to download DevSQL and
+Atuin. Verification and uninstall are local.
 
 ## Safety Boundaries
 
@@ -50,8 +50,8 @@ and uninstall are local.
 - Treat commands, local paths, and activity records as sensitive. Report status
   without printing queried commands, history contents, or local paths.
 - Do not install Atuin hooks for Claude Code, Codex, or other agents
-  automatically. DevSQL already reads native Claude Code and Codex histories,
-  so hooks can create duplicate command records.
+  automatically. `wfrec` reads Codex through DevSQL and Claude Code directly,
+  so Atuin hooks can create duplicate records.
 - Detect ActivityWatch through its local service only. Do not install it.
 
 ## Workflow
@@ -135,7 +135,7 @@ approval.
 ## Optional Agent Hooks
 
 Only discuss these commands when the user explicitly wants agent-attributed
-Atuin records and accepts possible duplication with DevSQL's native histories:
+Atuin records and accepts possible duplication with `wfrec` agent capture:
 
 ```bash
 atuin hook install claude-code
@@ -156,8 +156,8 @@ Before finishing, confirm that:
 
 ## Failure and Escalation
 
-- On a non-Linux host, report that installation is unsupported. The verifier may
-  still report local status.
+- Outside Linux or macOS, report that installation is unsupported. The verifier
+  may still report local status.
 - If a required command is missing, stop and report the smallest installation
   command provided by the installer.
 - If an uninstall artifact changed after installation or falls outside the

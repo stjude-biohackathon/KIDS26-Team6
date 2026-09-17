@@ -1,10 +1,9 @@
-"""Agent/chat transcript collector: Claude Code, Copilot Chat, Cursor.
+"""Agent/chat transcript collector: Codex, Claude Code, Copilot Chat, Cursor.
 
-Every adapter here reads an undocumented, version-drifting on-disk format, so
-the module's organising principle is **failure isolation**: each adapter is
-wrapped so that a schema change emits ``agent.adapter.failed`` and the other
-adapters keep working. A recorder that dies because Cursor shipped a release is
-useless.
+Codex uses DevSQL's normalized tables. The direct adapters read undocumented,
+version-drifting on-disk formats. The module's organizing principle is failure
+isolation: a schema change emits ``agent.adapter.failed`` while the other
+adapters keep working.
 
 There is also always a manual path -- ``wfrec attach-transcript`` -- which works
 regardless of format drift and is what guarantees a demo can proceed.
@@ -17,16 +16,42 @@ import os
 import sqlite3
 import sys
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterator
+from typing import TYPE_CHECKING, Any, Iterator
 
+from ..devsql import DevSQLClient
 from ..events import AGENT_ADAPTER_FAILED, AGENT_MESSAGE, Event
 from ..redaction import shared as shared_redactor
 from .base import Collector, CollectorStatus, Degraded
+from .shell import (
+    active_interval_start,
+    datetime_to_iso,
+    parse_devsql_timestamp,
+)
+
+if TYPE_CHECKING:
+    from ..session import Session
 
 MAX_TEXT_CHARS = 8000
+DEVSQL_CODEX_COLUMNS = (
+    "thread_id",
+    "record_index",
+    "timestamp",
+    "role",
+    "text",
+    "parent_thread_id",
+    "parent_record_index",
+    "source_kind",
+    "agent_path",
+    "agent_role",
+    "originator",
+    "cwd",
+    "git_branch",
+)
+DevSQLDiscoverer = Callable[[], DevSQLClient]
 
 
 def _iso(value: Any) -> str | None:
@@ -117,6 +142,146 @@ class BaseAdapter:
 
     def turns(self, since: float) -> Iterator[Turn]:
         raise NotImplementedError
+
+
+class DevSQLCodexAdapter(BaseAdapter):
+    """Codex messages exposed through DevSQL's normalized tables."""
+
+    name = "devsql-codex"
+
+    def __init__(
+        self,
+        client: DevSQLClient,
+        *,
+        since: str,
+        existing_events: Iterable[Event] = (),
+    ) -> None:
+        interval_start = parse_devsql_timestamp(since)
+        if interval_start is None:
+            raise ValueError(
+                "DevSQL interval start must be a timezone-aware timestamp."
+            )
+        self.client = client
+        self.interval_start = interval_start
+        self._query_start = interval_start
+        self._restore_query_start(existing_events)
+
+    def available(self) -> bool:
+        """Validate the joined schema without reading transcript content."""
+
+        self.client.query(f"{self._select()} LIMIT 0")
+        return True
+
+    def turns(self, since: float) -> Iterator[Turn]:
+        """Return canonical Codex turns from the active recording interval."""
+
+        query_second = self._query_start.strftime("%Y-%m-%dT%H:%M:%S")
+        sql = (
+            f"{self._select()} "
+            "WHERE message.is_canonical = 1 "
+            "AND message.role IN ('user', 'assistant') "
+            f"AND substr(message.timestamp, 1, 19) >= '{query_second}' "
+            "ORDER BY message.timestamp, message.thread_id, "
+            "message.record_index"
+        )
+        rows = self.client.query(sql, required_columns=DEVSQL_CODEX_COLUMNS)
+
+        latest = self._query_start
+        for row in rows:
+            occurred_at = parse_devsql_timestamp(row["timestamp"])
+            if occurred_at is None or occurred_at < self._query_start:
+                continue
+            latest = max(latest, occurred_at)
+            turn = self._convert(row, occurred_at)
+            if turn is not None:
+                yield turn
+        self._query_start = latest
+
+    @staticmethod
+    def _select() -> str:
+        """Build the shared content-free and interval query projection."""
+
+        return (
+            "SELECT "
+            "message.thread_id AS thread_id, "
+            "message.record_index AS record_index, "
+            "message.timestamp AS timestamp, "
+            "message.role AS role, "
+            "message.text AS text, "
+            "thread.parent_thread_id AS parent_thread_id, "
+            "thread.parent_record_index AS parent_record_index, "
+            "thread.source_kind AS source_kind, "
+            "thread.agent_path AS agent_path, "
+            "thread.agent_role AS agent_role, "
+            "thread.originator AS originator, "
+            "thread.cwd AS cwd, "
+            "thread.git_branch AS git_branch "
+            "FROM codex_messages AS message "
+            "JOIN codex_threads AS thread "
+            "ON thread.thread_id = message.thread_id"
+        )
+
+    def _restore_query_start(self, events: Iterable[Event]) -> None:
+        """Resume near the last captured turn after a daemon restart."""
+
+        for event in events:
+            if event.type != AGENT_MESSAGE:
+                continue
+            if event.payload.get("provider") != "devsql":
+                continue
+            capture_id = event.payload.get("capture_id")
+            if not isinstance(capture_id, str) or not capture_id.startswith(
+                "codex:"
+            ):
+                continue
+            occurred_at = parse_devsql_timestamp(event.ts)
+            if occurred_at is not None and occurred_at >= self.interval_start:
+                self._query_start = max(self._query_start, occurred_at)
+
+    @staticmethod
+    def _convert(
+        row: dict[str, Any], occurred_at: datetime
+    ) -> Turn | None:
+        """Normalize one joined row and reject incomplete identities."""
+
+        thread_id = row["thread_id"]
+        record_index = row["record_index"]
+        role = row["role"]
+        text = row["text"]
+        if not isinstance(thread_id, str) or not thread_id:
+            return None
+        if isinstance(record_index, bool):
+            return None
+        try:
+            normalized_index = int(record_index)
+        except (TypeError, ValueError):
+            return None
+        if role not in {"user", "assistant"}:
+            return None
+        if not isinstance(text, str) or not text.strip():
+            return None
+
+        capture_id = f"codex:{thread_id}:{normalized_index}"
+        return Turn(
+            tool="codex",
+            role=role,
+            text=text,
+            ts=datetime_to_iso(occurred_at),
+            cwd=row["cwd"] if isinstance(row["cwd"], str) else None,
+            key=capture_id,
+            meta={
+                "provider": "devsql",
+                "session_id": thread_id,
+                "source_id": str(normalized_index),
+                "parent_session_id": row["parent_thread_id"],
+                "parent_record_index": row["parent_record_index"],
+                "source_kind": row["source_kind"],
+                "agent_id": row["agent_path"],
+                "agent_role": row["agent_role"],
+                "originator": row["originator"],
+                "git_branch": row["git_branch"],
+            },
+        )
 
 
 class ClaudeCodeAdapter(BaseAdapter):
@@ -387,12 +552,29 @@ class AgentCollector(Collector):
     source = "agents"
     interval = 5.0
 
-    def __init__(self, session, since: float | None = None) -> None:
+    def __init__(
+        self,
+        session: "Session",
+        since: float | None = None,
+        *,
+        devsql_client: DevSQLClient | None = None,
+        devsql_discover: DevSQLDiscoverer = DevSQLClient.discover,
+    ) -> None:
         super().__init__(session)
         self._since = since or time.time()
+        self._devsql_client = devsql_client
+        self._devsql_discover = devsql_discover
         self._adapters: list[BaseAdapter] = []
         self._failed: set[str] = set()
-        self._seen_keys: set[str] = set()
+        self._seen_keys = {
+            capture_id
+            for event in session.writer.read()
+            if event.type == AGENT_MESSAGE
+            and isinstance(
+                capture_id := event.payload.get("capture_id"), str
+            )
+            and capture_id
+        }
 
     def probe(self) -> CollectorStatus:
         candidates: list[BaseAdapter] = [
@@ -400,7 +582,23 @@ class AgentCollector(Collector):
             CopilotChatAdapter(),
             CursorAdapter(),
         ]
-        detected: dict[str, bool] = {}
+        detected: dict[str, bool] = {DevSQLCodexAdapter.name: False}
+        try:
+            client = self._devsql_client or self._devsql_discover()
+            candidates.insert(
+                0,
+                DevSQLCodexAdapter(
+                    client,
+                    since=active_interval_start(self.session),
+                    existing_events=self.session.writer.read(),
+                ),
+            )
+        except Exception:
+            # DevSQL is optional for agent capture. Direct adapters must remain
+            # available if discovery or schema validation fails.
+            pass
+
+        self._adapters = []
         for adapter in candidates:
             try:
                 ok = adapter.available()
@@ -419,15 +617,16 @@ class AgentCollector(Collector):
         if not self._adapters:
             raise Degraded(
                 "no-agent-tools-found",
-                "No Claude Code, Copilot Chat or Cursor transcripts found. "
-                "Use `wfrec attach-transcript <file> --tool <name>` to fold one in manually.",
+                "No Codex, Claude Code, Copilot Chat or Cursor transcripts "
+                "found. Use `wfrec attach-transcript <file> --tool <name>` "
+                "to fold one in manually.",
                 fallback="manual-attach",
             )
         return CollectorStatus(
             source=self.source,
             available=True,
             backend=",".join(a.name for a in self._adapters),
-            extra={"detected": detected},
+            extra={"detected": detected, "failed": []},
         )
 
     def _run_once(self) -> None:
@@ -444,6 +643,7 @@ class AgentCollector(Collector):
                 # Isolate the failure: one adapter's schema drift must not stop
                 # the others, and the recorder must say what broke.
                 self._failed.add(adapter.name)
+                self.status.extra["failed"] = sorted(self._failed)
                 events.append(
                     Event(
                         source=self.source,
@@ -480,6 +680,7 @@ class AgentCollector(Collector):
                 "cwd": turn.cwd,
                 "chars": len(turn.text),
                 "truncated": truncated,
+                **({"capture_id": turn.key} if turn.key else {}),
                 **(turn.meta or {}),
             },
             redactions=redacted.findings,

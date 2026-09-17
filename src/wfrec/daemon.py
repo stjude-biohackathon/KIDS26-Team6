@@ -9,6 +9,7 @@ import threading
 from typing import Any
 
 from . import paths
+from .output import summary, warning
 from .recorder import Recorder
 from .state import StateTransaction, clear_api, mark_boot, publish_api, read_api
 
@@ -123,9 +124,14 @@ def run(port: int | None = None, *, open_gui: bool = False) -> int:
         except (ValueError, OSError):  # pragma: no cover - non-main thread
             pass
 
-    print(f"wfrec daemon listening on {url}")
-    print(f"  session folder root: {paths.sessions_dir()}")
-    print(f"  open the UI with:    wfrec gui")
+    summary(
+        "wfrec daemon",
+        [
+            ("Listening", url),
+            ("Sessions", paths.sessions_dir()),
+            ("Open UI", "wfrec gui"),
+        ],
+    )
 
     if open_gui:
         threading.Thread(target=_launch_gui, args=(url, token), daemon=True).start()
@@ -170,4 +176,4 @@ def launch_gui(url: str, token: str) -> None:  # pragma: no cover - UI
 
         webbrowser.open(target)
     except Exception:
-        print(f"Open this URL in a browser: {target}")
+        warning(f"Open this URL in a browser: {target}")

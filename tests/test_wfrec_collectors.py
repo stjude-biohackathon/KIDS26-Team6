@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -18,7 +19,14 @@ from wfrec.collectors.files import (
     run_git,
 )
 from wfrec.collectors.screen import CHANGE_THRESHOLD, changed_fraction, frame_signature
-from wfrec.collectors.shell import ShellCollector, _parse_scontrol, epoch_ms_to_iso
+from wfrec.collectors.shell import (
+    ShellCollector,
+    _parse_scontrol,
+    active_interval_start,
+    epoch_ms_to_iso,
+)
+from wfrec.devsql import DevSQLClient
+from wfrec.session import SessionStore
 
 
 # --------------------------------------------------------------------- shell
@@ -83,6 +91,109 @@ def test_shell_commands_are_redacted(store):
     assert set(event.redactions) >= {"email", "sj_id"}
 
 
+def test_devsql_ingests_atuin_claude_and_codex_without_duplicates(
+    store: SessionStore,
+) -> None:
+    session, _ = store.start(title="A", analyst="a")
+    timestamp = active_interval_start(session)
+    rows = [
+        _devsql_command_row(
+            source="atuin",
+            channel="shell",
+            source_id="atuin-1",
+            session_id="shell-session",
+            timestamp=timestamp,
+            command="cat /data/SJ001234.vcf",
+        ),
+        _devsql_command_row(
+            source="claude",
+            channel="agent_tool",
+            source_id="shared-id",
+            session_id="agent-session",
+            timestamp=timestamp,
+            command="pytest tests/test_pipeline.py",
+        ),
+        _devsql_command_row(
+            source="codex",
+            channel="agent_tool",
+            source_id="shared-id",
+            session_id="agent-session",
+            timestamp=timestamp,
+            command="ruff check src",
+        ),
+    ]
+    queries: list[str] = []
+    client = _devsql_client(rows, queries=queries)
+    collector = ShellCollector(session, devsql_client=client)
+    collector.safe_probe()
+    collector._run_once()
+    collector._run_once()
+
+    events = [
+        event
+        for event in session.writer.read()
+        if event.type == "shell.command.completed"
+    ]
+    assert [event.payload["source"] for event in events] == [
+        "atuin",
+        "claude",
+        "codex",
+    ]
+    assert events[1].payload["source_id"] == events[2].payload["source_id"]
+    assert events[1].payload["channel"] == "agent_tool"
+    assert events[2].payload["channel"] == "agent_tool"
+    assert "SJ001234" not in events[0].payload["command"]
+    assert "sj_id" in events[0].redactions
+    assert len(queries) == 2
+    assert all(
+        "source = 'atuin' OR channel = 'agent_tool'" in sql
+        for sql in queries
+    )
+
+
+def test_devsql_rejects_rows_outside_the_safe_capture_scope(
+    store: SessionStore,
+) -> None:
+    session, _ = store.start(title="A", analyst="a")
+    rows = [
+        _devsql_command_row(
+            source="zsh",
+            channel="shell",
+            source_id="zsh-1",
+            session_id="shell-session",
+            timestamp=active_interval_start(session),
+            command="excluded zsh command",
+        ),
+        _devsql_command_row(
+            source="atuin",
+            channel="shell",
+            source_id="old-1",
+            session_id="shell-session",
+            timestamp="2020-01-01T00:00:00.000Z",
+            command="excluded old command",
+        ),
+        _devsql_command_row(
+            source="codex",
+            channel="agent_tool",
+            source_id="",
+            session_id="agent-session",
+            timestamp=active_interval_start(session),
+            command="excluded unstable command",
+        ),
+    ]
+    client = _devsql_client(rows)
+    collector = ShellCollector(session, devsql_client=client)
+    collector.safe_probe()
+    collector._run_once()
+
+    events = [
+        event
+        for event in session.writer.read()
+        if event.type == "shell.command.completed"
+    ]
+    assert events == []
+
+
 def test_remote_spool_keeps_its_own_hostname(store, tmp_path):
     """A pulled-back remote spool must not inherit the laptop's hostname."""
 
@@ -131,6 +242,68 @@ def test_epoch_conversion_rejects_garbage():
     assert epoch_ms_to_iso("not-a-number") is None
     assert epoch_ms_to_iso("0") is None
     assert epoch_ms_to_iso("1789578668017").endswith("Z")
+
+
+def _devsql_command_row(
+    *,
+    source: str,
+    channel: str,
+    source_id: str,
+    session_id: str,
+    timestamp: str,
+    command: str,
+) -> dict[str, object]:
+    """Build one complete normalized row without reading local history."""
+
+    return {
+        "source": source,
+        "session_id": session_id,
+        "source_id": source_id,
+        "timestamp": timestamp,
+        "duration_ms": 25,
+        "command": command,
+        "cwd": "/work/project",
+        "exit_code": 0,
+        "hostname": "workstation",
+        "channel": channel,
+        "actor": "agent" if channel == "agent_tool" else None,
+        "provenance_quality": "explicit",
+        "provenance_reason": "test fixture",
+        "agent_id": source if channel == "agent_tool" else None,
+        "agent_role": "coding" if channel == "agent_tool" else None,
+        "originator": "user" if channel == "agent_tool" else None,
+        "tool_name": "shell" if channel == "agent_tool" else None,
+    }
+
+
+def _devsql_client(
+    rows: list[dict[str, object]],
+    *,
+    queries: list[str] | None = None,
+) -> DevSQLClient:
+    """Return a client backed by deterministic normalized rows."""
+
+    def runner(
+        command: list[str],
+        **options: object,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[-1] == "--version":
+            return subprocess.CompletedProcess(
+                args=command,
+                returncode=0,
+                stdout="devsql 0.5.1\n",
+                stderr="",
+            )
+        if queries is not None:
+            queries.append(command[-1])
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout=json.dumps(rows),
+            stderr="",
+        )
+
+    return DevSQLClient(Path("/test/devsql"), runner=runner)
 
 
 # --------------------------------------------------------------------- files

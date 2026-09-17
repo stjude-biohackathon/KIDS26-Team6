@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from wfrec.api import create_app
 from wfrec.cli import main
 from wfrec.recorder import NoActiveSession, Recorder
-from wfrec.session import Session
+from wfrec.session import Session, SessionStore
 
 
 @pytest.fixture()
@@ -64,6 +64,19 @@ def test_toggle_source_over_http(client):
     assert result["sources"]["screen"] is True
 
 
+def test_shell_output_endpoint_reports_unsupported_backend(client):
+    client.post("/sessions/start", json={"title": "A"})
+
+    response = client.post("/shell-output", json={"enabled": True})
+    status = client.get("/status").json()
+
+    assert response.status_code == 400
+    assert "hook-spool" in response.json()["detail"]
+    assert status["shell_output"] is False
+    assert status["shell_output_available"] is False
+    assert "stdout or stderr" in status["shell_output_reason"]
+
+
 def test_unknown_source_is_a_400(client):
     client.post("/sessions/start", json={"title": "A"})
     response = client.post("/sources/telepathy", json={"enabled": True})
@@ -111,6 +124,17 @@ def test_ui_injects_the_token_not_a_placeholder(client):
     body = client.get("/").text
     assert "@WFREC_TOKEN@" not in body
     assert "test-token" in body
+    assert "Codex, Claude Code" in body
+    assert "providers:" in body
+    assert "Recent Events Log" in body
+    assert "Latest ${events.length} of ${total} events" in body
+    assert "'agent.message':'Agent message'" in body
+    assert "Start or resume a session to see activity." in body
+    assert "[...events].reverse()" in body
+    assert "event-source" not in body
+    assert "event-more" in body
+    assert "aria-expanded" in body
+    assert "EXPANDED_EVENTS" in body
 
 
 def test_export_endpoint_writes_files(client):
@@ -154,8 +178,23 @@ def test_cli_source_accepts_on_off_words(wfrec_home, capsys):
     main(["start", "--title", "A", "--no-daemon"])
     capsys.readouterr()
     assert main(["source", "shell", "off"]) == 0
-    assert "shell" not in capsys.readouterr().out.split("capturing:")[1]
+    output = capsys.readouterr().out
+    assert "Updated capture sources" in output
+    assert "shell" not in output
     assert main(["source", "shell", "on"]) == 0
+
+
+def test_cli_shell_output_reports_unsupported_backend(wfrec_home, capsys):
+    main(["start", "--title", "A", "--no-daemon"])
+    capsys.readouterr()
+
+    assert main(["shell-output", "on"]) == 1
+    assert "unavailable with hook-spool" in capsys.readouterr().err
+
+    assert main(["shell-output", "off"]) == 0
+    output = capsys.readouterr().out
+    assert "Shell output capture" in output
+    assert "Status" in output and "Off" in output
 
 
 def test_cli_rejects_bad_toggle_word(wfrec_home):
@@ -176,6 +215,75 @@ def test_cli_events_filters_by_source(wfrec_home, capsys):
     out = capsys.readouterr().out
     assert "marker.user" in out
     assert "session.created" not in out
+
+
+def test_cli_events_filters_and_labels_agent_messages(wfrec_home, capsys):
+    from wfrec.events import Event
+
+    main(["start", "--title", "Agent filters", "--no-daemon"])
+    session = SessionStore().resolve(None)
+    client_session_id = session.session_id
+    session.writer.append(
+        Event(
+            source="agents",
+            type="agent.message",
+            payload={"tool": "codex", "role": "user", "text": "user prompt"},
+        )
+    )
+    session.writer.append(
+        Event(
+            source="agents",
+            type="agent.message",
+            payload={
+                "tool": "claude-code",
+                "role": "assistant",
+                "text": "assistant response",
+            },
+        )
+    )
+    capsys.readouterr()
+
+    assert main(["events", "--role", "USER", "--tool", "CODEX"]) == 0
+    output = capsys.readouterr().out
+    assert "agent.message [codex/user]" in output
+    assert "user prompt" in output
+    assert "assistant response" not in output
+
+    assert main(["--json", "events", "--role", "user"]) == 0
+    events = json.loads(capsys.readouterr().out)
+    assert events[0]["type"] == "agent.message"
+    assert events[0]["payload"]["role"] == "user"
+    assert client_session_id == events[0]["session"]
+
+
+def test_cli_lists_sessions_and_events_in_tables(wfrec_home, capsys):
+    main(["start", "--title", "Table test", "--analyst", "tester", "--no-daemon"])
+    capsys.readouterr()
+
+    assert main(["sessions"]) == 0
+    sessions_output = capsys.readouterr().out
+    assert "Sessions" in sessions_output
+    assert all(
+        heading in sessions_output
+        for heading in ("Session", "Status", "Analyst", "Title")
+    )
+    assert "Table test" in sessions_output
+
+    assert main(["events"]) == 0
+    events_output = capsys.readouterr().out
+    assert "Timeline events" in events_output
+    assert all(
+        heading in events_output
+        for heading in ("Seq", "Time", "Type", "Summary")
+    )
+
+
+def test_cli_renders_user_text_literally(wfrec_home, capsys):
+    title = "[bold]literal title[/bold]"
+
+    assert main(["start", "--title", title, "--no-daemon"]) == 0
+
+    assert title in capsys.readouterr().out
 
 
 def test_cli_hooks_install_is_idempotent(wfrec_home, tmp_path, monkeypatch, capsys):
@@ -201,4 +309,8 @@ def test_cli_hooks_install_is_idempotent(wfrec_home, tmp_path, monkeypatch, caps
 def test_cli_doctor_renders(wfrec_home, capsys):
     assert main(["doctor"]) == 0
     out = capsys.readouterr().out
-    assert "sources:" in out and "shell hooks:" in out
+    assert "wfrec 0.1.0" in out
+    assert "System" in out
+    assert "Sources" in out
+    assert "Shell hooks" in out
+    assert "Status" in out

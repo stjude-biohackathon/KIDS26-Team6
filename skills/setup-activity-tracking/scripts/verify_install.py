@@ -24,6 +24,7 @@ ACTIVITYWATCH_BUCKETS_URL = "http://127.0.0.1:5600/api/0/buckets/"
 # A first DevSQL query may need to build its local Codex history index.
 COMMAND_TIMEOUT_SECONDS = 45
 HTTP_TIMEOUT_SECONDS = 3
+SUPPORTED_PLATFORMS = {"Darwin", "Linux"}
 LOG_FORMAT = (
     "%(color)s[%(levelname)s | %(name)s] "
     "[%(asctime)s | %(module)s - line %(lineno)d]:%(end_color)s %(message)s"
@@ -267,6 +268,7 @@ def collect_results() -> list[CheckResult]:
     """Run all local checks in display order."""
 
     home_directory = Path.home()
+    platform_name = platform.system()
     devsql_path = find_binary("devsql", home_directory / ".cargo/bin/devsql")
     atuin_path = find_binary("atuin", home_directory / ".atuin/bin/atuin")
     activitywatch_buckets = fetch_activitywatch_buckets()
@@ -274,9 +276,9 @@ def collect_results() -> list[CheckResult]:
 
     results = [
         status_result(
-            platform.system() == "Linux",
-            "Linux detected",
-            "Linux not detected",
+            platform_name in SUPPORTED_PLATFORMS,
+            f"Supported platform detected ({platform_name})",
+            f"Unsupported platform detected ({platform_name})",
             required=True,
         ),
         status_result(

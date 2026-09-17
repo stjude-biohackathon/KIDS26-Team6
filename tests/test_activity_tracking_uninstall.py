@@ -3,6 +3,8 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
 
 REPOSITORY_ROOT = Path(__file__).parents[1]
 UNINSTALLER = (
@@ -114,7 +116,11 @@ def write_executable(path: Path, content: str) -> None:
     path.chmod(0o755)
 
 
-def test_installer_records_artifacts_for_bash_uninstall(tmp_path: Path) -> None:
+@pytest.mark.parametrize("platform_name", ["Linux", "Darwin"])
+def test_installer_records_artifacts_for_bash_uninstall(
+    tmp_path: Path,
+    platform_name: str,
+) -> None:
     tools_directory = tmp_path / "test-tools"
     tools_directory.mkdir()
     devsql_installer = tools_directory / "fake-devsql-installer.sh"
@@ -139,7 +145,10 @@ chmod 0755 "$HOME/.atuin/bin/atuin"
 printf '{}\n' > "$XDG_CONFIG_HOME/atuin/atuin-receipt.json"
 """,
     )
-    write_executable(tools_directory / "uname", "#!/bin/bash\nprintf 'Linux\n'\n")
+    write_executable(
+        tools_directory / "uname",
+        f"#!/bin/bash\nprintf '{platform_name}\\n'\n",
+    )
     write_executable(tools_directory / "xz", "#!/bin/bash\nexit 0\n")
     write_executable(
         tools_directory / "curl",
