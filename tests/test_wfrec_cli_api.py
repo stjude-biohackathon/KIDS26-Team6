@@ -182,6 +182,7 @@ def test_ui_injects_the_token_not_a_placeholder(client):
     assert "'Session Paused'" in body
     assert 'id="pause-dialog"' in body
     assert '<label for="pause-reason">Pause reason (optional)</label>' in body
+    assert "Optionally record why the session is being paused." not in body
     assert "dialog.showModal()" in body
     assert "function closePauseDialog()" in body
     assert "prompt(" not in body
