@@ -2,14 +2,33 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from uuid import UUID
+
 import pytest
 
-from wfrec.session import STATUS_ACTIVE, STATUS_PAUSED, STATUS_STOPPED, Session, SessionNotFound
+from wfrec.session import (
+    STATUS_ACTIVE,
+    STATUS_PAUSED,
+    STATUS_STOPPED,
+    Session,
+    SessionNotFound,
+    new_session_id,
+)
 from wfrec.state import RecorderState, read_sentinel, sentinel_enables
 
 
 def _types(session: Session) -> list[str]:
     return [event.type for event in Session.load(session.session_id).writer.read()]
+
+
+def test_session_id_combines_sortable_timestamp_and_uuid4():
+    session_id = new_session_id()
+    timestamp, suffix = session_id.rsplit("_", 1)
+
+    datetime.strptime(timestamp, "%Y-%m-%dT%H-%M-%S")
+    assert len(suffix) == 32
+    assert UUID(hex=suffix).version == 4
 
 
 def test_start_creates_folder_manifest_and_timeline(store, wfrec_home):

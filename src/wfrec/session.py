@@ -14,13 +14,12 @@ session they meant.
 from __future__ import annotations
 
 import json
-import random
-import string
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from . import SOURCES, paths
 from .events import (
@@ -55,19 +54,15 @@ STATUS_ACTIVE = "active"
 STATUS_PAUSED = "paused"
 STATUS_STOPPED = "stopped"
 
-_ID_ALPHABET = string.ascii_lowercase + string.digits
-
-
 def new_session_id() -> str:
-    """Sortable, collision-resistant session id, e.g. ``2026-09-16T14-03-22_a3f9c1``.
+    """Return a sortable UTC timestamp with a globally unique UUIDv4 suffix.
 
     Lexical sort equals chronological sort, which makes ``ls`` in the sessions
     directory immediately useful and lets ``--last`` be a cheap ``max()``.
     """
 
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
-    suffix = "".join(random.choices(_ID_ALPHABET, k=6))
-    return f"{stamp}_{suffix}"
+    return f"{stamp}_{uuid4().hex}"
 
 
 @dataclass(slots=True)
