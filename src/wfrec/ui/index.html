@@ -8,10 +8,14 @@
   :root{
     --bg:#11131a; --panel:#181b24; --line:#262b38; --ink:#e7e9ee; --dim:#9aa3b2;
     --on:#3ddc97; --off:#4a5468; --warn:#f0a339; --accent:#6aa6ff; --danger:#c1303e;
+    --chart-1:#6aa6ff; --chart-2:#3ddc97; --chart-3:#f0a339;
+    --chart-4:#b48aff; --chart-5:#f0618f; --chart-6:#5c6579;
   }
   @media (prefers-color-scheme: light){
     :root{ --bg:#f6f7f9; --panel:#fff; --line:#e2e5ea; --ink:#1a1d24; --dim:#5f6775;
-           --on:#137a50; --off:#c3c9d4; --warn:#9a5a00; --danger:#c1303e; }
+           --on:#137a50; --off:#c3c9d4; --warn:#9a5a00; --danger:#c1303e;
+           --chart-1:#2f6fe0; --chart-2:#137a50; --chart-3:#9a5a00;
+           --chart-4:#7a4fd1; --chart-5:#c23d6b; --chart-6:#68707e; }
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -95,6 +99,43 @@
     .grid2{grid-template-columns:1fr}
     .event-row{grid-template-columns:70px minmax(0,1fr)}
   }
+  .dash-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+             flex-wrap:wrap;margin-bottom:14px}
+  .dash-head h2{margin:0}
+  .dash-picker{font-size:12px;color:var(--dim);display:flex;align-items:center;gap:6px}
+  .dash-picker select{font:inherit;background:var(--bg);color:var(--ink);
+                       border:1px solid var(--line);border-radius:7px;padding:5px 8px}
+  .dash-overview{display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+                margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+  .dash-pie{width:120px;height:120px;border-radius:50%;flex:none;background:var(--line)}
+  .dash-pie-legend{display:grid;gap:6px;flex:1;min-width:180px}
+  .dash-pie-legend-row{display:flex;align-items:center;gap:8px;font-size:12px}
+  .dash-pie-swatch{width:10px;height:10px;border-radius:2px;flex:none}
+  .dash-pie-caption{flex-basis:100%;color:var(--dim);font-size:12px;margin:2px 0 0}
+  .dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+              gap:10px;margin-bottom:16px}
+  .dash-stat{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  .dash-stat .n{font:18px/1.2 ui-monospace,Menlo,monospace;font-weight:600}
+  .dash-stat .l{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+  .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .dash-panel{min-width:0}
+  .dash-panel h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+                 color:var(--dim);margin:0 0 8px}
+  .dash-bar-row{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:8px;
+                align-items:center;font-size:12px}
+  .dash-bar-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dash-bar-count{text-align:right;color:var(--dim);font:12px ui-monospace,Menlo,monospace}
+  .dash-bar-track{height:6px;background:var(--line);border-radius:999px;
+                  overflow:hidden;margin:4px 0 8px}
+  .dash-bar-fill{height:100%;background:var(--accent);border-radius:999px}
+  .dash-timeline{display:flex;align-items:flex-end;gap:2px;height:56px}
+  .dash-timeline .bucket{flex:1;background:var(--accent);border-radius:2px 2px 0 0;
+                         min-height:3px;opacity:.85}
+  .dash-timeline .bucket:hover{opacity:1}
+  .dash-timeline-labels{display:flex;justify-content:space-between;margin-top:4px;
+                        font:11px ui-monospace,Menlo,monospace;color:var(--dim)}
+  .dash-empty{color:var(--dim);font-size:12px;margin:0}
+  @media (max-width:640px){ .dash-grid{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -126,6 +167,39 @@
     </div>
     <p class="stat" id="stats"></p>
     <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+  </section>
+
+  <section>
+    <div class="dash-head">
+      <h2 id="dashboard-heading">Dashboard</h2>
+      <div class="dash-picker">
+        <label for="dash-session-select">Session</label>
+        <select id="dash-session-select" onchange="onDashboardSessionChange()">
+          <option value="__current__">Current session</option>
+        </select>
+      </div>
+    </div>
+    <div class="dash-overview" id="dash-overview"></div>
+    <div class="dash-stats" id="dash-stats" role="group" aria-labelledby="dashboard-heading"></div>
+    <div class="dash-grid">
+      <div class="dash-panel">
+        <h3>Activity timeline</h3>
+        <div class="dash-timeline" id="dash-timeline"></div>
+        <div class="dash-timeline-labels" id="dash-timeline-labels"></div>
+      </div>
+      <div class="dash-panel">
+        <h3>Event types</h3>
+        <div id="dash-event-types"></div>
+      </div>
+      <div class="dash-panel">
+        <h3>Top windows / apps</h3>
+        <div id="dash-top-windows"></div>
+      </div>
+      <div class="dash-panel">
+        <h3>Agent activity</h3>
+        <div id="dash-agents"></div>
+      </div>
+    </div>
   </section>
 
   <section>
@@ -710,10 +784,261 @@ function changeDetail(payload){
   return [added, deleted].filter(Boolean).join(' ');
 }
 
+const DASH_TIMELINE_BUCKETS = 24;
+let DASHBOARD_SESSIONS = [];
+let DASHBOARD_MODE = '__current__';
+
+async function loadDashboardSessions(){
+  let sessions;
+  try{ sessions = (await api('/sessions')).sessions || []; }
+  catch(_error){ return; }
+  DASHBOARD_SESSIONS = sessions;
+  const select = document.getElementById('dash-session-select');
+  const previous = select.value;
+  select.replaceChildren();
+  const current = document.createElement('option');
+  current.value = '__current__';
+  current.textContent = 'Current session';
+  select.appendChild(current);
+  for(const session of DASHBOARD_SESSIONS){
+    const opt = document.createElement('option');
+    opt.value = session.id;
+    const label = (session.title || '').trim() || session.id;
+    opt.textContent = `${label} · ${session.status || 'stopped'}`;
+    select.appendChild(opt);
+  }
+  select.value = [...select.options].some(o => o.value === previous) ? previous : '__current__';
+  DASHBOARD_MODE = select.value;
+}
+
+function onDashboardSessionChange(){
+  DASHBOARD_MODE = document.getElementById('dash-session-select').value;
+  renderDashboard();
+}
+
+function dashboardTargetSessionId(){
+  return DASHBOARD_MODE === '__current__'
+    ? (STATE && STATE.session ? STATE.session.id : null)
+    : DASHBOARD_MODE;
+}
+
+async function renderDashboard(){
+  const sessionId = dashboardTargetSessionId();
+  if(!sessionId){
+    dashboardEmpty('Start or resume a session, or pick a past one above.');
+    return;
+  }
+  try{
+    const r = await api(`/sessions/${sessionId}/events?limit=100000&offset=0`);
+    const events = (r.events || []).slice()
+      .sort((a, b) => new Date(a.ts) - new Date(b.ts));
+    dashboardPaint(events);
+  }catch(_error){
+    dashboardEmpty('Could not load events for this session.');
+  }
+}
+
+function dashboardEmpty(message){
+  document.getElementById('dash-overview').replaceChildren();
+  document.getElementById('dash-stats').replaceChildren();
+  document.getElementById('dash-event-types').innerHTML = `<p class="dash-empty"></p>`;
+  document.getElementById('dash-event-types').firstChild.textContent = message;
+  document.getElementById('dash-top-windows').innerHTML = '';
+  document.getElementById('dash-agents').innerHTML = '';
+  document.getElementById('dash-timeline').innerHTML = '';
+  document.getElementById('dash-timeline-labels').innerHTML = '';
+}
+
+const DASH_CATEGORIES = [
+  ['Screen', ['screen.frame', 'screen.ocr', 'screen.window',
+              'screen.recording.started', 'screen.recording.stopped'], 'var(--chart-1)'],
+  ['Agents', ['agent.message', 'agent.adapter.failed'], 'var(--chart-2)'],
+  ['Shell', ['shell.command.completed'], 'var(--chart-3)'],
+  ['Files & Git', ['file.changed', 'file.diff', 'file.flood', 'git.snapshot'], 'var(--chart-4)'],
+  ['Jobs', ['job.submitted', 'job.completed'], 'var(--chart-5)'],
+  ['Notes & Session', [], 'var(--chart-6)']
+];
+
+function dashboardCategoryFor(type){
+  for(const [name, types] of DASH_CATEGORIES){
+    if(types.includes(type)) return name;
+  }
+  return 'Notes & Session';
+}
+
+function dashboardOverview(events){
+  const host = document.getElementById('dash-overview');
+  host.replaceChildren();
+  const counts = new Map(DASH_CATEGORIES.map(([name]) => [name, 0]));
+  for(const event of events){
+    const name = dashboardCategoryFor(event.type);
+    counts.set(name, counts.get(name) + 1);
+  }
+  const total = events.length;
+  const colorFor = name => DASH_CATEGORIES.find(([n]) => n === name)[2];
+  const entries = [...counts.entries()]
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  const pie = document.createElement('div');
+  pie.className = 'dash-pie';
+  let angle = 0;
+  const stops = entries.map(([name, count]) => {
+    const start = angle;
+    angle += (count / total) * 360;
+    return `${colorFor(name)} ${start}deg ${angle}deg`;
+  });
+  if(stops.length) pie.style.background = `conic-gradient(${stops.join(', ')})`;
+
+  const legend = document.createElement('div');
+  legend.className = 'dash-pie-legend';
+  for(const [name, count] of entries){
+    const row = document.createElement('div');
+    row.className = 'dash-pie-legend-row';
+    const swatch = document.createElement('span');
+    swatch.className = 'dash-pie-swatch';
+    swatch.style.background = colorFor(name);
+    const label = document.createElement('span');
+    label.textContent = `${name} — ${count} (${Math.round((count / total) * 100)}%)`;
+    row.append(swatch, label);
+    legend.appendChild(row);
+  }
+
+  const caption = document.createElement('p');
+  caption.className = 'dash-pie-caption';
+  const top = entries[0];
+  caption.textContent = top
+    ? `${total} events in this session — mostly ${top[0].toLowerCase()} activity `
+      + `(${Math.round((top[1] / total) * 100)}%).`
+    : 'No activity yet.';
+
+  host.append(pie, legend, caption);
+}
+
+function dashboardPaint(events){
+  if(!events.length){ dashboardEmpty('No activity yet.'); return; }
+  dashboardOverview(events);
+  dashboardStats(events);
+  dashboardTimeline(events);
+  dashboardBarPanel('dash-event-types', dashboardCountBy(
+    events, e => EVENT_NAMES[e.type] || readableEventName(e.type)
+  ));
+  dashboardBarPanel('dash-top-windows', dashboardCountBy(
+    events.filter(e => e.type === 'screen.window'),
+    e => normalizeText((e.payload||{}).app) || normalizeText((e.payload||{}).window_title) || 'Unknown'
+  ));
+  dashboardBarPanel('dash-agents', dashboardCountBy(
+    events.filter(e => e.type === 'agent.message'),
+    e => TOOL_NAMES[(e.payload||{}).tool] || cleanText((e.payload||{}).tool || 'Agent', 30)
+  ));
+}
+
+function dashboardStats(events){
+  const countType = type => events.filter(e => e.type === type).length;
+  const tiles = [
+    ['Shell commands', countType('shell.command.completed')],
+    ['Jobs submitted', countType('job.submitted')],
+    ['Jobs completed', countType('job.completed')],
+    ['Git snapshots', countType('git.snapshot')],
+    ['File changes', countType('file.changed') + countType('file.diff')],
+    ['Agent messages', countType('agent.message')]
+  ];
+  const host = document.getElementById('dash-stats');
+  host.replaceChildren();
+  for(const [label, count] of tiles){
+    const tile = document.createElement('div');
+    tile.className = 'dash-stat';
+    const n = document.createElement('div'); n.className = 'n'; n.textContent = count;
+    const l = document.createElement('div'); l.className = 'l'; l.textContent = label;
+    tile.append(n, l);
+    host.appendChild(tile);
+  }
+}
+
+function dashboardCountBy(events, keyFn){
+  const counts = new Map();
+  for(const event of events){
+    const key = keyFn(event);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+function dashboardBarPanel(hostId, entries, limit=8){
+  const host = document.getElementById(hostId);
+  host.replaceChildren();
+  if(!entries.length){
+    const empty = document.createElement('p');
+    empty.className = 'dash-empty';
+    empty.textContent = 'No activity yet.';
+    host.appendChild(empty);
+    return;
+  }
+  const top = entries.slice(0, limit);
+  const max = top[0][1] || 1;
+  for(const [label, count] of top){
+    const row = document.createElement('div');
+    row.className = 'dash-bar-row';
+    const name = document.createElement('span');
+    name.className = 'dash-bar-label';
+    name.textContent = label;
+    name.title = label;
+    const countEl = document.createElement('span');
+    countEl.className = 'dash-bar-count';
+    countEl.textContent = count;
+    row.append(name, countEl);
+    const track = document.createElement('div');
+    track.className = 'dash-bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'dash-bar-fill';
+    fill.style.width = `${Math.max(4, Math.round((count / max) * 100))}%`;
+    track.appendChild(fill);
+    host.append(row, track);
+  }
+}
+
+function dashboardTimeline(events){
+  const host = document.getElementById('dash-timeline');
+  const labels = document.getElementById('dash-timeline-labels');
+  host.replaceChildren();
+  const first = new Date(events[0].ts).getTime();
+  const lastEventTime = new Date(events[events.length - 1].ts).getTime();
+  const isLive = DASHBOARD_MODE === '__current__' && STATE && STATE.session
+    && STATE.session.status === 'active';
+  const last = isLive ? Math.max(lastEventTime, Date.now()) : lastEventTime;
+  const span = Math.max(last - first, 1000);
+  const bucketMs = span / DASH_TIMELINE_BUCKETS;
+  const buckets = new Array(DASH_TIMELINE_BUCKETS).fill(0);
+  for(const event of events){
+    const t = new Date(event.ts).getTime();
+    const index = Math.min(DASH_TIMELINE_BUCKETS - 1, Math.max(0, Math.floor((t - first) / bucketMs)));
+    buckets[index] += 1;
+  }
+  const max = Math.max(...buckets, 1);
+  buckets.forEach((count, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'bucket';
+    bar.style.height = `${Math.max(4, Math.round((count / max) * 100))}%`;
+    const bucketStart = eventTime(first + i * bucketMs);
+    const bucketEnd = eventTime(first + (i + 1) * bucketMs);
+    bar.title = `${bucketStart}–${bucketEnd} · ${count} event${count === 1 ? '' : 's'}`;
+    host.appendChild(bar);
+  });
+  labels.replaceChildren();
+  const startLabel = document.createElement('span');
+  startLabel.textContent = eventTime(first);
+  const endLabel = document.createElement('span');
+  endLabel.textContent = isLive ? 'now' : eventTime(last);
+  labels.append(startLabel, endLabel);
+}
+
 refresh().then(refreshLog);
 setInterval(refresh, 2000);
 setInterval(refreshLog, 3000);
 setInterval(renderSessionStats, 1000);
+loadDashboardSessions().then(renderDashboard);
+setInterval(renderDashboard, 2000);
+setInterval(loadDashboardSessions, 10000);
 </script>
 </body>
 </html>
