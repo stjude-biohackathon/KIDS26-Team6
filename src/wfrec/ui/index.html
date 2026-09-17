@@ -52,10 +52,28 @@
   .toggle[disabled]{opacity:.45;cursor:not-allowed}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .stat{font:12px ui-monospace,Menlo,monospace;color:var(--dim)}
-  #log{font:12px ui-monospace,Menlo,monospace;white-space:pre-wrap;color:var(--dim);
-       max-height:190px;overflow:auto}
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;
+                gap:12px;margin-bottom:12px}
+  .section-head h2{margin:0}
+  .log-count{font-size:12px;color:var(--dim)}
+  .event-log{max-height:320px;overflow:auto}
+  .event-row{display:grid;grid-template-columns:82px minmax(0,1fr);gap:10px;
+             padding:9px 0;border-top:1px solid var(--line);align-items:start}
+  .event-row:first-child{border-top:0;padding-top:0}
+  .event-time{font:12px ui-monospace,Menlo,monospace;color:var(--dim)}
+  .event-title{font-weight:600}
+  .event-detail{margin-top:2px;color:var(--dim);font-size:12px;overflow-wrap:anywhere}
+  button.event-more{padding:0;border:0;border-radius:0;background:none;color:var(--accent);
+                    font-size:inherit;font-weight:600;text-decoration:underline;
+                    text-underline-offset:2px;vertical-align:baseline}
+  button.event-more:hover{border-color:transparent}
+  .event-row.warning .event-title{color:var(--warn)}
+  .empty{margin:0;color:var(--dim);font-size:12px}
   .warn{color:var(--warn);font-size:12px}
-  @media (max-width:640px){ .grid2{grid-template-columns:1fr} }
+  @media (max-width:640px){
+    .grid2{grid-template-columns:1fr}
+    .event-row{grid-template-columns:70px minmax(0,1fr)}
+  }
 </style>
 </head>
 <body>
@@ -99,8 +117,13 @@
   </section>
 
   <section>
-    <h2>Recent events</h2>
-    <div id="log">(nothing yet)</div>
+    <div class="section-head">
+      <h2>Recent Events Log</h2>
+      <span class="log-count" id="log-count"></span>
+    </div>
+    <div class="event-log" id="log" aria-live="polite">
+      <p class="empty">Start or resume a session to see activity.</p>
+    </div>
   </section>
 </main>
 
@@ -114,6 +137,39 @@ const SOURCE_HELP = {
   agents:'Codex, Claude Code, Copilot and Cursor transcripts',
   files:'Git-verified file changes in declared roots'
 };
+const EVENT_NAMES = {
+  'session.created':'Session created',
+  'session.started':'Recording started',
+  'session.paused':'Recording paused',
+  'session.resumed':'Recording resumed',
+  'session.stopped':'Recording stopped',
+  'session.preempted':'Session switched',
+  'session.waiting':'Waiting',
+  'source.enabled':'Capture source enabled',
+  'source.disabled':'Capture source disabled',
+  'shell.command.completed':'Command completed',
+  'screen.frame':'Screenshot captured',
+  'screen.ocr':'Screen text captured',
+  'screen.window':'Active window changed',
+  'screen.recording.started':'Screen recording started',
+  'screen.recording.stopped':'Screen recording stopped',
+  'context.note':'Note added',
+  'agent.message':'Agent message',
+  'agent.adapter.failed':'Agent capture issue',
+  'file.changed':'File changed',
+  'file.diff':'File diff captured',
+  'file.flood':'Large file change detected',
+  'git.snapshot':'Git snapshot',
+  'job.submitted':'Job submitted',
+  'job.completed':'Job completed',
+  'marker.user':'Marker added',
+  'collector.error':'Capture issue'
+};
+const TOOL_NAMES = {
+  codex:'Codex', 'devsql-codex':'Codex', 'claude-code':'Claude Code',
+  copilot:'Copilot', cursor:'Cursor'
+};
+const EXPANDED_EVENTS = new Set();
 let STATE = null;
 
 async function api(path, body){
@@ -201,6 +257,7 @@ function render(){
   document.getElementById('stats').textContent = s
     ? `${s.events} events · active ${s.active_seconds}s · paused ${s.paused_seconds}s · ${s.root}`
     : '';
+  if(!s) showEmptyLog('Start or resume a session to see activity.');
 
   const host = document.getElementById('sources');
   host.innerHTML = '';
@@ -229,23 +286,240 @@ async function refresh(){
   try{ STATE = await api('/status'); render(); }catch(e){}
 }
 async function refreshLog(){
-  if(!STATE || !STATE.session) return;
+  if(!STATE || !STATE.session){
+    showEmptyLog('Start or resume a session to see activity.');
+    return;
+  }
   try{
     const r = await api(`/sessions/${STATE.session.id}/events?limit=14&offset=${Math.max(0,STATE.session.events-14)}`);
-    document.getElementById('log').textContent =
-      (r.events||[]).map(e => `${e.ts.slice(11,23)}  ${String(e.type).padEnd(24)} ${summarize(e)}`).join('\n') || '(nothing yet)';
+    const events = r.events || [];
+    const host = document.getElementById('log');
+    const total = Number(r.total || 0);
+    document.getElementById('log-count').textContent = events.length
+      ? `Latest ${events.length} of ${total} events`
+      : '0 events';
+    host.replaceChildren();
+    if(!events.length){
+      showEmptyLog('Waiting for recorded activity…');
+      return;
+    }
+    for(const event of [...events].reverse()) host.appendChild(eventRow(event));
+    host.scrollTop = 0;
   }catch(e){}
 }
+
+function showEmptyLog(message){
+  const empty = document.createElement('p');
+  empty.className = 'empty';
+  empty.textContent = message;
+  document.getElementById('log').replaceChildren(empty);
+  document.getElementById('log-count').textContent = '';
+}
+
+function eventRow(event){
+  const presentation = presentEvent(event);
+  const row = document.createElement('div');
+  row.className = 'event-row' + (presentation.warning ? ' warning' : '');
+
+  const time = document.createElement('span');
+  time.className = 'event-time';
+  time.textContent = eventTime(event.ts);
+
+  const main = document.createElement('div');
+  main.className = 'event-main';
+  const title = document.createElement('div');
+  title.className = 'event-title';
+  title.textContent = presentation.title;
+  main.appendChild(title);
+  if(presentation.detail){
+    main.appendChild(eventDetail(event, presentation.detail, presentation.detailLimit));
+  }
+  row.append(time, main);
+  return row;
+}
+
+function eventDetail(event, fullDetail, previewLimit){
+  const detail = document.createElement('div');
+  detail.className = 'event-detail';
+
+  const normalizedDetail = normalizeText(fullDetail);
+  const preview = cleanText(normalizedDetail, previewLimit);
+  const text = document.createElement('span');
+  text.textContent = preview;
+  detail.appendChild(text);
+  if(preview === normalizedDetail) return detail;
+
+  const key = `${event.session || ''}:${event.seq ?? `${event.ts}:${event.type}`}`;
+  const more = document.createElement('button');
+
+  function renderDetail(){
+    const expanded = EXPANDED_EVENTS.has(key);
+    text.textContent = expanded ? normalizedDetail : preview;
+    more.textContent = expanded ? 'Less' : 'More';
+    more.setAttribute('aria-expanded', String(expanded));
+  }
+
+  more.type = 'button';
+  more.className = 'event-more';
+  more.onclick = () => {
+    if(EXPANDED_EVENTS.has(key)) EXPANDED_EVENTS.delete(key);
+    else EXPANDED_EVENTS.add(key);
+    renderDetail();
+  };
+  detail.append(document.createTextNode(' '), more);
+  renderDetail();
+  return detail;
+}
+
+function presentEvent(event){
+  const p = event.payload || {};
+  let title = EVENT_NAMES[event.type] || readableEventName(event.type);
+  let detail = '';
+  let detailLimit = 180;
+
+  if(event.type === 'agent.message'){
+    const tool = TOOL_NAMES[p.tool] || cleanText(p.tool || 'Agent', 30);
+    const role = titleCase(p.role || 'message');
+    title = `${tool} · ${role}`;
+    detail = joinDetails([normalizeText(p.text), branchDetail(p)]);
+  } else if(event.type === 'shell.command.completed'){
+    detailLimit = 150;
+    detail = joinDetails([
+      normalizeText(p.command),
+      p.exit_code !== undefined && p.exit_code !== null ? `exit ${p.exit_code}` : '',
+      durationDetail(p.duration_ms),
+      pathTail(p.cwd)
+    ]);
+  } else if(event.type === 'file.changed'){
+    title = `File ${p.op || 'changed'}`;
+    detail = pathTail(p.path);
+  } else if(event.type === 'file.diff'){
+    detail = joinDetails([pathTail(p.path), changeDetail(p)]);
+  } else if(event.type === 'git.snapshot'){
+    detail = joinDetails([
+      p.branch ? `branch ${p.branch}` : '',
+      Number.isFinite(Number(p.changed_count)) ? `${p.changed_count} changed` : '',
+      p.trigger ? `trigger: ${p.trigger}` : ''
+    ]);
+  } else if(event.type === 'screen.ocr'){
+    detail = normalizeText(p.ocr_text);
+  } else if(event.type === 'screen.window'){
+    detail = joinDetails([normalizeText(p.app), normalizeText(p.window_title)]);
+  } else if(event.type === 'screen.frame'){
+    detail = joinDetails([
+      p.index ? `frame ${p.index}` : '',
+      p.width && p.height ? `${p.width}×${p.height}` : ''
+    ]);
+  } else if(event.type === 'context.note'){
+    detail = joinDetails([normalizeText(p.label), normalizeText(p.text)]);
+  } else if(event.type === 'marker.user'){
+    detailLimit = 140;
+    detail = joinDetails([normalizeText(p.label), normalizeText(p.detail)]);
+  } else if(event.type === 'session.created'){
+    detail = joinDetails([normalizeText(p.title), normalizeText(p.analyst)]);
+  } else if(event.type === 'session.paused'){
+    detail = joinDetails([
+      normalizeText(p.reason),
+      p.expect ? `expected wait: ${p.expect}` : ''
+    ]);
+  } else if(event.type === 'session.preempted'){
+    detail = joinDetails([normalizeText(p.reason), normalizeText(p.preempted_by)]);
+  } else if(event.type === 'session.waiting'){
+    detail = joinDetails([normalizeText(p.reason), durationDetail(p.elapsed_ms)]);
+  } else if(event.type === 'source.enabled' || event.type === 'source.disabled'){
+    detail = normalizeText(p.source);
+  } else if(event.type === 'job.submitted' || event.type === 'job.completed'){
+    detail = joinDetails([
+      p.job_id || p.JobID ? `job ${p.job_id || p.JobID}` : '',
+      normalizeText(p.job_name || p.JobName),
+      normalizeText(p.state || p.State)
+    ]);
+  } else if(event.type === 'agent.adapter.failed'){
+    detailLimit = 160;
+    detail = joinDetails([normalizeText(p.tool), normalizeText(p.error)]);
+  } else if(event.type === 'collector.error'){
+    detailLimit = 160;
+    detail = joinDetails([normalizeText(p.stage), normalizeText(p.error)]);
+  } else {
+    detail = summarize(event);
+  }
+
+  if((event.redactions || []).length){
+    detail = joinDetails([detail, `redacted: ${event.redactions.join(', ')}`]);
+  }
+  return {
+    title,
+    detail,
+    detailLimit,
+    warning: event.type === 'agent.adapter.failed' || event.type === 'collector.error'
+  };
+}
+
 function summarize(e){
   const p = e.payload || {};
   if(p.command) return p.command.slice(0,70);
   if(p.path) return p.path.split('/').pop();
   if(p.window_title) return p.window_title.slice(0,60);
   if(p.text) return p.text.slice(0,60).replace(/\n/g,' ');
+  if(p.ocr_text) return p.ocr_text.slice(0,60).replace(/\n/g,' ');
+  if(p.label) return p.label;
   if(p.reason) return p.reason;
   return '';
 }
-refresh(); refreshLog();
+
+function eventTime(value){
+  const moment = new Date(value);
+  if(Number.isNaN(moment.getTime())) return cleanText(value, 12);
+  return moment.toLocaleTimeString([], {
+    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+  });
+}
+
+function cleanText(value, limit=120){
+  const text = normalizeText(value);
+  return text.length > limit ? text.slice(0, limit - 1) + '…' : text;
+}
+
+function normalizeText(value){
+  if(value === undefined || value === null) return '';
+  return String(value).replace(/\s+/g, ' ').trim();
+}
+
+function titleCase(value){
+  const text = cleanText(value, 40);
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+}
+
+function readableEventName(value){
+  return String(value || 'Event').split('.').map(titleCase).join(' · ');
+}
+
+function joinDetails(values){ return values.filter(Boolean).join(' · '); }
+
+function pathTail(value){
+  const parts = cleanText(value, 300).split(/[\\/]/).filter(Boolean);
+  return parts.slice(-2).join('/');
+}
+
+function branchDetail(payload){
+  return payload.git_branch ? `branch ${payload.git_branch}` : '';
+}
+
+function durationDetail(value){
+  const milliseconds = Number(value);
+  if(!Number.isFinite(milliseconds) || milliseconds < 0) return '';
+  return milliseconds < 1000
+    ? `${Math.round(milliseconds)} ms`
+    : `${(milliseconds / 1000).toFixed(1)} s`;
+}
+
+function changeDetail(payload){
+  const added = payload.added !== undefined ? `+${payload.added}` : '';
+  const deleted = payload.deleted !== undefined ? `-${payload.deleted}` : '';
+  return [added, deleted].filter(Boolean).join(' ');
+}
+
+refresh().then(refreshLog);
 setInterval(refresh, 2000);
 setInterval(refreshLog, 3000);
 </script>

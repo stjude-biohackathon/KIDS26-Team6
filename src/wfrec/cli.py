@@ -18,6 +18,7 @@ from rich.text import Text
 
 from . import SOURCES, __version__, paths
 from .client import Client, DaemonUnavailable
+from .events import Event
 from .output import (
     console,
     data_table,
@@ -129,6 +130,8 @@ def build_parser() -> argparse.ArgumentParser:
     events.add_argument("--limit", type=int, default=40)
     events.add_argument("--source", default="", help="Filter by source.")
     events.add_argument("--type", default="", help="Filter by event type prefix.")
+    events.add_argument("--role", default="", help="Filter agent messages by role.")
+    events.add_argument("--tool", default="", help="Filter agent messages by tool.")
 
     export = sub.add_parser("export", help="Export a session for AutoCAB.")
     export.add_argument("session_id", nargs="?")
@@ -733,6 +736,20 @@ def _events(args: argparse.Namespace, as_json: bool) -> int:
         events = [e for e in events if e.source == args.source]
     if args.type:
         events = [e for e in events if e.type.startswith(args.type)]
+    if args.role:
+        role = args.role.casefold()
+        events = [
+            event
+            for event in events
+            if str(event.payload.get("role") or "").casefold() == role
+        ]
+    if args.tool:
+        tool = args.tool.casefold()
+        events = [
+            event
+            for event in events
+            if str(event.payload.get("tool") or "").casefold() == tool
+        ]
     events = events[-args.limit :]
 
     if as_json:
@@ -745,14 +762,24 @@ def _events(args: argparse.Namespace, as_json: bool) -> int:
         table.add_row(
             plain_text(event.seq),
             plain_text(event.ts[11:23]),
-            plain_text(event.type),
+            plain_text(_event_type_label(event)),
             plain_text(event_summary),
         )
     console.print(Text("Timeline events", style="bold cyan"), table)
     return 0
 
 
-def _summarize(event) -> str:
+def _event_type_label(event: Event) -> str:
+    """Add useful agent context without changing the canonical event type."""
+
+    if event.type != "agent.message":
+        return event.type
+    tool = str(event.payload.get("tool") or "unknown")
+    role = str(event.payload.get("role") or "unknown")
+    return f"{event.type} [{tool}/{role}]"
+
+
+def _summarize(event: Event) -> str:
     payload = event.payload
     for key in ("command", "path", "window_title", "label", "reason"):
         if payload.get(key):
