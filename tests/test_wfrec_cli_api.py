@@ -161,6 +161,27 @@ def test_ui_injects_the_token_not_a_placeholder(client):
     assert "event-more" in body
     assert "aria-expanded" in body
     assert "EXPANDED_EVENTS" in body
+    assert "STATE.default_analyst" in body
+    assert "ANALYST_INITIALIZED" in body
+    assert "button.danger:not(:disabled)" in body
+    assert "startButton.disabled = Boolean(s)" in body
+    assert "'Session Active'" in body
+    assert "'Session Paused'" in body
+    assert "appendInlineCode(sourceDescription, why)" in body
+    assert "sourceName.textContent = displayName" in body
+    assert "details.push('reason: '+col.reason)" not in body
+    assert '<label for="title">Session title</label>' in body
+    assert '<label for="analyst">Analyst name or ID</label>' in body
+    assert "btn.setAttribute('role', 'switch')" in body
+    assert "btn.setAttribute('aria-checked', String(on))" in body
+    assert 'id="feedback" role="status"' in body
+    assert 'id="log" aria-live=' not in body
+    assert "Recorder disconnected. Retrying" in body
+    assert "paths.join('\\n')" in body
+    assert "Load older events" in body
+    assert "EVENT_LIMIT += EVENT_PAGE_SIZE" in body
+    assert "restoreScroll(host, anchor, previousTop)" in body
+    assert "row.dataset.eventKey = eventKey(event)" in body
 
 
 def test_export_endpoint_writes_files(client):
