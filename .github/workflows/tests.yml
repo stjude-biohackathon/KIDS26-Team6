@@ -22,6 +22,24 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - run: python -m pytest
 
+  enterprise-linux-hooks:
+    name: Enterprise Linux bash hook
+    runs-on: ubuntu-latest
+    container: almalinux:9
+    timeout-minutes: 5
+
+    steps:
+      - name: Install minimal runtime
+        run: dnf install -y git python3.12
+      - uses: actions/checkout@v7
+      - name: Verify the bash hook loads
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: |
+          python3.12 -c "from wfrec import hookinstall; hookinstall.install(['bash'])"
+          bash --noprofile --rcfile "$HOME/.bashrc" -ic \
+            'test "$__WFREC_LOADED" = "1" && test -n "$WFREC_RUN"'
+
   windows-powershell-hooks:
     name: Windows PowerShell hooks
     runs-on: windows-latest
