@@ -21,3 +21,51 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install -e ".[dev]"
       - run: python -m pytest
+
+  windows-powershell-hooks:
+    name: Windows PowerShell hooks
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install wfrec without capture dependencies
+        shell: pwsh
+        run: python -m pip install --no-deps -e .
+      - name: Install both PowerShell profiles
+        shell: pwsh
+        run: |
+          python -c "from wfrec import hookinstall; hookinstall.install(['powershell'])"
+          $profiles = @(
+            "$HOME\Documents\PowerShell\profile.ps1"
+            "$HOME\Documents\WindowsPowerShell\profile.ps1"
+          )
+          foreach ($profilePath in $profiles) {
+            if (-not (Test-Path -LiteralPath $profilePath)) {
+              throw "Missing PowerShell profile: $profilePath"
+            }
+            if (-not (Select-String -LiteralPath $profilePath -SimpleMatch "# >>> wfrec hook >>>")) {
+              throw "Missing wfrec hook marker: $profilePath"
+            }
+          }
+      - name: Verify PowerShell 7 loads the hook
+        shell: pwsh
+        run: |
+          if ($env:__WFREC_LOADED -ne "1") {
+            throw "PowerShell 7 did not load the wfrec hook."
+          }
+          if (-not $env:WFREC_RUN) {
+            throw "PowerShell 7 did not set WFREC_RUN."
+          }
+      - name: Verify Windows PowerShell 5.1 loads the hook
+        shell: powershell
+        run: |
+          if ($env:__WFREC_LOADED -ne "1") {
+            throw "Windows PowerShell 5.1 did not load the wfrec hook."
+          }
+          if (-not $env:WFREC_RUN) {
+            throw "Windows PowerShell 5.1 did not set WFREC_RUN."
+          }
