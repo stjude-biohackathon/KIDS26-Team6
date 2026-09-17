@@ -180,7 +180,11 @@ def test_ui_injects_the_token_not_a_placeholder(client):
     assert "startButton.disabled = Boolean(s)" in body
     assert "'Session Active'" in body
     assert "'Session Paused'" in body
-    assert "if(reason === null) return" in body
+    assert 'id="pause-dialog"' in body
+    assert '<label for="pause-reason">Pause reason (optional)</label>' in body
+    assert "dialog.showModal()" in body
+    assert "function closePauseDialog()" in body
+    assert "prompt(" not in body
     assert "STATE_RECEIVED_AT = performance.now()" in body
     assert "setInterval(renderSessionStats, 1000)" in body
     assert "appendInlineCode(sourceDescription, why)" in body

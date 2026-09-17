@@ -44,6 +44,13 @@
   .field{display:grid;gap:4px}
   .field label{font-size:12px;color:var(--dim)}
   .note-actions{align-items:end}
+  dialog{width:min(420px,calc(100vw - 32px));padding:0;border:1px solid var(--line);
+         border-radius:10px;background:var(--panel);color:var(--ink);
+         box-shadow:0 18px 50px rgba(0,0,0,.35)}
+  dialog::backdrop{background:rgba(8,10,15,.62)}
+  dialog form{display:grid;gap:12px;padding:18px}
+  dialog h2,dialog p{margin:0}
+  .dialog-actions{justify-content:flex-end}
   .feedback{margin:10px 0 0;font-size:12px;white-space:pre-wrap}.feedback:empty{display:none}
   .feedback.success{color:var(--on)}.feedback.error{color:var(--danger)}
   .sources{display:grid;gap:8px}
@@ -156,6 +163,21 @@
   </section>
 </main>
 
+<dialog id="pause-dialog" aria-labelledby="pause-dialog-title" aria-describedby="pause-dialog-help">
+  <form onsubmit="confirmPause(event)">
+    <h2 id="pause-dialog-title">Pause Session</h2>
+    <p class="stat" id="pause-dialog-help">Optionally record why the session is being paused.</p>
+    <div class="field">
+      <label for="pause-reason">Pause reason (optional)</label>
+      <input id="pause-reason" placeholder="e.g. Waiting on the alignment job">
+    </div>
+    <div class="row dialog-actions">
+      <button type="button" onclick="closePauseDialog()">Cancel</button>
+      <button type="submit" class="primary">Pause Session</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 const TOKEN = new URLSearchParams(location.search).get('token') || '@WFREC_TOKEN@';
 const H = {'Content-Type':'application/json','Authorization':'Bearer '+TOKEN};
@@ -242,9 +264,23 @@ async function act(kind){
   }catch(e){ flash(e.message, 'error'); }
 }
 
-async function pause(){
-  const reason = prompt('Why are you pausing this session? (e.g. "waiting on the alignment job")');
-  if(reason === null) return;
+function pause(){
+  const dialog = document.getElementById('pause-dialog');
+  const reason = document.getElementById('pause-reason');
+  reason.value = '';
+  dialog.showModal();
+  reason.focus();
+}
+
+function closePauseDialog(){
+  document.getElementById('pause-dialog').close();
+}
+
+async function confirmPause(event){
+  event.preventDefault();
+  const dialog = document.getElementById('pause-dialog');
+  const reason = document.getElementById('pause-reason').value.trim();
+  dialog.close();
   try{ STATE = await api('/sessions/pause', {reason}); render(); }
   catch(e){ flash(e.message, 'error'); }
 }
