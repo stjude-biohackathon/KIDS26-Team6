@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import subprocess
 from pathlib import Path
 
@@ -142,6 +143,8 @@ def test_devsql_ingests_atuin_claude_and_codex_without_duplicates(
     assert events[1].payload["source_id"] == events[2].payload["source_id"]
     assert events[1].payload["channel"] == "agent_tool"
     assert events[2].payload["channel"] == "agent_tool"
+    assert "shell" not in events[1].payload
+    assert "shell" not in events[2].payload
     assert "SJ001234" not in events[0].payload["command"]
     assert "sj_id" in events[0].redactions
     assert len(queries) == 2
@@ -149,6 +152,88 @@ def test_devsql_ingests_atuin_claude_and_codex_without_duplicates(
         "source = 'atuin' OR channel = 'agent_tool'" in sql
         for sql in queries
     )
+
+
+def test_devsql_restores_shell_from_atuin_database(
+    store: SessionStore,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session, _ = store.start(title="Atuin shell", analyst="analyst")
+    database_path = tmp_path / "history.db"
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.execute(
+            "CREATE TABLE history (id TEXT PRIMARY KEY, shell TEXT)"
+        )
+        connection.execute(
+            "INSERT INTO history (id, shell) VALUES (?, ?)",
+            ("atuin-command", "zsh"),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    connect_calls: list[tuple[str, bool]] = []
+    real_connect = sqlite3.connect
+
+    def record_connect(
+        database: str,
+        *,
+        uri: bool = False,
+        timeout: float = 5.0,
+    ) -> sqlite3.Connection:
+        connect_calls.append((database, uri))
+        return real_connect(database, uri=uri, timeout=timeout)
+
+    monkeypatch.setattr(
+        "wfrec.collectors.shell.sqlite3.connect",
+        record_connect,
+    )
+    row = _devsql_command_row(
+        source="atuin",
+        channel="shell",
+        source_id="atuin-command",
+        session_id="shell-session",
+        timestamp=active_interval_start(session),
+        command="python workflow.py",
+        source_path=str(database_path),
+    )
+
+    ShellCollector(session, devsql_client=_devsql_client([row]))._run_once()
+
+    event = [
+        event
+        for event in session.writer.read()
+        if event.type == "shell.command.completed"
+    ][0]
+    assert event.payload["shell"] == "zsh"
+    assert connect_calls == [(f"{database_path.as_uri()}?mode=ro", True)]
+
+
+def test_devsql_omits_shell_when_atuin_database_is_unavailable(
+    store: SessionStore,
+    tmp_path: Path,
+) -> None:
+    session, _ = store.start(title="Missing Atuin", analyst="analyst")
+    row = _devsql_command_row(
+        source="atuin",
+        channel="shell",
+        source_id="atuin-command",
+        session_id="shell-session",
+        timestamp=active_interval_start(session),
+        command="python workflow.py",
+        source_path=str(tmp_path / "missing.db"),
+    )
+
+    ShellCollector(session, devsql_client=_devsql_client([row]))._run_once()
+
+    event = [
+        event
+        for event in session.writer.read()
+        if event.type == "shell.command.completed"
+    ][0]
+    assert "shell" not in event.payload
 
 
 def test_devsql_rejects_rows_outside_the_safe_capture_scope(
@@ -252,6 +337,7 @@ def _devsql_command_row(
     session_id: str,
     timestamp: str,
     command: str,
+    source_path: str = "",
 ) -> dict[str, object]:
     """Build one complete normalized row without reading local history."""
 
@@ -273,6 +359,7 @@ def _devsql_command_row(
         "agent_role": "coding" if channel == "agent_tool" else None,
         "originator": "user" if channel == "agent_tool" else None,
         "tool_name": "shell" if channel == "agent_tool" else None,
+        "source_path": source_path,
     }
 
 

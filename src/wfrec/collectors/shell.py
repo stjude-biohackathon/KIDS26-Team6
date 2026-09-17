@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import tempfile
 from collections.abc import Callable, Iterable
+from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -48,6 +50,7 @@ DEVSQL_COMMAND_COLUMNS = (
     "agent_role",
     "originator",
     "tool_name",
+    "source_path",
 )
 DEVSQL_CURSOR_SCHEMA_VERSION = 1
 DEVSQL_SHELL_SOURCE = "atuin"
@@ -168,6 +171,44 @@ def optional_int(value: object) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _read_atuin_shell(
+    source_path: object,
+    source_id: object,
+) -> str | None:
+    """Return an Atuin command's shell without modifying its database.
+
+    DevSQL preserves Atuin's command ID and database path but does not expose
+    Atuin's ``shell`` column. Read only that column from the source database.
+    Missing databases and older schemas should reduce metadata, not interrupt
+    recording.
+    """
+
+    if not isinstance(source_path, str) or not isinstance(source_id, str):
+        return None
+
+    try:
+        database_path = Path(source_path).expanduser()
+        if not database_path.is_absolute():
+            return None
+        with closing(
+            sqlite3.connect(
+                f"{database_path.as_uri()}?mode=ro",
+                uri=True,
+                timeout=1.0,
+            )
+        ) as connection:
+            result = connection.execute(
+                "SELECT shell FROM history WHERE id = ?",
+                (source_id,),
+            ).fetchone()
+    except (OSError, RuntimeError, sqlite3.Error):
+        return None
+
+    if result is None or not isinstance(result[0], str) or not result[0]:
+        return None
+    return result[0]
 
 
 @dataclass(slots=True)
@@ -437,6 +478,10 @@ class DevSQLCommandReader:
             "originator": row["originator"],
             "tool_name": row["tool_name"],
         }
+        if source == self.cursor.shell_source:
+            shell = _read_atuin_shell(row["source_path"], source_id)
+            if shell is not None:
+                payload["shell"] = shell
         hostname = row["hostname"]
         return (
             Event(
