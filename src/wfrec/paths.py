@@ -41,6 +41,16 @@ SESSION_SUBDIRS = (
 )
 
 
+def default_analyst() -> str:
+    """Return the OS username used as the editable analyst default."""
+
+    try:
+        username = getpass.getuser().strip()
+    except Exception:  # pragma: no cover - exotic environments with no user entry
+        return "unknown-analyst"
+    return username or "unknown-analyst"
+
+
 def home() -> Path:
     """Return the durable wfrec root, honouring ``WFREC_HOME``."""
 

@@ -27,7 +27,7 @@ from .session import SessionNotFound
 
 class StartRequest(BaseModel):
     title: str = ""
-    analyst: str = "unknown-analyst"
+    analyst: str = ""
     workflow_family: str = ""
     tags: list[str] = Field(default_factory=list)
     watch: list[str] = Field(default_factory=list)

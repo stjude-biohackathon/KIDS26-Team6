@@ -2,14 +2,49 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from uuid import UUID
+
 import pytest
 
-from wfrec.session import STATUS_ACTIVE, STATUS_PAUSED, STATUS_STOPPED, Session, SessionNotFound
+from wfrec.session import (
+    STATUS_ACTIVE,
+    STATUS_PAUSED,
+    STATUS_STOPPED,
+    Session,
+    SessionNotFound,
+    new_session_id,
+)
 from wfrec.state import RecorderState, read_sentinel, sentinel_enables
 
 
 def _types(session: Session) -> list[str]:
     return [event.type for event in Session.load(session.session_id).writer.read()]
+
+
+def test_session_id_combines_sortable_timestamp_and_uuid4():
+    session_id = new_session_id()
+    timestamp, suffix = session_id.rsplit("_", 1)
+
+    datetime.strptime(timestamp, "%Y-%m-%dT%H-%M-%S")
+    assert len(suffix) == 32
+    assert UUID(hex=suffix).version == 4
+
+
+def test_duration_snapshot_includes_current_lifecycle_interval(store) -> None:
+    session, _ = store.start(title="A", analyst="a")
+    session.manifest.active_seconds = 4.0
+    session.manifest.paused_seconds = 2.0
+    session.manifest._last_transition = 100.0
+
+    session.manifest.status = STATUS_ACTIVE
+    assert session.manifest.duration_snapshot(now=103.5) == (7.5, 2.0)
+
+    session.manifest.status = STATUS_PAUSED
+    assert session.manifest.duration_snapshot(now=103.5) == (4.0, 5.5)
+
+    session.manifest.status = STATUS_STOPPED
+    assert session.manifest.duration_snapshot(now=103.5) == (4.0, 2.0)
 
 
 def test_start_creates_folder_manifest_and_timeline(store, wfrec_home):

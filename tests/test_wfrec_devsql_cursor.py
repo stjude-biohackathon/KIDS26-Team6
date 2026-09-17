@@ -256,6 +256,7 @@ def _devsql_command_row(
         "agent_role": None,
         "originator": None,
         "tool_name": None,
+        "source_path": "",
     }
 
 

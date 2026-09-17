@@ -7,10 +7,11 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from wfrec import paths
 from wfrec.api import create_app
 from wfrec.cli import main
 from wfrec.recorder import NoActiveSession, Recorder
-from wfrec.session import Session, SessionStore
+from wfrec.session import Manifest, Session, SessionStore
 
 
 @pytest.fixture()
@@ -28,6 +29,44 @@ def test_health_is_unauthenticated(client):
     response = client.get("/health", headers={})
     assert response.status_code == 200
     assert response.json()["ok"] is True
+
+
+def test_status_reports_os_username_as_editable_default(client, monkeypatch):
+    monkeypatch.setattr(paths.getpass, "getuser", lambda: "system-user")
+
+    status = client.get("/status").json()
+
+    assert status["default_analyst"] == "system-user"
+
+
+def test_status_reports_current_session_durations(client, monkeypatch):
+    def current_durations(_manifest: Manifest) -> tuple[float, float]:
+        return 5.4, 2.1
+
+    client.post("/sessions/start", json={"title": "A", "analyst": "a"})
+    monkeypatch.setattr(Manifest, "duration_snapshot", current_durations)
+
+    status = client.get("/status").json()
+
+    assert status["session"]["active_seconds"] == 5.4
+    assert status["session"]["paused_seconds"] == 2.1
+
+
+def test_start_without_analyst_uses_os_username(client, monkeypatch):
+    monkeypatch.setattr(paths.getpass, "getuser", lambda: "system-user")
+
+    started = client.post("/sessions/start", json={"title": "A"}).json()
+
+    assert started["session"]["analyst"] == "system-user"
+
+
+def test_default_analyst_falls_back_when_username_is_unavailable(monkeypatch):
+    def unavailable_username() -> str:
+        raise OSError("user lookup failed")
+
+    monkeypatch.setattr(paths.getpass, "getuser", unavailable_username)
+
+    assert paths.default_analyst() == "unknown-analyst"
 
 
 def test_endpoints_require_the_token(wfrec_home):
@@ -135,6 +174,41 @@ def test_ui_injects_the_token_not_a_placeholder(client):
     assert "event-more" in body
     assert "aria-expanded" in body
     assert "EXPANDED_EVENTS" in body
+    assert "STATE.default_analyst" in body
+    assert "ANALYST_INITIALIZED" in body
+    assert "button.danger:not(:disabled)" in body
+    assert "startButton.disabled = Boolean(s)" in body
+    assert "'Session Active'" in body
+    assert "'Session Paused'" in body
+    assert 'id="session-title"' in body
+    assert "sessionTitle || 'Untitled session'" in body
+    assert "getElementById('sid')" not in body
+    assert 'id="pause-dialog"' in body
+    assert '<label for="pause-reason">Pause reason (optional)</label>' in body
+    assert "Optionally record why the session is being paused." not in body
+    assert "dialog.showModal()" in body
+    assert "function closePauseDialog()" in body
+    assert "prompt(" not in body
+    assert "STATE_RECEIVED_AT = performance.now()" in body
+    assert "setInterval(renderSessionStats, 1000)" in body
+    assert "appendInlineCode(sourceDescription, why)" in body
+    assert "sourceName.textContent = displayName" in body
+    assert "details.push('reason: '+col.reason)" not in body
+    assert '<label for="title">Session title</label>' in body
+    assert '<label for="analyst">Analyst name or ID</label>' in body
+    assert '<textarea id="note" aria-label="Note"' in body
+    assert '<label for="note">Note</label>' not in body
+    assert 'class="row note-actions"' in body
+    assert "btn.setAttribute('role', 'switch')" in body
+    assert "btn.setAttribute('aria-checked', String(on))" in body
+    assert 'id="feedback" role="status"' in body
+    assert 'id="log" aria-live=' not in body
+    assert "Recorder disconnected. Retrying" in body
+    assert "paths.join('\\n')" in body
+    assert "Load older events" in body
+    assert "EVENT_LIMIT += EVENT_PAGE_SIZE" in body
+    assert "restoreScroll(host, anchor, previousTop)" in body
+    assert "row.dataset.eventKey = eventKey(event)" in body
 
 
 def test_export_endpoint_writes_files(client):

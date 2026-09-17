@@ -14,13 +14,12 @@ session they meant.
 from __future__ import annotations
 
 import json
-import random
-import string
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from . import SOURCES, paths
 from .events import (
@@ -55,19 +54,15 @@ STATUS_ACTIVE = "active"
 STATUS_PAUSED = "paused"
 STATUS_STOPPED = "stopped"
 
-_ID_ALPHABET = string.ascii_lowercase + string.digits
-
-
 def new_session_id() -> str:
-    """Sortable, collision-resistant session id, e.g. ``2026-09-16T14-03-22_a3f9c1``.
+    """Return a sortable UTC timestamp with a globally unique UUIDv4 suffix.
 
     Lexical sort equals chronological sort, which makes ``ls`` in the sessions
     directory immediately useful and lets ``--last`` be a cheap ``max()``.
     """
 
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
-    suffix = "".join(random.choices(_ID_ALPHABET, k=6))
-    return f"{stamp}_{suffix}"
+    return f"{stamp}_{uuid4().hex}"
 
 
 @dataclass(slots=True)
@@ -96,6 +91,20 @@ class Manifest:
     active_seconds: float = 0.0
     paused_seconds: float = 0.0
     _last_transition: float = 0.0
+
+    def duration_snapshot(self, now: float | None = None) -> tuple[float, float]:
+        """Return current active and paused durations without changing state."""
+
+        active_seconds = self.active_seconds
+        paused_seconds = self.paused_seconds
+        current_time = time.time() if now is None else now
+        if self._last_transition:
+            elapsed = max(0.0, current_time - self._last_transition)
+            if self.status == STATUS_ACTIVE:
+                active_seconds += elapsed
+            elif self.status == STATUS_PAUSED:
+                paused_seconds += elapsed
+        return active_seconds, paused_seconds
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -276,12 +285,9 @@ class Session:
         """
 
         now = time.time()
-        if self.manifest._last_transition:
-            elapsed = max(0.0, now - self.manifest._last_transition)
-            if self.manifest.status == STATUS_ACTIVE:
-                self.manifest.active_seconds += elapsed
-            elif self.manifest.status == STATUS_PAUSED:
-                self.manifest.paused_seconds += elapsed
+        active_seconds, paused_seconds = self.manifest.duration_snapshot(now)
+        self.manifest.active_seconds = active_seconds
+        self.manifest.paused_seconds = paused_seconds
         self.manifest._last_transition = now
 
     # --------------------------------------------------------------- lifecycle

@@ -7,10 +7,11 @@
 <style>
   :root{
     --bg:#11131a; --panel:#181b24; --line:#262b38; --ink:#e7e9ee; --dim:#9aa3b2;
-    --on:#3ddc97; --off:#4a5468; --warn:#f0a339; --accent:#6aa6ff;
+    --on:#3ddc97; --off:#4a5468; --warn:#f0a339; --accent:#6aa6ff; --danger:#c1303e;
   }
   @media (prefers-color-scheme: light){
-    :root{ --bg:#f6f7f9; --panel:#fff; --line:#e2e5ea; --ink:#1a1d24; --dim:#5f6775; --off:#c3c9d4; }
+    :root{ --bg:#f6f7f9; --panel:#fff; --line:#e2e5ea; --ink:#1a1d24; --dim:#5f6775;
+           --on:#137a50; --off:#c3c9d4; --warn:#9a5a00; --danger:#c1303e; }
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -18,7 +19,7 @@
   header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;
          align-items:baseline;gap:14px;flex-wrap:wrap}
   h1{font-size:16px;margin:0;letter-spacing:.02em}
-  .sid{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim)}
+  .session-title{font-size:12px;color:var(--dim)}
   .badge{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);
          text-transform:uppercase;letter-spacing:.06em}
   .badge.active{background:color-mix(in srgb,var(--on) 18%,transparent);
@@ -34,15 +35,35 @@
           background:transparent;color:var(--ink);cursor:pointer}
   button:hover{border-color:var(--accent)}
   button.primary{background:var(--accent);border-color:var(--accent);color:#0b1020;font-weight:600}
+  button.danger:not(:disabled){background:var(--danger);border-color:var(--danger);color:#fff}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   input,textarea{font:inherit;background:var(--bg);color:var(--ink);
                  border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%}
   textarea{min-height:110px;resize:vertical;font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .field{display:grid;gap:4px}
+  .field label{font-size:12px;color:var(--dim)}
+  .note-actions{align-items:end}
+  dialog{width:min(420px,calc(100vw - 32px));padding:0;border:1px solid var(--line);
+         border-radius:10px;background:var(--panel);color:var(--ink);
+         box-shadow:0 18px 50px rgba(0,0,0,.35)}
+  dialog::backdrop{background:rgba(8,10,15,.62)}
+  dialog form{display:grid;gap:12px;padding:18px}
+  dialog h2,dialog p{margin:0}
+  .dialog-actions{justify-content:flex-end}
+  .feedback{margin:10px 0 0;font-size:12px;white-space:pre-wrap}.feedback:empty{display:none}
+  .feedback.success{color:var(--on)}.feedback.error{color:var(--danger)}
   .sources{display:grid;gap:8px}
   .src{display:flex;align-items:center;justify-content:space-between;gap:12px;
        padding:9px 12px;border:1px solid var(--line);border-radius:8px}
   .src .meta{display:flex;flex-direction:column;gap:2px;min-width:0}
   .src .name{font-weight:600}
   .src .why{font-size:12px;color:var(--dim);overflow-wrap:anywhere}
+  .src .why code{font:inherit;font-family:ui-monospace,Menlo,monospace;
+                 padding:1px 4px;border-radius:4px;background:var(--bg);
+                 white-space:nowrap}
+  .source-control{display:flex;align-items:center;gap:8px}
+  .switch-state{font-size:12px;color:var(--dim)}
   .toggle{flex:none;width:46px;height:26px;border-radius:999px;border:1px solid var(--line);
           background:var(--off);position:relative;cursor:pointer;transition:background .15s}
   .toggle[data-on="1"]{background:var(--on)}
@@ -80,52 +101,80 @@
 <header>
   <h1>wfrec</h1>
   <span id="badge" class="badge">idle</span>
-  <span class="sid" id="sid">no active session</span>
+  <span class="session-title" id="session-title">No active session</span>
 </header>
 
 <main>
   <section>
-    <h2>Session</h2>
+    <h2>Recording Session</h2>
     <div class="grid2" style="margin-bottom:12px">
-      <input id="title" placeholder="What are you working on? e.g. HG008 variant calling">
-      <input id="analyst" placeholder="Analyst id (for multi-analyst clustering)">
+      <div class="field">
+        <label for="title">Session title</label>
+        <input id="title" placeholder="e.g. HG008 variant calling">
+      </div>
+      <div class="field">
+        <label for="analyst">Analyst name or ID</label>
+        <input id="analyst">
+      </div>
     </div>
     <div class="row">
-      <button class="primary" onclick="act('start')">Start</button>
-      <button onclick="pause()">Pause</button>
-      <button onclick="act('resume')">Resume</button>
-      <button onclick="act('stop')">Stop</button>
+      <button id="start-session" class="primary" onclick="act('start')">Start Session</button>
+      <button id="pause-session" onclick="pause()" disabled>Pause</button>
+      <button id="resume-session" onclick="act('resume')" disabled>Resume</button>
+      <button id="end-session" class="danger" onclick="act('stop')" disabled>End Session</button>
       <button onclick="doExport()">Export for AutoCAB</button>
     </div>
     <p class="stat" id="stats"></p>
+    <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
   </section>
 
   <section>
-    <h2>Capture sources</h2>
-    <div class="sources" id="sources"></div>
-    <p class="warn" id="warnings"></p>
+    <h2 id="sources-heading">Capture sources</h2>
+    <div class="sources" id="sources" role="group" aria-labelledby="sources-heading"></div>
   </section>
 
   <section>
-    <h2>Pasted context</h2>
-    <p class="stat">Paste or type anything worth remembering. Redaction runs before it is written to disk.</p>
-    <textarea id="note" placeholder="Paste the error, the job script, the reason you reran this..."></textarea>
-    <div class="row" style="margin-top:10px">
-      <input id="label" placeholder="Optional label, e.g. 'why I reran this'" style="max-width:340px">
-      <button class="primary" onclick="saveNote()">Add to timeline</button>
+    <h2>Notes and Context</h2>
+    <p class="stat">Add notes, errors, or decisions to the session timeline. Sensitive values are redacted before storage.</p>
+    <div class="field">
+      <textarea id="note" aria-label="Note" placeholder="Add an error, command, decision, or reason for rerunning…"></textarea>
+    </div>
+    <div class="row note-actions" style="margin-top:10px">
+      <div class="field" style="max-width:340px;flex:1 1 240px">
+        <label for="label">Label (optional)</label>
+        <input id="label" placeholder="e.g. Rerun reason">
+      </div>
+      <button class="primary" onclick="saveNote()">Add to Timeline</button>
     </div>
   </section>
 
   <section>
     <div class="section-head">
       <h2>Recent Events Log</h2>
-      <span class="log-count" id="log-count"></span>
+      <span class="log-count" id="log-count" role="status" aria-live="polite" aria-atomic="true"></span>
     </div>
-    <div class="event-log" id="log" aria-live="polite">
+    <div class="event-log" id="log">
       <p class="empty">Start or resume a session to see activity.</p>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="load-older" onclick="loadOlder()" hidden>Load older events</button>
     </div>
   </section>
 </main>
+
+<dialog id="pause-dialog" aria-labelledby="pause-dialog-title">
+  <form onsubmit="confirmPause(event)">
+    <h2 id="pause-dialog-title">Pause Session</h2>
+    <div class="field">
+      <label for="pause-reason">Pause reason (optional)</label>
+      <input id="pause-reason" placeholder="e.g. Waiting on the alignment job">
+    </div>
+    <div class="row dialog-actions">
+      <button type="button" onclick="closePauseDialog()">Cancel</button>
+      <button type="submit" class="primary">Pause Session</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 const TOKEN = new URLSearchParams(location.search).get('token') || '@WFREC_TOKEN@';
@@ -136,6 +185,9 @@ const SOURCE_HELP = {
   shell:'Shell commands, exit codes and durations',
   agents:'Codex, Claude Code, Copilot and Cursor transcripts',
   files:'Git-verified file changes in declared roots'
+};
+const SOURCE_NAMES = {
+  screen:'Screen', context:'Context', shell:'Shell', agents:'Agents', files:'Files'
 };
 const EVENT_NAMES = {
   'session.created':'Session created',
@@ -169,13 +221,23 @@ const TOOL_NAMES = {
   codex:'Codex', 'devsql-codex':'Codex', 'claude-code':'Claude Code',
   copilot:'Copilot', cursor:'Cursor'
 };
+const EVENT_PAGE_SIZE = 14;
 const EXPANDED_EVENTS = new Set();
 let STATE = null;
+let ANALYST_INITIALIZED = false;
+let CONNECTED = true;
+let EVENT_LIMIT = EVENT_PAGE_SIZE;
+let EVENT_SESSION = '';
+let STATE_RECEIVED_AT = performance.now();
 
 async function api(path, body){
   const res = await fetch(path, {method: body?'POST':'GET', headers:H,
                                 body: body?JSON.stringify(body):undefined});
-  if(!res.ok){ const t = await res.text(); throw new Error(t || res.status); }
+  if(!res.ok){
+    let message = `Request failed (${res.status})`;
+    try{ message = (await res.json()).detail || message; }catch(_error){}
+    throw new Error(message);
+  }
   return res.json();
 }
 
@@ -192,23 +254,38 @@ async function act(kind){
     if(kind === 'start'){
       STATE = await api('/sessions/start', {
         title: document.getElementById('title').value,
-        analyst: document.getElementById('analyst').value || 'unknown-analyst'
+        analyst: document.getElementById('analyst').value
       });
     } else if(kind === 'resume'){ STATE = await api('/sessions/resume', {}); }
     else if(kind === 'stop'){ STATE = await api('/sessions/stop', {}); }
     render();
-  }catch(e){ flash(e.message); }
+  }catch(e){ flash(e.message, 'error'); }
 }
 
-async function pause(){
-  const reason = prompt('Why are you pausing? (e.g. "waiting on the alignment job")') || '';
+function pause(){
+  const dialog = document.getElementById('pause-dialog');
+  const reason = document.getElementById('pause-reason');
+  reason.value = '';
+  dialog.showModal();
+  reason.focus();
+}
+
+function closePauseDialog(){
+  document.getElementById('pause-dialog').close();
+}
+
+async function confirmPause(event){
+  event.preventDefault();
+  const dialog = document.getElementById('pause-dialog');
+  const reason = document.getElementById('pause-reason').value.trim();
+  dialog.close();
   try{ STATE = await api('/sessions/pause', {reason}); render(); }
-  catch(e){ flash(e.message); }
+  catch(e){ flash(e.message, 'error'); }
 }
 
 async function toggle(name, on){
   try{ STATE = await api('/sources/'+name, {enabled:!on}); render(); }
-  catch(e){ flash(e.message); }
+  catch(e){ flash(e.message, 'error'); }
 }
 
 async function saveNote(){
@@ -219,16 +296,24 @@ async function saveNote(){
     await api('/notes', {text, label:document.getElementById('label').value,
                          pasted:pastedFlag(el)});
     el.value=''; el.dataset.pasted='0'; document.getElementById('label').value='';
+    flash('Note added to the timeline.', 'success');
     refreshLog();
-  }catch(e){ flash(e.message); }
+  }catch(e){ flash(e.message, 'error'); }
 }
 
 async function doExport(){
-  try{ const r = await api('/export', {formats:['autocab','trace']}); flash('Exported: '+ (r.written||[]).join(', ')); }
-  catch(e){ flash(e.message); }
+  try{
+    const r = await api('/export', {formats:['autocab','trace']});
+    const paths = r.written || [];
+    flash(`Exported ${paths.length} files for AutoCAB:\n${paths.join('\n')}`, 'success');
+  }catch(e){ flash(e.message, 'error'); }
 }
 
-function flash(msg){ document.getElementById('warnings').textContent = msg; }
+function flash(message, kind=''){
+  const feedback = document.getElementById('feedback');
+  feedback.textContent = message;
+  feedback.className = `feedback ${kind}`;
+}
 
 function sourceDetail(name, col){
   const extra = col.extra || {};
@@ -241,22 +326,49 @@ function sourceDetail(name, col){
     if(active.length) details.push('providers: '+active.join(', '));
   }
   if((extra.failed || []).length) details.push('failed: '+extra.failed.join(', '));
-  if(col.reason) details.push('reason: '+col.reason);
   if(col.detail) details.push(col.detail);
   return details.join(' · ');
 }
 
+function appendInlineCode(parent, value){
+  for(const part of String(value).split(/(`[^`]+`)/g)){
+    if(!part) continue;
+    if(part.startsWith('`') && part.endsWith('`')){
+      const code = document.createElement('code');
+      code.textContent = part.slice(1, -1);
+      parent.appendChild(code);
+    } else {
+      parent.appendChild(document.createTextNode(part));
+    }
+  }
+}
+
 function render(){
   if(!STATE) return;
+  STATE_RECEIVED_AT = performance.now();
+  if(!ANALYST_INITIALIZED){
+    const analyst = document.getElementById('analyst');
+    analyst.value = analyst.value || STATE.default_analyst || '';
+    ANALYST_INITIALIZED = true;
+  }
   const s = STATE.session;
   const badge = document.getElementById('badge');
   const status = s ? s.status : 'idle';
+  const active = status === 'active';
+  const paused = status === 'paused';
+  const startButton = document.getElementById('start-session');
+  startButton.textContent = active ? 'Session Active' : paused ? 'Session Paused' : 'Start Session';
+  startButton.disabled = Boolean(s);
+  document.getElementById('pause-session').disabled = !active;
+  document.getElementById('resume-session').disabled = !paused;
+  document.getElementById('end-session').disabled = !s;
   badge.textContent = status;
   badge.className = 'badge ' + (status==='active'?'active':status==='paused'?'paused':'');
-  document.getElementById('sid').textContent = s ? s.id : 'no active session';
-  document.getElementById('stats').textContent = s
-    ? `${s.events} events · active ${s.active_seconds}s · paused ${s.paused_seconds}s · ${s.root}`
-    : '';
+  const sessionTitle = s ? (s.title || '').trim() : '';
+  document.getElementById('session-title').textContent = s
+    ? (sessionTitle || 'Untitled session')
+    : 'No active session';
+  renderSessionStats();
   if(!s) showEmptyLog('Start or resume a session to see activity.');
 
   const host = document.getElementById('sources');
@@ -270,42 +382,115 @@ function render(){
       : [SOURCE_HELP[name], col.backend, statusDetail].filter(Boolean).join(' · ');
     const div = document.createElement('div');
     div.className = 'src';
-    div.innerHTML = `<div class="meta"><span class="name">${name}</span>
-                     <span class="why">${why}</span></div>`;
+    const displayName = SOURCE_NAMES[name] || name;
+    const meta = document.createElement('div');
+    const sourceName = document.createElement('span');
+    const sourceDescription = document.createElement('span');
+    meta.className = 'meta';
+    sourceName.className = 'name';
+    sourceName.id = `source-${name}-name`;
+    sourceName.textContent = displayName;
+    sourceDescription.className = 'why';
+    sourceDescription.id = `source-${name}-description`;
+    appendInlineCode(sourceDescription, why);
+    meta.append(sourceName, sourceDescription);
+    div.appendChild(meta);
     const btn = document.createElement('button');
     btn.className='toggle'; btn.dataset.on = on ? '1':'0';
-    btn.setAttribute('aria-label', (on?'Disable ':'Enable ')+name);
+    btn.setAttribute('role', 'switch');
+    btn.setAttribute('aria-checked', String(on));
+    btn.setAttribute('aria-labelledby', sourceName.id);
+    btn.setAttribute('aria-describedby', sourceDescription.id);
     btn.onclick = () => toggle(name, on);
     if(!s) btn.disabled = true;
-    div.appendChild(btn);
+    const control = document.createElement('div');
+    const switchState = document.createElement('span');
+    control.className = 'source-control';
+    switchState.className = 'switch-state';
+    switchState.textContent = on ? 'On' : 'Off';
+    switchState.setAttribute('aria-hidden', 'true');
+    control.append(switchState, btn);
+    div.appendChild(control);
     host.appendChild(div);
   }
 }
 
+function renderSessionStats(){
+  const stats = document.getElementById('stats');
+  const session = STATE && STATE.session;
+  if(!session){ stats.textContent = ''; return; }
+  const elapsed = Math.max(0, (performance.now() - STATE_RECEIVED_AT) / 1000);
+  const active = Number(session.active_seconds) || 0;
+  const paused = Number(session.paused_seconds) || 0;
+  const activeNow = active + (session.status === 'active' ? elapsed : 0);
+  const pausedNow = paused + (session.status === 'paused' ? elapsed : 0);
+  stats.textContent = `${session.events} events · ${Math.floor(activeNow)}s active · ${Math.floor(pausedNow)}s paused · ${session.root}`;
+}
+
 async function refresh(){
-  try{ STATE = await api('/status'); render(); }catch(e){}
+  try{
+    STATE = await api('/status');
+    render();
+    if(!CONNECTED) flash('Recorder reconnected.', 'success');
+    CONNECTED = true;
+  }catch(_error){
+    if(CONNECTED) flash('Recorder disconnected. Retrying…', 'error');
+    CONNECTED = false;
+  }
 }
 async function refreshLog(){
   if(!STATE || !STATE.session){
+    EVENT_SESSION = '';
+    EVENT_LIMIT = EVENT_PAGE_SIZE;
     showEmptyLog('Start or resume a session to see activity.');
     return;
   }
+  if(EVENT_SESSION !== STATE.session.id){
+    EVENT_SESSION = STATE.session.id;
+    EVENT_LIMIT = EVENT_PAGE_SIZE;
+  }
   try{
-    const r = await api(`/sessions/${STATE.session.id}/events?limit=14&offset=${Math.max(0,STATE.session.events-14)}`);
-    const events = r.events || [];
     const host = document.getElementById('log');
+    const previousTop = host.scrollTop;
+    const anchor = previousTop > 4 ? scrollAnchor(host) : null;
+    const offset = Math.max(0, STATE.session.events - EVENT_LIMIT);
+    const r = await api(`/sessions/${STATE.session.id}/events?limit=${EVENT_LIMIT}&offset=${offset}`);
+    const events = r.events || [];
     const total = Number(r.total || 0);
     document.getElementById('log-count').textContent = events.length
       ? `Latest ${events.length} of ${total} events`
       : '0 events';
+    document.getElementById('load-older').hidden = events.length >= total;
     host.replaceChildren();
     if(!events.length){
-      showEmptyLog('Waiting for recorded activity…');
+      showEmptyLog('Waiting for activity…');
       return;
     }
     for(const event of [...events].reverse()) host.appendChild(eventRow(event));
-    host.scrollTop = 0;
+    restoreScroll(host, anchor, previousTop);
   }catch(e){}
+}
+
+async function loadOlder(){
+  const button = document.getElementById('load-older');
+  button.disabled = true;
+  EVENT_LIMIT += EVENT_PAGE_SIZE;
+  await refreshLog();
+  button.disabled = false;
+}
+
+function scrollAnchor(host){
+  const top = host.scrollTop;
+  const row = [...host.querySelectorAll('.event-row')]
+    .find(candidate => candidate.offsetTop + candidate.offsetHeight > top);
+  return row ? {key:row.dataset.eventKey, offset:row.offsetTop - top} : null;
+}
+
+function restoreScroll(host, anchor, fallback){
+  if(!anchor){ host.scrollTop = 0; return; }
+  const row = [...host.querySelectorAll('.event-row')]
+    .find(candidate => candidate.dataset.eventKey === anchor.key);
+  host.scrollTop = row ? row.offsetTop - anchor.offset : fallback;
 }
 
 function showEmptyLog(message){
@@ -314,12 +499,14 @@ function showEmptyLog(message){
   empty.textContent = message;
   document.getElementById('log').replaceChildren(empty);
   document.getElementById('log-count').textContent = '';
+  document.getElementById('load-older').hidden = true;
 }
 
 function eventRow(event){
   const presentation = presentEvent(event);
   const row = document.createElement('div');
   row.className = 'event-row' + (presentation.warning ? ' warning' : '');
+  row.dataset.eventKey = eventKey(event);
 
   const time = document.createElement('span');
   time.className = 'event-time';
@@ -349,7 +536,7 @@ function eventDetail(event, fullDetail, previewLimit){
   detail.appendChild(text);
   if(preview === normalizedDetail) return detail;
 
-  const key = `${event.session || ''}:${event.seq ?? `${event.ts}:${event.type}`}`;
+  const key = eventKey(event);
   const more = document.createElement('button');
 
   function renderDetail(){
@@ -369,6 +556,10 @@ function eventDetail(event, fullDetail, previewLimit){
   detail.append(document.createTextNode(' '), more);
   renderDetail();
   return detail;
+}
+
+function eventKey(event){
+  return `${event.session || ''}:${event.seq ?? `${event.ts}:${event.type}`}`;
 }
 
 function presentEvent(event){
@@ -522,6 +713,7 @@ function changeDetail(payload){
 refresh().then(refreshLog);
 setInterval(refresh, 2000);
 setInterval(refreshLog, 3000);
+setInterval(renderSessionStats, 1000);
 </script>
 </body>
 </html>
