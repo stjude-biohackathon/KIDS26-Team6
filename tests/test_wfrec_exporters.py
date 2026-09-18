@@ -20,6 +20,15 @@ from wfrec.exporters.autocab_terminal import build_terminal_log, write_terminal_
 from wfrec.exporters.trace import build_trace, infer_tags
 
 
+def _seal(session):
+    """``export_session`` refuses an unsealed session -- that refusal is the
+    control, so the export tests seal rather than have the gate relaxed."""
+
+    from wfrec.seal import seal_session
+
+    return seal_session(session, key=b"\x2a" * 32, engine_label="regex", force=True)
+
+
 def _record_commands(session, commands):
     session.writer.extend(
         [
@@ -121,6 +130,7 @@ def test_screen_capture_export_loads_through_existing_adapter(store):
     )
     _record_commands(session, ["samtools flagstat HG008.bam"])
 
+    _seal(session)
     result = export_session(session, formats=["screen-capture"])
     path = result["details"]["screen_capture"]["path"]
 
@@ -141,6 +151,7 @@ def test_trace_export_is_a_list_matching_load_workflow_traces(store):
     session, _ = store.start(title="A", analyst="mgatta42")
     _record_commands(session, ["fastqc HG008.bam", "multiqc ."])
 
+    _seal(session)
     result = export_session(session, formats=["trace"])
     path = __import__("pathlib").Path(result["details"]["trace"]["path"])
     traces = load_workflow_traces(path)
@@ -193,6 +204,7 @@ def test_tag_inference(text, expected):
 def test_export_autocab_writes_both_text_formats(store):
     session, _ = store.start(title="A", analyst="a")
     _record_commands(session, ["ls"])
+    _seal(session)
     result = export_session(session, formats=["autocab"])
     names = {__import__("pathlib").Path(p).name for p in result["written"]}
     assert names == {"autocab-terminal.log", "autocab-screen-capture.json"}

@@ -59,6 +59,43 @@ macos = [
   "pyobjc-framework-Cocoa>=10.0; sys_platform == 'darwin'",
   "ocrmac>=1.0; sys_platform == 'darwin'",
 ]
+# --- de-identification ---
+# The regex tier needs nothing: it is stdlib only, always on, and the only tier
+# that runs inline at capture. That is what lets `SensitiveDataRedactor`
+# delegate to `find_spans()` without making any of the below a hard requirement.
+#
+# The GLiNER model tier (build spec step 8) belongs in *base* dependencies when
+# it lands -- "a PHI control that requires a second install flag is a PHI
+# control that is off on most machines" -- and will add `onnxruntime>=1.17`,
+# `tokenizers>=0.20`, `huggingface-hub>=0.24` and `numpy>=1.24`. Those are
+# deliberately NOT here yet: the engine module does not exist, and base
+# dependencies that nothing imports are cost with no benefit. Adding them is
+# part of that step, together with regenerating `uv.lock` in the same commit.
+deid-torch = ["torch>=2.2", "transformers>=4.40"]
+# Presidio's *validators* are already adopted (see engines/validators.py); the
+# framework is opt-in because `en_core_web_lg` is not on PyPI and installs from
+# a GitHub release URL via `spacy download`, which breaks air-gapped and proxied
+# installs, and because spaCy's thinc/numpy pins fight other dependencies.
+deid-presidio = ["presidio-analyzer>=2.2", "spacy>=3.7"]
+# LLM providers. Layer 1 of the gate *is* these extras being absent: with the
+# SDK missing, the most reliable gate available is an ImportError.
+deid-anthropic = ["anthropic>=1.0"]
+# Also covers Codex, vLLM, LM Studio, llama.cpp, Azure and internal gateways --
+# anything that accepts a `base_url`.
+deid-openai = ["openai>=1.40"]
+deid-google = ["google-genai>=1.0"]
+# Ollama deliberately has NO extra: plain HTTP over the httpx already in base
+# dependencies above. The lowest-friction LLM path is also the zero-egress,
+# zero-new-dependency one, which is the right incentive. Its containment is the
+# acknowledgement's `allowed_endpoints` plus the egress classifier, not an
+# install flag -- gating an install on a transport that reaches only loopback
+# buys nothing.
+
+# UNCHANGED, and it matters: CI runs `pip install -e ".[dev]"` then a bare
+# `python -m pytest`, so no workflow edit is needed and no LLM SDK or model
+# weight ever reaches CI. The model and live-LLM tests are skipped by the
+# `pytest_collection_modifyitems` hook in tests/conftest.py, with a named
+# reason rather than a silent zero-collected pass.
 dev = ["pytest>=8.0"]
 
 [project.scripts]
@@ -82,3 +119,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  "model: needs the packaged de-identification model weights (AUTOCAB_DEID_MODEL_TESTS=1)",
+  "live: sends text to a real LLM provider (AUTOCAB_DEID_LIVE_LLM_TESTS=1)",
+]

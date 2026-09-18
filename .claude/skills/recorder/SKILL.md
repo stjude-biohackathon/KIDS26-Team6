@@ -102,7 +102,20 @@ several session folders, or use `wfrec merge`.
 - Do not enable clipboard monitoring; there is no such feature, by design. The
   `context` source only records what the user deliberately pastes or types.
 - Do not point the recorder at real patient data. The prototype is for
-  synthetic and public datasets; redaction is best-effort, not a PHI control.
+  synthetic and public datasets. De-identification is a **measured** control now
+  rather than a best-effort one -- `docs/deid-evaluation.md` carries per-label
+  recall from `autocab deid eval` -- but a measured recall number is not a HIPAA
+  Safe Harbor determination, name recall from the pattern tier is around 0.45,
+  and HIPAA identifier 17 (full-face photographs) is uncovered entirely. Read
+  "What this does not prove" in that document before telling a user anything
+  about the guarantees.
+- **Always tell the user to seal a session before exporting it.** `wfrec export`
+  and the AutoCAB session adapter both refuse an unsealed session with
+  `NotSealed`, so a stopped session is not yet usable: run
+  `wfrec seal <session-id>`. Sealing rewrites the session in place and is
+  irreversible -- no reverse map is written and the key is discarded -- so say so
+  before running it, and use `wfrec seal --dry-run <id>` if the user wants to see
+  what it would find first.
 - Do not install shell hooks on a shared or remote host without saying so
   first. `wfrec ssh <host>` bootstraps a hook into the remote `~/.bashrc`, and
   that is a change to infrastructure the user may share with colleagues.

@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from .exporters.trace import build_trace
+from .seal import require_sealed
 from .session import Session
 
 
@@ -30,6 +31,11 @@ def merge_sessions(
     for session_id in session_ids:
         try:
             session = Session.load(session_id)
+        except Exception as exc:
+            skipped.append({"session": session_id, "error": str(exc)})
+            continue
+        try:
+            require_sealed(session.root, what="merge")
         except Exception as exc:
             skipped.append({"session": session_id, "error": str(exc)})
             continue

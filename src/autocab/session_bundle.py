@@ -49,7 +49,14 @@ def _trace_from_session_dir(path: Path) -> WorkflowTrace:
 
     try:
         from wfrec.exporters.trace import build_trace
+        from wfrec.seal import require_sealed
         from wfrec.session import Manifest, Session
+
+        # The **second** hard gate, and the one that actually matters: this
+        # function rebuilds the trace from `events.jsonl` live, so gating only
+        # `exports/` would leave the timeline ingestible by anyone who pointed
+        # `--session-dir` at the folder. Guard the timeline, not the projection.
+        require_sealed(path, what="session ingestion")
 
         manifest = Manifest.from_dict(
             json.loads((path / "manifest.json").read_text(encoding="utf-8"))

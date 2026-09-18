@@ -84,6 +84,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=Path("data/generated_terminal_trace.json"),
         help="Destination trace JSON file.",
     )
+
+    # `deid` owns the measurement verbs; the seal verbs live on `wfrec`,
+    # following the pipeline/session seam that already exists here.
+    from .deid.cli import add_subparser as add_deid_subparser
+
+    add_deid_subparser(subparsers)
     return parser
 
 
@@ -109,6 +115,11 @@ def main() -> int:
 
         print(json.dumps([proposal.to_dict() for proposal in proposals], indent=2))
         return 0
+
+    if args.command == "deid":
+        from .deid.cli import run as run_deid
+
+        return run_deid(args)
 
     if args.command == "ingest-terminal-log":
         try:

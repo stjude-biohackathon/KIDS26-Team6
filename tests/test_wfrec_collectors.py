@@ -599,3 +599,123 @@ def test_unexpected_probe_exception_is_contained(store):
     assert status.available is False
     assert status.reason == "probe-failed"
     assert "kaboom" in status.detail
+
+
+# --------------------------------------------------------------------------
+# step 7: the inline gaps that used to write verbatim
+# --------------------------------------------------------------------------
+def test_file_changed_paths_are_redacted_inline(store, tmp_path):
+    """A filename is the dominant identifier surface in this domain.
+
+    `/data/proj/SJALL018/smith_jane_R1.fastq.gz` carries a subject id *and* a
+    patient name, and this event wrote it verbatim -- making the seal its only
+    control.
+    """
+
+    session, _ = store.start(title="A", analyst="a")
+    collector = FileCollector(session, roots=[tmp_path])
+
+    target = tmp_path / "SJALL018" / "smith_jane_R1.fastq.gz"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("ACGT\n", encoding="utf-8")
+
+    event = collector._describe(target)
+
+    assert "SJALL018" not in event.payload["path"]
+    assert "smith_jane" not in event.payload["path"]
+    assert set(event.redactions) >= {"sj_id", "name"}
+    # The directory structure survives: only the components are replaced.
+    assert event.payload["path"].endswith("_R1.fastq.gz")
+
+
+def test_a_deleted_file_event_is_redacted_too(store, tmp_path):
+    session, _ = store.start(title="A", analyst="a")
+    collector = FileCollector(session, roots=[tmp_path])
+
+    event = collector._describe(tmp_path / "SJALL018" / "gone.bam")
+
+    assert event.payload["op"] == "deleted"
+    assert "SJALL018" not in event.payload["path"]
+    assert "sj_id" in event.redactions
+
+
+def test_diff_patches_are_redacted_before_they_touch_disk(store, tmp_path):
+    """A diff hunk is raw file content -- the highest-risk thing this collector
+    writes, and it went to disk verbatim."""
+
+    import subprocess
+
+    session, _ = store.start(title="A", analyst="a")
+    root = tmp_path / "repo"
+    root.mkdir()
+    for args in (["init", "-q"], ["config", "user.email", "t@example.org"], ["config", "user.name", "t"]):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+    tracked = root / "manifest.tsv"
+    tracked.write_text("id\tnote\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=root, check=True, capture_output=True)
+    tracked.write_text("id\tnote\nSJ-4817\tMRN 4419902 jane.smith@example.org\n", encoding="utf-8")
+
+    collector = FileCollector(session, roots=[root])
+    collector._git_snapshot(root, trigger="test", force=True)
+
+    patches = sorted((session.root / "files" / "diffs").glob("*.patch"))
+    assert patches, "no patch was written"
+    blob = "\n".join(path.read_text(encoding="utf-8") for path in patches)
+
+    assert "4419902" not in blob
+    assert "jane.smith@example.org" not in blob
+    assert "SJ-4817" not in blob
+    # The diff structure survives, so the patch is still readable as a patch.
+    assert "+++" in blob or "---" in blob
+
+
+def test_a_diff_filename_cannot_reintroduce_the_identifier(store, tmp_path):
+    """The staged filename is derived from the relative path.
+
+    Redacting the *content* while naming the file after the unredacted path
+    would put the identifier straight back on disk, in a place `ls` shows.
+    """
+
+    import subprocess
+
+    session, _ = store.start(title="A", analyst="a")
+    root = tmp_path / "repo2"
+    root.mkdir()
+    for args in (["init", "-q"], ["config", "user.email", "t@example.org"], ["config", "user.name", "t"]):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+    tracked = root / "SJ-4817_notes.txt"
+    tracked.write_text("one\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=root, check=True, capture_output=True)
+    tracked.write_text("one\ntwo\n", encoding="utf-8")
+
+    collector = FileCollector(session, roots=[root])
+    collector._git_snapshot(root, trigger="test", force=True)
+
+    names = [path.name for path in (session.root / "files" / "diffs").glob("*.patch")]
+    assert names
+    assert all("SJ-4817" not in name for name in names), names
+
+
+def test_git_snapshot_redacts_root_branch_and_reports_findings(store, tmp_path):
+    import subprocess
+
+    session, _ = store.start(title="A", analyst="a")
+    root = tmp_path / "repo3"
+    root.mkdir()
+    for args in (["init", "-q"], ["config", "user.email", "t@example.org"], ["config", "user.name", "t"]):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "checkout", "-qb", "SJ-4817-branch"], cwd=root, check=True, capture_output=True)
+    tracked = root / "SJ-4817.txt"
+    tracked.write_text("one\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=root, check=True, capture_output=True)
+    tracked.write_text("two\n", encoding="utf-8")
+
+    collector = FileCollector(session, roots=[root])
+    collector._git_snapshot(root, trigger="test", force=True)
+
+    event = [item for item in session.writer.read() if item.type == "git.snapshot"][-1]
+    assert "SJ-4817" not in json.dumps(event.payload)
+    assert "sj_id" in event.redactions

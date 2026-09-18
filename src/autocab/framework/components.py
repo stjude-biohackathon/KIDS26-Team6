@@ -96,16 +96,46 @@ class WorkflowClusterer:
 
 
 class SensitiveDataRedactor:
-    """Replace obvious sensitive tokens before proposal generation."""
+    """Replace obvious sensitive tokens before proposal generation.
+
+    Delegates to ``autocab.deid``, which owns the one pattern table in the repo.
+    The four patterns this class used to carry are kept below as
+    ``_FALLBACK_PATTERNS`` and used only if ``autocab.deid`` cannot be imported
+    -- the redaction path must never fail *open*, so an import problem degrades
+    to the historical behaviour rather than to no redaction at all.
+
+    The output is unchanged: ``[REDACTED_EMAIL]``, ``[REDACTED_SJ_ID]``,
+    ``[REDACTED_MRN]``, ``[REDACTED_DOB]`` and ``deny:<term>`` findings all come
+    back byte-identical, because ``autocab.deid.compat`` carries an explicit
+    legacy-name map rather than deriving names from the label.
+    """
+
+    #: Only reached when ``autocab.deid`` is unimportable. Deliberately the
+    #: historical literals, bugs and all, so the degraded path is the *known*
+    #: old behaviour and not a third, untested variant.
+    _FALLBACK_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+        ("email", re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")),
+        ("sj_id", re.compile(r"\bSJ[-_ ]?\d{4,8}\b", re.IGNORECASE)),
+        ("mrn", re.compile(r"\bMRN[: ]?\d{6,10}\b", re.IGNORECASE)),
+        ("dob", re.compile(r"\bDOB[: ]?\d{4}-\d{2}-\d{2}\b", re.IGNORECASE)),
+    )
 
     def __init__(self, deny_list: tuple[str, ...]) -> None:
-        self._deny_list = set(deny_list)
-        self._patterns: list[tuple[str, re.Pattern[str]]] = [
-            ("email", re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")),
-            ("sj_id", re.compile(r"\bSJ[-_ ]?\d{4,8}\b", re.IGNORECASE)),
-            ("mrn", re.compile(r"\bMRN[: ]?\d{6,10}\b", re.IGNORECASE)),
-            ("dob", re.compile(r"\bDOB[: ]?\d{4}-\d{2}-\d{2}\b", re.IGNORECASE)),
-        ]
+        self._deny_list = tuple(sorted(set(deny_list)))
+        self._deid = None
+        self._deid_error: str | None = None
+        try:
+            from autocab import deid
+
+            self._deid = deid
+        except ImportError as exc:  # pragma: no cover - only on a broken install
+            self._deid_error = f"{type(exc).__name__}: {exc}"
+
+    @property
+    def deid_available(self) -> bool:
+        """Whether the shared detector is in use. ``wfrec doctor`` reports it."""
+
+        return self._deid is not None
 
     def redact(self, cluster: TraceCluster) -> RedactionReport:
         return self.redact_text(cluster.merged_text())
@@ -113,19 +143,30 @@ class SensitiveDataRedactor:
     def redact_text(self, text: str) -> RedactionReport:
         """Redact free-form text outside the full pipeline."""
 
+        if self._deid is None:  # pragma: no cover - only on a broken install
+            return self._redact_text_fallback(text)
+        redacted, spans = self._deid.mask_text(text, deny_terms=self._deny_list)
+        return RedactionReport(
+            redacted_text=redacted, findings=self._deid.findings_from_spans(spans)
+        )
+
+    def _redact_text_fallback(self, text: str) -> RedactionReport:  # pragma: no cover
         redacted = text
         findings: list[str] = []
 
-        for name, pattern in self._patterns:
+        for name, pattern in self._FALLBACK_PATTERNS:
             if pattern.search(redacted):
                 findings.append(name)
                 redacted = pattern.sub(f"[REDACTED_{name.upper()}]", redacted)
 
-        lower_text = redacted.lower()
-        for token in sorted(self._deny_list):
-            if token in lower_text:
+        for token in self._deny_list:
+            # `re.escape` plus `\b`, not the old bare `re.sub(token, ...)`: that
+            # rewrote `outpatients_cohort.tsv` into `out[REDACTED_TERM]s_...`
+            # and raised `re.error` on any term containing a regex metacharacter.
+            pattern = re.compile(rf"\b{re.escape(token)}(?:es|s)?\b", re.IGNORECASE)
+            if pattern.search(redacted):
                 findings.append(f"deny:{token}")
-                redacted = re.sub(token, "[REDACTED_TERM]", redacted, flags=re.IGNORECASE)
+                redacted = pattern.sub("[REDACTED_TERM]", redacted)
 
         return RedactionReport(redacted_text=redacted, findings=sorted(set(findings)))
 

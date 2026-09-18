@@ -23,6 +23,7 @@ from typing import Any
 
 from .events import JOB_COMPLETED, Event
 from .output import error
+from .redaction import shared as shared_redactor
 
 REMOTE_DIR = "~/.wfrec"
 SSH_TIMEOUT = 60
@@ -109,6 +110,16 @@ def interactive_shell(host: str, session_id: str, extra_args: list[str] | None =
         return 1
 
 
+def _redact_required(text: str, *, what: str, redactor=None):
+    redactor = redactor or shared_redactor()
+    redacted = redactor.apply(text)
+    if text and not redacted.available:
+        raise RuntimeError(
+            f"cannot record {what}: shared redactor is unavailable"
+        )
+    return redacted
+
+
 def pull_spool(host: str, session, *, session_id: str | None = None) -> dict[str, Any]:
     """Copy remote spool files into ``<session>/shell/remote/`` for ingest."""
 
@@ -121,6 +132,7 @@ def pull_spool(host: str, session, *, session_id: str | None = None) -> dict[str
     )
     files = [line.strip() for line in listing.stdout.splitlines() if line.strip()]
     pulled: list[str] = []
+    redactor = shared_redactor()
     for remote_path in files:
         name = Path(remote_path).name
         # cat over the existing ssh path rather than scp: one mechanism, and it
@@ -128,7 +140,14 @@ def pull_spool(host: str, session, *, session_id: str | None = None) -> dict[str
         proc = _run(["ssh", host, f"cat {remote_path}"])
         if proc.returncode != 0:
             continue
-        (target_dir / name).write_text(proc.stdout, encoding="utf-8")
+        # Redacted inline. This is remote command output pulled off an HPC host
+        # and written straight to `shell/remote/*`, and until now it landed
+        # verbatim -- which left the seal as its only control over the one
+        # channel most likely to contain a clinical grep.
+        (target_dir / name).write_text(
+            _redact_required(proc.stdout, what="remote spool output", redactor=redactor).text,
+            encoding="utf-8",
+        )
         pulled.append(name)
 
     return {"host": host, "pulled": pulled, "dir": str(target_dir)}
@@ -149,9 +168,23 @@ def collect_slurm(host: str, session, job_ids: list[str]) -> list[Event]:
     rows = [line for line in proc.stdout.splitlines() if line.strip()]
     if len(rows) > 1:
         header = rows[0].split("|")
+        redactor = shared_redactor()
         for row in rows[1:]:
             values = row.split("|")
             record = dict(zip(header, values))
+            # `JobName` and `WorkDir` are free-text: a job name is routinely a
+            # cohort or subject code and a working directory is a path. Redacted
+            # per field so the numeric accounting columns -- which the activity
+            # dashboard reads -- are untouched.
+            findings: set[str] = set()
+            for key in ("JobName", "WorkDir", "Comment"):
+                value = record.get(key)
+                if isinstance(value, str) and value:
+                    redacted = _redact_required(
+                        value, what=f"slurm accounting field {key}", redactor=redactor
+                    )
+                    record[key] = redacted.text
+                    findings.update(redacted.findings)
             events.append(
                 Event(
                     source="shell",
@@ -159,6 +192,7 @@ def collect_slurm(host: str, session, job_ids: list[str]) -> list[Event]:
                     origin=f"remote:{host}",
                     host=host,
                     payload={"scheduler": "slurm", **record},
+                    redactions=sorted(findings),
                 )
             )
     elif proc.stdout.strip() == "" :
@@ -181,6 +215,7 @@ def collect_slurm(host: str, session, job_ids: list[str]) -> list[Event]:
 
     jobs_dir = session.root / "jobs"
     jobs_dir.mkdir(parents=True, exist_ok=True)
+    redactor = shared_redactor()
     for job_id in job_ids:
         out = _run(
             [
@@ -195,5 +230,11 @@ def collect_slurm(host: str, session, job_ids: list[str]) -> list[Event]:
             ]
         )
         if out.returncode == 0 and out.stdout.strip():
-            (jobs_dir / f"{host}-{job_id}.out").write_text(out.stdout, encoding="utf-8")
+            # Scheduler output is a high-risk channel: a job's stdout is
+            # whatever the pipeline printed, which routinely includes sample
+            # manifests and file paths. Also written verbatim until now.
+            (jobs_dir / f"{host}-{job_id}.out").write_text(
+                _redact_required(out.stdout, what="slurm job output", redactor=redactor).text,
+                encoding="utf-8",
+            )
     return events

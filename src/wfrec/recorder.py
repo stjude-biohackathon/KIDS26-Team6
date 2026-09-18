@@ -211,6 +211,18 @@ class Recorder:
             status = self.status()
             status["stopped"] = session.session_id
             status["root"] = str(session.root)
+            # Tell the operator what has to happen next. The export gates make
+            # this mandatory rather than advisory: an unsealed session cannot be
+            # exported or ingested, so a stop that said nothing would leave
+            # somebody staring at a NotSealed error later with no idea why.
+            from .seal import is_sealed
+
+            status["sealed"] = is_sealed(session.root)
+            status["next_step"] = (
+                f"wfrec seal {session.session_id}"
+                if not status["sealed"]
+                else "already sealed"
+            )
             return status
 
     # ----------------------------------------------------------------- toggle

@@ -20,14 +20,48 @@ modified tracked file, so one touched 100 GB BAM would make git read all
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import time
 from collections import deque
 from pathlib import Path
 from threading import Lock
 
-from ..events import FILE_CHANGED, FILE_DIFF, FILE_FLOOD, GIT_SNAPSHOT, Event
 from .base import Collector, CollectorStatus, Degraded
+from ..events import FILE_CHANGED, FILE_DIFF, FILE_FLOOD, GIT_SNAPSHOT, Event
+from ..redaction import shared as shared_redactor
+
+
+def _require_redactor():
+    redactor = shared_redactor()
+    if not redactor.available:
+        raise Degraded(
+            "deid-unavailable",
+            redactor.error or "shared redactor is unavailable",
+        )
+    return redactor
+
+
+def _redact_path_entries(
+    entries: list[dict[str, str]], redactor=None
+) -> tuple[list[dict[str, str]], list[str]]:
+    """Redact the ``path`` field of each git-status / numstat entry.
+
+    Only ``path`` -- the other fields are counts and status codes, and rewriting
+    them would break the exporters that read them.
+    """
+
+    redactor = redactor or _require_redactor()
+    out: list[dict[str, str]] = []
+    findings: set[str] = set()
+    for entry in entries:
+        item = dict(entry)
+        if isinstance(item.get("path"), str):
+            redacted = redactor.apply(item["path"])
+            item["path"] = redacted.text
+            findings.update(redacted.findings)
+        out.append(item)
+    return out, sorted(findings)
 
 #: Extensions never read, only recorded as metadata. Seeded from the repo's own
 #: .gitignore and extended with the rest of the common genomics binary formats.
@@ -60,6 +94,7 @@ TRACKED_BLOB_REFUSE = 100 * 1024 * 1024  # skip git entirely if tracked blobs ex
 FLOOD_QUEUE_MAX = 10000
 DEBOUNCE_SECONDS = 1.0
 GIT_MIN_INTERVAL = 5.0
+SAFE_DIFF_NAME = re.compile(r"[^A-Za-z0-9._-]+")
 
 #: Pathspec exclusions handed to git. Only the CLI supports this magic syntax,
 #: which is the main reason this module shells out instead of using pygit2.
@@ -202,6 +237,7 @@ class FileCollector(Collector):
                 "no-watch-roots",
                 "No project roots declared. Use `wfrec watch <dir>` to add one.",
             )
+        _require_redactor()
 
         backend = "polling"
         try:
@@ -378,11 +414,20 @@ class FileCollector(Collector):
         except OSError:
             mtime = None
 
+        # The path is redacted inline. A filename is the dominant identifier
+        # surface in this domain -- `/data/proj/SJALL018/smith_jane_R1.fastq.gz`
+        # carries a subject id *and* a patient name -- and until now it was
+        # written verbatim, which made the seal its only control. Defence in
+        # depth: an unsealed session folder is still zippable and shareable even
+        # though it cannot be exported.
+        redactor = _require_redactor()
+        redacted_path = redactor.apply(str(path))
         payload: dict[str, object] = {
-            "path": str(path),
+            "path": redacted_path.text,
             "exists": exists,
             "size": size,
         }
+        findings = list(redacted_path.findings)
         op = "deleted" if not exists else "modified"
         fingerprint = (op, size, mtime)
         if self._last_emitted.get(path) == fingerprint:
@@ -391,7 +436,12 @@ class FileCollector(Collector):
 
         if not exists:
             payload["op"] = "deleted"
-            return Event(source=self.source, type=FILE_CHANGED, payload=payload)
+            return Event(
+                source=self.source,
+                type=FILE_CHANGED,
+                payload=payload,
+                redactions=findings,
+            )
 
         payload["op"] = "modified"
         if is_binary_path(path):
@@ -402,7 +452,9 @@ class FileCollector(Collector):
             payload["content"] = "skipped-binary-content"
         else:
             payload["content"] = "text"
-        return Event(source=self.source, type=FILE_CHANGED, payload=payload)
+        return Event(
+            source=self.source, type=FILE_CHANGED, payload=payload, redactions=findings
+        )
 
     # -------------------------------------------------------------------- git
     def _git_snapshot(self, root: Path, *, trigger: str, force: bool = False) -> None:
@@ -421,6 +473,9 @@ class FileCollector(Collector):
         head = head.strip() if code == 0 else ""
         code, branch = run_git(root, "rev-parse", "--abbrev-ref", "HEAD")
         branch = branch.strip() if code == 0 else ""
+        redactor = _require_redactor()
+        redacted_root = redactor.apply(str(root))
+        redacted_branch = redactor.apply(branch)
 
         code, status_out = run_git(
             root, "status", "--porcelain=v1", "-uall", "--", ".", *GIT_EXCLUDES
@@ -443,20 +498,32 @@ class FileCollector(Collector):
                     stats.append(
                         {"added": parts[0], "deleted": parts[1], "path": parts[2]}
                     )
+        redacted_changed, changed_findings = _redact_path_entries(entries[:200], redactor)
+        redacted_numstat, numstat_findings = _redact_path_entries(stats[:200], redactor)
+        findings = sorted(
+            set(redacted_root.findings)
+            | set(redacted_branch.findings)
+            | set(changed_findings)
+            | set(numstat_findings)
+        )
 
         self.session.writer.append(
             Event(
                 source=self.source,
                 type=GIT_SNAPSHOT,
                 payload={
-                    "root": str(root),
+                    "root": redacted_root.text,
                     "head": head,
-                    "branch": branch,
+                    "branch": redacted_branch.text,
                     "trigger": trigger,
-                    "changed": entries[:200],
-                    "numstat": stats[:200],
+                    # `changed` and `numstat` are lists of paths, and a path is
+                    # the dominant identifier surface here. Redacted inline for
+                    # the same reason as FILE_CHANGED above.
+                    "changed": redacted_changed,
+                    "numstat": redacted_numstat,
                     "changed_count": len(entries),
                 },
+                redactions=findings,
             )
         )
         self._head[root] = head
@@ -484,23 +551,40 @@ class FileCollector(Collector):
             truncated = len(patch) > DIFF_OUTPUT_MAX
             if truncated:
                 patch = patch[:DIFF_OUTPUT_MAX] + "\n... [diff truncated by wfrec]\n"
+            # A diff hunk is **raw file content**, so this is the single
+            # highest-risk thing the files collector writes -- and it went to
+            # disk verbatim, leaving the seal as its only control. Redacting the
+            # patch and its path inline costs one pass over a bounded string.
+            redactor = _require_redactor()
+            redacted_patch = redactor.apply(patch)
+            redacted_rel = redactor.apply(rel)
+            redacted_root = redactor.apply(str(root))
+            findings = sorted(
+                set(redacted_patch.findings)
+                | set(redacted_rel.findings)
+                | set(redacted_root.findings)
+            )
             safe = rel.replace(os.sep, "__").replace("/", "__")
+            # The *filename* is derived from the unredacted relative path, so it
+            # would otherwise reintroduce the identifier the content just lost.
+            safe = SAFE_DIFF_NAME.sub("_", redactor.apply(safe).text).strip("._") or "redacted"
             relative = f"files/diffs/{int(time.time() * 1000)}_{safe}.patch"
             destination = self.session.root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_text(patch, encoding="utf-8")
+            destination.write_text(redacted_patch.text, encoding="utf-8")
             events.append(
                 Event(
                     source=self.source,
                     type=FILE_DIFF,
                     payload={
-                        "root": str(root),
-                        "path": rel,
+                        "root": redacted_root.text,
+                        "path": redacted_rel.text,
                         "added": stat["added"],
                         "deleted": stat["deleted"],
                         "truncated": truncated,
                     },
                     ref=relative,
+                    redactions=findings,
                 )
             )
         self.emit(events)

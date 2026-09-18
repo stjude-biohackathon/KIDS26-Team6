@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import secrets
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -71,6 +71,15 @@ class ExportRequest(BaseModel):
     formats: list[str] = Field(default_factory=lambda: ["autocab"])
 
 
+class SealRequest(BaseModel):
+    session_id: str | None = None
+    profile: Literal["regex-only"] = "regex-only"
+    reseal: bool = False
+    force: bool = False
+    dry_run: bool = False
+    status: bool = False
+
+
 def create_app(recorder: Recorder, token: str) -> FastAPI:
     """Build the control API around a live ``Recorder``."""
 
@@ -92,6 +101,26 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
             raise HTTPException(status_code=401, detail="Invalid or missing API token.")
 
     guard = [Depends(authorize)]
+
+    def _doctor_response() -> dict[str, Any]:
+        from .doctor import diagnose
+
+        report = diagnose()
+        safe_sources: dict[str, Any] = {}
+        for name, payload in (report.get("sources") or {}).items():
+            if isinstance(payload, dict):
+                safe_sources[str(name)] = {
+                    key: value
+                    for key, value in payload.items()
+                    if key in {"ok", "available", "backend", "reason", "extra"}
+                }
+        return {
+            "wfrec_version": report.get("wfrec_version", __version__),
+            "python": report.get("python", ""),
+            "platform": report.get("platform", {}),
+            "state": report.get("state", {}),
+            "sources": safe_sources,
+        }
 
     @app.exception_handler(NoActiveSession)
     async def _no_session(_request: Request, exc: NoActiveSession) -> JSONResponse:
@@ -118,9 +147,7 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
     @app.get("/doctor", dependencies=guard)
     def doctor() -> dict[str, Any]:
-        from .doctor import diagnose
-
-        return diagnose()
+        return _doctor_response()
 
     @app.get("/sessions", dependencies=guard)
     def sessions() -> dict[str, Any]:
@@ -203,6 +230,48 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     @app.post("/watch", dependencies=guard)
     def watch(payload: WatchRequest) -> dict[str, Any]:
         return recorder.add_watch_root(Path(payload.root))
+
+    # ------------------------------------------------------------------- seal
+    @app.post("/sessions/seal", dependencies=guard)
+    def seal(payload: SealRequest) -> dict[str, Any]:
+        """Mirror of ``/export`` for the GUI and the recorder skill.
+
+        Runs in the API process, which is the daemon -- so this route is
+        deliberately limited to the **regex** tier. A model fetch or an
+        interactive confirmation has no tty here, and the build spec's rule is
+        that the seal and any weight fetch run in the foreground CLI. For a
+        model or LLM tier, the GUI points the operator at `wfrec seal`.
+        """
+
+        from autocab.deid.policy import Policy, RenderMode
+
+        from .seal import SealError, seal_session, seal_status
+
+        if payload.status:
+            session = (
+                recorder.store.resolve(payload.session_id)
+                if payload.session_id
+                else (recorder.session or recorder.store.resolve(None))
+            )
+            return seal_status(session.root)
+        session = recorder.store.resolve(payload.session_id)
+        try:
+            result = seal_session(
+                session,
+                policy=Policy(profile=payload.profile, render=RenderMode.PSEUDONYMIZE),
+                engine_label="regex",
+                reseal=payload.reseal,
+                force=payload.force,
+                dry_run=payload.dry_run,
+                stop_session=(
+                    None
+                    if not payload.force
+                    else lambda: recorder.stop_session(session.session_id)
+                ),
+            )
+        except SealError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        return {"session": session.session_id, "dry_run": result.dry_run, **result.record}
 
     # ----------------------------------------------------------------- export
     @app.post("/export", dependencies=guard)

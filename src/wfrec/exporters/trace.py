@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 
 from ..events import (
+    DEID_SEALED,
     AGENT_MESSAGE,
     CONTEXT_NOTE,
     FILE_DIFF,
@@ -102,6 +103,13 @@ def build_trace(session) -> tuple[dict, int]:
         detail = ""
         tool = event.source
         action = "observe"
+
+        if event.type == DEID_SEALED:
+            # The seal's own self-documenting event. It is a statement *about*
+            # the timeline, not a workflow step, so it must not become one --
+            # otherwise every sealed session grows a phantom step and the
+            # clusterer's lexical matching sees it in every family.
+            continue
 
         if event.type == SHELL_COMMAND:
             command = str(payload.get("command") or "")
