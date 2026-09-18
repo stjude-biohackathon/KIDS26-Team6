@@ -140,8 +140,8 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("session_id", nargs="?")
     export.add_argument(
         "--format", action="append", default=[],
-        choices=["autocab", "terminal-log", "screen-capture", "trace"],
-        help="Repeatable. Defaults to autocab (both text formats).",
+        choices=["all", "events", "autocab", "terminal-log", "screen-capture", "trace"],
+        help="Repeatable. Defaults to all export files.",
     )
 
     merge = sub.add_parser(
@@ -493,7 +493,7 @@ def _via_daemon(client: Client, args: argparse.Namespace, as_json: bool) -> int:
                 "workflow_family": args.workflow_family,
                 "tags": args.tag,
                 "watch": [str(p) for p in args.watch],
-                "sources": {name: False for name in args.without},
+                "sources": dict.fromkeys(args.without, False),
             },
         )
     elif command == "pause":
@@ -539,7 +539,7 @@ def _direct(args: argparse.Namespace, as_json: bool) -> int:
             workflow_family=args.workflow_family,
             tags=args.tag,
             watch=args.watch,
-            sources={name: False for name in args.without},
+            sources=dict.fromkeys(args.without, False),
         )
     elif command == "pause":
         result = recorder.pause_session(
@@ -603,7 +603,7 @@ def _report(command: str, result: dict, as_json: bool, *, daemon: bool) -> None:
             [
                 ("Session", result.get("stopped")),
                 ("Folder", result.get("root")),
-                ("Export", "wfrec export --format autocab"),
+                ("Export", "wfrec export"),
             ],
         )
         return
@@ -1043,15 +1043,17 @@ def _deid(args: argparse.Namespace, as_json: bool) -> int:
 
 
 def _export(args: argparse.Namespace, as_json: bool) -> int:
-    from .exporters import export_session
+    from .exporters.snapshot import export_session_safely
 
     session = SessionStore().resolve(args.session_id)
-    result = export_session(session, formats=args.format or ["autocab", "trace"])
+    result = export_session_safely(session, formats=args.format or ["all"])
     if as_json:
         _emit(result, True)
         return 0
     details = result.get("details", {})
     rows: list[tuple[str, object]] = [("Session", result["session"])]
+    if "events" in details:
+        rows.append(("Timeline events", details["events"]["events"]))
     if "terminal_log" in details:
         rows.append(("Shell commands", details["terminal_log"]["commands"]))
     if "screen_capture" in details:

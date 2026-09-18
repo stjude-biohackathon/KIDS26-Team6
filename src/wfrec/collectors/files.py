@@ -187,9 +187,11 @@ def network_filesystem(path: Path) -> str | None:
         if len(parts) < 3:
             continue
         mount_point, fstype = parts[1], parts[2]
-        if resolved == mount_point or resolved.startswith(mount_point.rstrip("/") + "/"):
-            if best is None or len(mount_point) > best[0]:
-                best = (len(mount_point), fstype)
+        if (
+            resolved == mount_point
+            or resolved.startswith(mount_point.rstrip("/") + "/")
+        ) and (best is None or len(mount_point) > best[0]):
+            best = (len(mount_point), fstype)
     if best and best[1] in {"nfs", "nfs4", "lustre", "gpfs", "cifs", "smb3", "fuse.sshfs"}:
         return best[1]
     return None
@@ -364,9 +366,7 @@ class FileCollector(Collector):
             return True
         # Editor and tool scratch files: recording them adds noise and their
         # content is already captured via the real file's diff.
-        if name.endswith(".swp") or name.endswith(".tmp"):
-            return True
-        return False
+        return name.endswith((".swp", ".tmp"))
 
     # ------------------------------------------------------------------ loop
     def _run_once(self) -> None:

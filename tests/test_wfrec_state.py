@@ -8,7 +8,6 @@ from wfrec.state import (
     SHELL_BACKEND_DEVSQL,
     SHELL_BACKEND_SPOOL,
     StateTransaction,
-    read_api,
     read_sentinel,
     sentinel_enables,
 )
@@ -89,6 +88,16 @@ def test_unknown_shell_backend_defaults_to_hook_spool() -> None:
     state = RecorderState.from_dict({"shell_backend": "unknown"})
 
     assert state.shell_backend == SHELL_BACKEND_SPOOL
+
+
+def test_trashed_sessions_round_trip_through_state(wfrec_home):
+    state = RecorderState.load()
+    state.trashed_sessions = ["archived-session"]
+    state.save()
+
+    restored = RecorderState.load()
+
+    assert restored.trashed_sessions == ["archived-session"]
 
 
 def test_sentinel_is_a_single_tab_separated_line(wfrec_home):

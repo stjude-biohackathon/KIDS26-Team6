@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import os
 import threading
-import time
 import hashlib
 
 import pytest
@@ -295,7 +294,7 @@ def test_the_scrub_phase_does_not_hold_the_events_lock(populated):
     another thread *while* a seal's detection phase is running.
     """
 
-    from autocab.deid.spans import DetectorInfo, Span
+    from autocab.deid.spans import DetectorInfo
     from wfrec.locking import file_lock
 
     acquired = threading.Event()

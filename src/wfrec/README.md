@@ -181,25 +181,28 @@ chronology — `EventWriter.read_sorted()` does, and so does every exporter.
 ## Hand off to AutoCAB
 
 ```bash
-wfrec export --format autocab --format trace
+wfrec export
 autocab demo --input-mode session --session-dir ~/.wfrec/sessions/<id>
 ```
 
 `wfrec export` prints the exact `autocab` command with the id filled in. Drafts
 land in `skills/generated-drafts/`.
 
-Three export formats, each targeting code that already existed:
+The portable event document is lossless. The other three files target existing
+AutoCAB adapters:
 
 | Format | Consumed by |
 |---|---|
-| `autocab-terminal.log` | `autocab.terminal_logs.convert_terminal_log` |
-| `autocab-screen-capture.json` | `autocab.input_sources.load_screen_capture_input` |
-| `trace.json` | `autocab.demo_data.load_workflow_traces` |
+| `events.json` | Complete session timeline, metadata, and seal provenance |
+| `terminal.log` | `autocab.terminal_logs.convert_terminal_log` |
+| `screen-events.json` | `autocab.input_sources.load_screen_capture_input` |
+| `workflow-trace.json` | `autocab.demo_data.load_workflow_traces` |
 
-All three are **deliberately lossy**. `autocab.models.WorkflowStep` has exactly
-four fields (`timestamp`, `tool`, `action`, `detail`), so exit codes, durations,
-diffs and OCR collapse into `detail` or are dropped. The session folder stays
-the source of truth; do not widen `WorkflowStep` to fit the recorder.
+The three AutoCAB adapter formats are **deliberately lossy**.
+`autocab.models.WorkflowStep` has exactly four fields (`timestamp`, `tool`,
+`action`, `detail`), so exit codes, durations, diffs and OCR collapse into
+`detail` or are dropped. The session folder stays the source of truth; do not
+widen `WorkflowStep` to fit the recorder.
 
 You can also skip `export` entirely — `--input-mode session` reads the session
 folder directly and rebuilds from the live timeline rather than trusting a
@@ -361,7 +364,7 @@ through `autocab.deid` on the way in, and each event records which rules fired
 in its `redactions` array. This is masking: `[REDACTED_MRN]`, not reversible,
 not linkable.
 
-*The seal, after the fact.* `wfrec seal <id>` walks every payload of every
+*The pattern check, after the fact.* `wfrec seal <id>` walks every payload of every
 event plus `context/`, `screen/ocr/`, `files/diffs/`, `shell/remote/` and
 `jobs/`, and rewrites what it finds to per-run surrogates — `MRN_a7f3c14b9e02`
 — so a value stays linkable *within* the session and unrecoverable outside it.
@@ -369,12 +372,16 @@ The key is `secrets.token_bytes(32)`, never written to disk, and zeroed when the
 process ends. **No reverse map is produced, ever**; `deid/audit.jsonl` records
 labels, offsets and a `value_id` integer, never the matched text and never a
 digest of it (a six-digit MRN brute-forces against a bare SHA-256 in
-milliseconds).
+milliseconds). This pass is deterministic and local.
 
-**Sealing is mandatory before anything consumes a session.** `wfrec export` and
-the AutoCAB session adapter both refuse an unsealed session, and a sealed
-session refuses further appends. That is what makes a failed de-identification
-pass block the leak rather than permit it.
+**A successful pattern check is mandatory before anything consumes a session.**
+For a paused or archived unsealed session, `wfrec export` copies the manifest
+and timeline under the event lock, checks and seals that temporary snapshot,
+exports only from the checked copy, and deletes it. The original remains
+unchanged, so a paused session can resume. Already-sealed archives export
+directly. Active sessions remain blocked because collectors may still be
+writing. The AutoCAB session adapter continues to require a sealed session
+folder when it consumes the folder directly.
 
 ### What is actually measured, and what is not
 
@@ -421,7 +428,7 @@ in to a non-loopback bind with `--allow-remote` / `WFREC_ALLOW_REMOTE=1`.
 | Symptom | Cause and fix |
 |---|---|
 | No shell commands captured | Run `wfrec doctor`. For `devsql`, verify Atuin setup. For `hook-spool`, run `eval "$(wfrec hooks eval)"` |
-| `NotSealed` on export or ingest | The session has not been de-identified. Run `wfrec seal <id>`; `wfrec seal --status <id>` shows where it stands |
+| `NotSealed` on direct ingestion | The session folder has not been pattern checked. Export a paused or archived session, or run `wfrec seal <id>` before passing the folder directly to AutoCAB |
 | `SessionSealed` on an append | A sealed session is immutable. Use `wfrec seal --reseal <id>` if it genuinely has to change |
 | `wfrec seal` says "not idle" | Stop the session first, or pass `--force` to stop and then seal. It refuses rather than racing the collectors |
 | `ImportError: libGL.so.1` | `opencv-python` shadowed the headless build. `uv pip install --force-reinstall opencv-python-headless` |

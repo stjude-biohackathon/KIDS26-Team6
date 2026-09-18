@@ -47,19 +47,19 @@ the daemon -- and a safety feature that freezes the recorder gets switched off.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
 import shutil
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
 from autocab.deid import (
     Allowlist,
     Detector,
-    EngineUnavailable,
     Policy,
     Pseudonymizer,
     RegexRules,
@@ -78,8 +78,7 @@ from autocab.deid.engines.base import table_digest
 from autocab.deid.policy import Action, assurance_for
 from autocab.deid.pseudonym import GENERALIZED_AGE
 
-from . import paths
-from .events import DEID_SEALED, Event, SessionSealed, read_events, utc_now
+from .events import DEID_SEALED, Event, read_events, utc_now
 from .locking import file_lock
 
 SEAL_DIRNAME = ".seal"
@@ -650,10 +649,8 @@ def _commit_staged(session_dir: Path, journal: Mapping[str, Any]) -> list[str]:
         committed.append(str(relpath))
     for relpath in journal.get("deletions", []) or []:
         target = session_dir / str(relpath)
-        try:
+        with contextlib.suppress(FileNotFoundError):
             target.unlink()
-        except FileNotFoundError:
-            pass
         committed.append(f"-{relpath}")
     return committed
 

@@ -1,7 +1,8 @@
-"""Export a session into the formats AutoCAB's existing adapters consume.
+"""Export a sealed session into portable and AutoCAB-compatible formats.
 
-The timeline is the source of truth; **these exports are deliberately lossy
-projections of it.** ``autocab.models.WorkflowStep`` has exactly four fields
+``events.json`` retains the complete timeline, manifest, and seal provenance.
+The AutoCAB adapter files are deliberately lossy projections.
+``autocab.models.WorkflowStep`` has exactly four fields
 (``timestamp``, ``tool``, ``action``, ``detail``), so exit codes, durations,
 diffs and OCR either collapse into ``detail`` or are dropped.
 
@@ -17,18 +18,26 @@ from typing import Any
 
 from .autocab_screen import write_screen_capture
 from .autocab_terminal import write_terminal_log
+from .events_json import write_events_json
 from .trace import write_trace
 
 __all__ = [
     "export_session",
+    "write_events_json",
     "write_screen_capture",
     "write_terminal_log",
     "write_trace",
 ]
 
 
-def export_session(session, formats: list[str] | None = None) -> dict[str, Any]:
-    """Write the requested export formats into ``<session>/exports/``.
+def export_session(
+    session,
+    formats: list[str] | None = None,
+    destination: Path | None = None,
+    *,
+    prefix_filenames: bool | None = None,
+) -> dict[str, Any]:
+    """Write the requested export formats into the selected directory.
 
     **Hard gate:** raises ``NotSealed`` unless ``<session>/seal.json`` exists.
     This is what turns a failed de-identification pass into a blocked leak
@@ -41,32 +50,60 @@ def export_session(session, formats: list[str] | None = None) -> dict[str, Any]:
 
     seal = require_sealed(session.root, what="export_session")
 
-    wanted = set(formats or ["autocab"])
+    wanted = set(formats or ["events", "autocab", "trace"])
+    if "all" in wanted:
+        wanted.update({"events", "terminal-log", "screen-capture", "trace"})
     if "autocab" in wanted:
         wanted.update({"terminal-log", "screen-capture"})
 
     written: list[str] = []
     details: dict[str, Any] = {}
-    exports = session.root / "exports"
+    exports = (
+        destination.expanduser().resolve()
+        if destination is not None
+        else session.root / "exports"
+    )
     exports.mkdir(parents=True, exist_ok=True)
+    if prefix_filenames is None:
+        prefix_filenames = destination is not None
+    filename_prefix = f"{session.session_id}-" if prefix_filenames else ""
+
+    if "events" in wanted:
+        path, count = write_events_json(
+            session,
+            seal,
+            exports / f"{filename_prefix}events.json",
+        )
+        written.append(str(path))
+        details["events"] = {"path": str(path), "events": count}
 
     if "terminal-log" in wanted:
-        path, count = write_terminal_log(session)
+        path, count = write_terminal_log(
+            session,
+            exports / f"{filename_prefix}terminal.log",
+        )
         written.append(str(path))
         details["terminal_log"] = {"path": str(path), "commands": count}
 
     if "screen-capture" in wanted:
-        path, count = write_screen_capture(session)
+        path, count = write_screen_capture(
+            session,
+            exports / f"{filename_prefix}screen-events.json",
+        )
         written.append(str(path))
         details["screen_capture"] = {"path": str(path), "events": count}
 
     if "trace" in wanted:
-        path, steps = write_trace(session)
+        path, steps = write_trace(
+            session,
+            exports / f"{filename_prefix}workflow-trace.json",
+        )
         written.append(str(path))
         details["trace"] = {"path": str(path), "steps": steps}
 
     return {
         "session": session.session_id,
+        "destination": str(exports),
         "written": written,
         "details": details,
         "seal": {

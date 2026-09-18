@@ -11,6 +11,7 @@ regardless of format drift and is what guarantees a demo can proceed.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import sqlite3
@@ -608,10 +609,8 @@ class AgentCollector(Collector):
             if ok:
                 # Only capture turns from now on: the analyst pressed record
                 # just now, not an hour ago.
-                try:
+                with contextlib.suppress(Exception):
                     adapter.seek_to_end()
-                except Exception:
-                    pass
                 self._adapters.append(adapter)
 
         if not self._adapters:

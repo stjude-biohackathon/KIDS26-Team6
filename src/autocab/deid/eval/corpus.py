@@ -276,9 +276,10 @@ def _reserved_range_problems(corpus: Corpus) -> list[str]:
                     problems.append(
                         f"{record.id}: {span.label} {text!r} is outside the 555-555-01xx range"
                     )
-            elif span.label == "ACCOUNT":
-                if text not in TEST_CARDS:
-                    problems.append(f"{record.id}: ACCOUNT {text!r} is not a published test card")
+            elif span.label == "ACCOUNT" and text not in TEST_CARDS:
+                problems.append(
+                    f"{record.id}: ACCOUNT {text!r} is not a published test card"
+                )
     return problems
 
 

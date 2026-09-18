@@ -115,7 +115,7 @@ background and open the web UI from your **laptop browser** (do not use
    wfrec start --title "My workflow" --watch /path/to/project
    wfrec status
    wfrec stop
-   wfrec export --format autocab --format trace
+   wfrec export
    ```
 
 7. **Stop the background daemon** when finished:
@@ -213,7 +213,7 @@ wfrec note "reran because the BAM was truncated" --label why
 wfrec pause --reason "waiting on bwa" --expect 6h
 wfrec resume
 wfrec stop
-wfrec export --format autocab --format trace
+wfrec export
 ```
 
 #### Capture Sources and Boundaries
@@ -232,8 +232,10 @@ enters through remote job-log collection.
 #### Session Data and Exports
 
 Each session stores an append-only `events.jsonl` timeline plus frames, diffs,
-notes, and job logs. `wfrec export` creates three **lossy** adapter formats;
-the timeline remains the source of truth.
+notes, and job logs. `wfrec export` creates a complete `events.json` document
+plus three **lossy** AutoCAB adapter formats. The timeline remains the source
+of truth. Paused and archived sessions export through a temporary, local,
+pattern-checked snapshot.
 
 #### Remote and Team Workflows
 

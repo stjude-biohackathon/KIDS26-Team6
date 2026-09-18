@@ -38,6 +38,11 @@ dependencies = [
   "opencv-python-headless>=4.8",
   "psutil>=5.9",                   # process names for window attribution
   "rich>=15.0",                    # readable terminal status tables
+  # Markdown event details are rendered server-side and sanitized before the
+  # browser receives them. markdown-it-py is already pulled in by Rich, but it
+  # remains direct here because wfrec imports and relies on its public API.
+  "markdown-it-py>=4.2",
+  "nh3>=0.3.7",
   # Menu-bar (macOS) / system-tray (Windows) recording indicator. Skipped on
   # Linux for now: a working tray needs AppIndicator/GTK system packages pip
   # cannot install, so it would fail at runtime rather than install cleanly.
@@ -96,7 +101,7 @@ deid-google = ["google-genai>=1.0"]
 # weight ever reaches CI. The model and live-LLM tests are skipped by the
 # `pytest_collection_modifyitems` hook in tests/conftest.py, with a named
 # reason rather than a silent zero-collected pass.
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "ruff>=0.16.8"]
 
 [project.scripts]
 autocab = "autocab.cli:main"
@@ -115,7 +120,7 @@ where = ["src"]
 # The shell hooks and the control UI are data files, not importable modules,
 # and both must survive installation into a wheel.
 "wfrec.hooks" = ["*.bash", "*.zsh", "*.fish", "*.ps1", "*.sh"]
-"wfrec.ui" = ["*.html"]
+"wfrec.ui" = ["*.html", "*.css", "*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -123,3 +128,22 @@ markers = [
   "model: needs the packaged de-identification model weights (AUTOCAB_DEID_MODEL_TESTS=1)",
   "live: sends text to a real LLM provider (AUTOCAB_DEID_LIVE_LLM_TESTS=1)",
 ]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+  "E4",
+  "E7",
+  "E9",
+  "F",
+  "C420",
+  "SIM102",
+  "SIM103",
+  "SIM105",
+  "SIM114",
+]
+# Assigned lambdas keep small callbacks compact and readable in this project.
+ignore = ["E731"]

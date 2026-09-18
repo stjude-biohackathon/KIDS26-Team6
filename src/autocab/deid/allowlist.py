@@ -276,13 +276,13 @@ class Allowlist:
                 return True
         for pattern in self.context_patterns:
             for match in pattern.finditer(text):
-                if match.start() <= span.start and span.end <= match.end():
-                    # A context match that is *exactly* the span adds nothing
-                    # beyond the surface patterns already checked; require it to
-                    # be strictly larger so `CONTEXT_PATTERNS` cannot quietly
-                    # widen into a surface rule.
-                    if match.end() - match.start() > span.length:
-                        return True
+                # An exact span adds nothing beyond the surface patterns.
+                if (
+                    match.start() <= span.start
+                    and span.end <= match.end()
+                    and match.end() - match.start() > span.length
+                ):
+                    return True
         return False
 
     def to_dict(self) -> dict[str, object]:

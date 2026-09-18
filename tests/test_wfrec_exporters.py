@@ -1,4 +1,4 @@
-"""Exports into AutoCAB's formats, verified by round-tripping.
+"""Session exports, including AutoCAB adapters verified by round-tripping.
 
 The important test here is conformance of the terminal-log export: rather than
 eyeballing the format, the exporter's own output is fed back through
@@ -9,6 +9,7 @@ any line it does not recognize.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -17,6 +18,7 @@ from autocab.terminal_logs import convert_terminal_log, parse_terminal_session
 from wfrec.events import Event
 from wfrec.exporters import export_session
 from wfrec.exporters.autocab_terminal import build_terminal_log, write_terminal_log
+from wfrec.exporters.snapshot import ExportStateError, export_session_safely
 from wfrec.exporters.trace import build_trace, infer_tags
 
 
@@ -92,7 +94,7 @@ def test_timestamps_are_truncated_to_whole_seconds(store):
     _record_commands(session, ["ls"])
     body, _ = build_terminal_log(session)
 
-    command_line = [l for l in body.splitlines() if not l.startswith("#")][0]
+    command_line = [line for line in body.splitlines() if not line.startswith("#")][0]
     stamp = command_line.split(" ", 1)[0]
     assert "." not in stamp and "Z" not in stamp
     assert len(stamp) == 19
@@ -161,6 +163,26 @@ def test_trace_export_is_a_list_matching_load_workflow_traces(store):
     assert "qc" in traces[0].tags
 
 
+def test_events_json_preserves_the_complete_sealed_session(store):
+    session, _ = store.start(title="Variant QC", analyst="analyst-1")
+    _record_commands(session, ["fastqc sample.bam"])
+    seal = _seal(session)
+
+    result = export_session(session, formats=["events"])
+
+    path = Path(result["details"]["events"]["path"])
+    document = json.loads(path.read_text(encoding="utf-8"))
+    assert path.name == "events.json"
+    assert document["schema_version"] == 1
+    assert document["session"]["session_id"] == session.session_id
+    assert document["session"]["title"] == "Variant QC"
+    assert document["seal"]["generation"] == seal.record["generation"]
+    assert document["events"] == [
+        event.to_dict() for event in session.writer.read()
+    ]
+    assert result["details"]["events"]["events"] == len(document["events"])
+
+
 def test_waits_become_workflow_steps(store):
     """A six-hour wait on a job is signal, not a gap to be discarded."""
 
@@ -207,7 +229,76 @@ def test_export_autocab_writes_both_text_formats(store):
     _seal(session)
     result = export_session(session, formats=["autocab"])
     names = {__import__("pathlib").Path(p).name for p in result["written"]}
-    assert names == {"autocab-terminal.log", "autocab-screen-capture.json"}
+    assert names == {"terminal.log", "screen-events.json"}
+
+
+def test_export_all_writes_the_four_user_facing_files(store):
+    session, _ = store.start(title="A", analyst="a")
+    _record_commands(session, ["ls"])
+    _seal(session)
+
+    result = export_session(session, formats=["all"])
+
+    names = {Path(path).name for path in result["written"]}
+    assert names == {
+        "events.json",
+        "workflow-trace.json",
+        "terminal.log",
+        "screen-events.json",
+    }
+
+
+def test_paused_export_uses_a_redacted_snapshot_and_remains_resumable(
+    store,
+    tmp_path: Path,
+):
+    session, _ = store.start(title="A", analyst="a")
+    _record_commands(session, ["echo MRN 4419902"])
+    paused = store.pause(session.session_id)
+    manifest_before = (paused.root / "manifest.json").read_bytes()
+    events_before = (paused.root / "events.jsonl").read_bytes()
+
+    result = export_session_safely(paused, formats=["events"], destination=tmp_path)
+
+    exported_path = tmp_path / f"{paused.session_id}-events.json"
+    exported = exported_path.read_text(encoding="utf-8")
+    assert "4419902" not in exported
+    assert result["privacy"] == {
+        "checked": True,
+        "method": "protected-snapshot",
+        "source_status": "paused",
+    }
+    assert not (paused.root / "seal.json").exists()
+    assert (paused.root / "manifest.json").read_bytes() == manifest_before
+    assert (paused.root / "events.jsonl").read_bytes() == events_before
+
+    resumed, _ = store.resume(paused.session_id)
+    assert resumed.manifest.status == "active"
+
+
+def test_archived_unsealed_session_exports_through_a_snapshot(store, tmp_path: Path):
+    session, _ = store.start(title="A", analyst="a")
+    _record_commands(session, ["ls"])
+    archived = store.stop(session.session_id)
+
+    result = export_session_safely(archived, formats=["all"], destination=tmp_path)
+
+    assert result["privacy"]["method"] == "protected-snapshot"
+    assert result["privacy"]["source_status"] == "stopped"
+    assert not (archived.root / "seal.json").exists()
+    assert {Path(path).name for path in result["written"]} == {
+        f"{archived.session_id}-events.json",
+        f"{archived.session_id}-workflow-trace.json",
+        f"{archived.session_id}-terminal.log",
+        f"{archived.session_id}-screen-events.json",
+    }
+
+
+def test_active_unsealed_session_cannot_be_exported(store, tmp_path: Path):
+    session, _ = store.start(title="A", analyst="a")
+
+    with pytest.raises(ExportStateError, match="Pause or archive"):
+        export_session_safely(session, destination=tmp_path)
 
 
 def test_exports_are_chronological_even_when_the_file_is_not(store):
@@ -236,7 +327,11 @@ def test_exports_are_chronological_even_when_the_file_is_not(store):
     assert raw != sorted(raw), "fixture must actually be out of order"
 
     body, _ = build_terminal_log(session)
-    stamps = [l.split(" ", 1)[0] for l in body.splitlines() if not l.startswith("#")]
+    stamps = [
+        line.split(" ", 1)[0]
+        for line in body.splitlines()
+        if not line.startswith("#")
+    ]
     assert stamps == sorted(stamps)
 
     trace, _ = build_trace(session)
