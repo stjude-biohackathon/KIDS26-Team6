@@ -11,7 +11,7 @@ to rediscover from scratch. AutoCAB watches how you actually work, and turns
 that observation into a shared, reviewed skill — instead of leaving it tacit
 or duplicated across the team.
 
-![](images/clipboard-2893987244.png)
+![wfrec activity dashboard screenshot](images/clipboard-2893987244.png)
 
 ## Features
 
