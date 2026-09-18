@@ -120,7 +120,7 @@ where = ["src"]
 # The shell hooks and the control UI are data files, not importable modules,
 # and both must survive installation into a wheel.
 "wfrec.hooks" = ["*.bash", "*.zsh", "*.fish", "*.ps1", "*.sh"]
-"wfrec.ui" = ["*.html"]
+"wfrec.ui" = ["*.html", "*.css", "*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -16,13 +16,14 @@ from __future__ import annotations
 
 import json
 import secrets
+from importlib import resources
 from ipaddress import ip_address
 from itertools import islice
 from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from . import SOURCES, __version__
@@ -525,10 +526,34 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
         return {**result, "cancelled": False}
 
     # --------------------------------------------------------------------- UI
+    def ui_asset(filename: str, media_type: str) -> Response:
+        content = resources.files("wfrec.ui").joinpath(filename).read_text(
+            encoding="utf-8"
+        )
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={"Cache-Control": "no-cache"},
+        )
+
+    @app.get("/styles.css", response_class=Response)
+    def styles() -> Response:
+        return ui_asset("styles.css", "text/css")
+
+    @app.get("/dashboard.css", response_class=Response)
+    def dashboard_styles() -> Response:
+        return ui_asset("dashboard.css", "text/css")
+
+    @app.get("/app.js", response_class=Response)
+    def javascript() -> Response:
+        return ui_asset("app.js", "application/javascript")
+
+    @app.get("/dashboard.js", response_class=Response)
+    def dashboard_javascript() -> Response:
+        return ui_asset("dashboard.js", "application/javascript")
+
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
-        from importlib import resources
-
         html = resources.files("wfrec.ui").joinpath("index.html").read_text(
             encoding="utf-8"
         )

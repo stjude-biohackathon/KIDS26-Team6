@@ -77,6 +77,10 @@ def test_endpoints_require_the_token(wfrec_home):
 
     recorder = Recorder(supervise=False)
     with TestClient(create_app(recorder, token="test-token")) as anon:
+        assert anon.get("/styles.css").status_code == 200
+        assert anon.get("/dashboard.css").status_code == 200
+        assert anon.get("/app.js").status_code == 200
+        assert anon.get("/dashboard.js").status_code == 200
         assert anon.get("/status").status_code == 401
         assert anon.get("/status", headers={"Authorization": "Bearer wrong"}).status_code == 401
         assert anon.get("/status", headers={"Authorization": "Bearer test-token"}).status_code == 200
@@ -437,56 +441,246 @@ def test_doctor_endpoint_reports_sources(client):
     assert "wfrec_version" in report
 
 
-def test_ui_injects_the_token_not_a_placeholder(client):
+def test_ui_injects_token_and_loads_packaged_assets(client):
     body = client.get("/").text
+
     assert "@WFREC_TOKEN@" not in body
     assert "test-token" in body
-    assert "Codex, Claude Code" in body
-    assert "providers:" in body
+    assert '<meta name="wfrec-token" content="test-token">' in body
+    assert '<link rel="stylesheet" href="/styles.css">' in body
+    assert '<link rel="stylesheet" href="/dashboard.css">' in body
+    assert '<script src="/dashboard.js" defer></script>' in body
+    assert '<script src="/app.js" defer></script>' in body
+    assert "<style>" not in body
+    assert "<script>" not in body
     assert "Recent Events Log" in body
-    assert "Latest ${events.length} of ${total} events" in body
-    assert "'agent.message':'Agent message'" in body
-    assert "Start or resume a session to see activity." in body
-    assert "[...events].reverse()" in body
-    assert "event-source" not in body
-    assert "event-more" in body
-    assert "aria-expanded" in body
-    assert "EXPANDED_EVENTS" in body
-    assert "STATE.default_analyst" in body
-    assert "ANALYST_INITIALIZED" in body
-    assert "button.danger:not(:disabled)" in body
-    assert "startButton.disabled = Boolean(s)" in body
-    assert "'Session Active'" in body
-    assert "'Session Paused'" in body
+    assert "<title>AutoCAB Activity Dashboard</title>" in body
+    assert "<h1>AutoCAB</h1>" in body
+    assert "Commands appear after they finish." in body
     assert 'id="session-title"' in body
-    assert "sessionTitle || 'Untitled session'" in body
-    assert "getElementById('sid')" not in body
+    assert 'id="stats" aria-label="Session details"' in body
+    assert 'id="rename-session"' in body
+    assert 'aria-label="Rename session"' in body
+    assert 'viewBox="0 0 24 24"' in body
+    assert 'id="session-title-form"' in body
+    assert 'maxlength="200"' in body
     assert 'id="pause-dialog"' in body
     assert '<label for="pause-reason">Pause reason (optional)</label>' in body
     assert "Optionally record why the session is being paused." not in body
-    assert "dialog.showModal()" in body
-    assert "function closePauseDialog()" in body
-    assert "prompt(" not in body
-    assert "STATE_RECEIVED_AT = performance.now()" in body
-    assert "setInterval(renderSessionStats, 1000)" in body
-    assert "appendInlineCode(sourceDescription, why)" in body
-    assert "sourceName.textContent = displayName" in body
-    assert "details.push('reason: '+col.reason)" not in body
+    assert 'id="export-dialog"' in body
+    assert "Redact PHI and export?" in body
+    assert "Add notes, errors, or decisions." in body
+    assert "AutoCAB masks detected personal information before saving." in body
+    assert "AutoCAB will remove detected PHI from a copy." in body
+    assert "Your session will not change." in body
+    assert "Redaction can miss PHI." in body
+    assert 'class="dialog-warning" role="note"' in body
+    assert ">Select Folder</button>" in body
     assert '<label for="title">Session title</label>' in body
     assert '<label for="analyst">Analyst name or ID</label>' in body
-    assert '<textarea id="note" aria-label="Note"' in body
-    assert '<label for="note">Note</label>' not in body
+    assert '<label for="note">Session note</label>' in body
+    assert '<textarea id="note"' in body
     assert 'class="row note-actions"' in body
-    assert "btn.setAttribute('role', 'switch')" in body
-    assert "btn.setAttribute('aria-checked', String(on))" in body
     assert 'id="feedback" role="status"' in body
     assert 'id="log" aria-live=' not in body
-    assert "Recorder disconnected. Retrying" in body
-    assert "paths.join('\\n')" in body
+    assert 'id="log" tabindex="0" aria-labelledby="recent-events-heading"' in body
     assert "Load older events" in body
-    assert "EVENT_LIMIT += EVENT_PAGE_SIZE" in body
-    assert "restoreScroll(host, anchor, previousTop)" in body
-    assert "row.dataset.eventKey = eventKey(event)" in body
+    assert 'id="session-list" class="session-list"' in body
+    assert 'id="session-mobile" class="session-mobile"' in body
+    assert 'id="activity-dashboard-heading"' in body
+    assert 'id="activity-dashboard" class="activity-dashboard"' in body
+    assert 'id="dash-timeline-summary"' in body
+    assert 'class="activity-timeline-chart" id="dash-timeline"' in body
+    assert "Top windows / apps by events" in body
+    assert 'id="trash-session"' in body
+    assert 'aria-label="Remove archived session from dashboard"' in body
+    assert 'aria-label="Copy session path"' in body
+    assert 'aria-label="Open session folder"' in body
+    assert 'class="session-folder-control"' in body
+    assert 'id="live-updates"' in body
+    assert 'aria-pressed="true"' in body
+    assert 'id="theme-toggle"' in body
+    assert 'id="theme-icon-moon"' in body
+    assert 'id="theme-icon-sun"' in body
+    assert "All files" in body
+    assert "Events JSON" in body
+    assert "Workflow trace JSON" in body
+    assert "Terminal log" in body
+    assert "Screen events JSON" in body
+    assert "Export Session" in body
+    assert 'aria-label="Export session"' in body
+    assert "Export Events" not in body
+    assert "AutoCAB inputs" not in body
+    assert 'class="skip-link" href="#main-content"' in body
+    assert '<main id="main-content" tabindex="-1">' in body
+    assert "style=" not in body
+
+
+def test_ui_serves_packaged_stylesheet(client):
+    response = client.get("/styles.css")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/css")
+    assert response.headers["cache-control"] == "no-cache"
+    assert ":root {" in response.text
+    assert "--control-border: #687287" in response.text
+    assert "--danger: #ff7180" in response.text
+    assert ':root[data-theme="light"]' in response.text
+    assert "button.danger-quiet:not(:disabled)" in response.text
+    assert ".app-header-actions > button {" in response.text
+    assert ".session-folder-control {" in response.text
+    assert "grid-template-columns: auto minmax(0, 640px)" in response.text
+    assert "background: color-mix(in srgb, var(--dim) 9%, transparent)" in response.text
+    assert ".session-title-form {" in response.text
+    assert ".session-stat--phi-pending {" in response.text
+    assert ".session-stat--phi-applied {" in response.text
+    assert ".event-detail-content.formatted.collapsed {" in response.text
+    assert ".event-markdown {" in response.text
+    assert "@media (max-width: 720px)" in response.text
+    assert "@media (prefers-reduced-motion: reduce)" in response.text
+    assert "@media (forced-colors: active)" in response.text
+    assert ".dialog-warning" in response.text
+
+
+def test_ui_serves_packaged_javascript_without_credentials(client):
+    response = client.get("/app.js")
+    source = response.text
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/javascript")
+    assert response.headers["cache-control"] == "no-cache"
+    assert "test-token" not in source
+    assert "@WFREC_TOKEN@" not in source
+    assert "meta[name=\"wfrec-token\"]" in source
+    assert "Codex, Claude Code" in source
+    assert "providers:" in source
+    assert "Latest ${events.length} of ${total} events" in source
+    assert "'agent.message':'Agent message'" in source
+    assert "Start or resume a session to see activity." in source
+    assert "[...events].reverse()" in source
+    assert "event-source" not in source
+    assert "event-more" in source
+    assert "aria-expanded" in source
+    assert "aria-controls" in source
+    assert "EXPANDED_EVENTS" in source
+    assert "markdown.innerHTML = presentation.detailHtml" in source
+    assert "event.presentation?.detail_format === 'markdown'" in source
+    assert "content.classList.toggle('collapsed', !expanded)" in source
+    assert "expanded && presentation.detailHtml" not in source
+    assert "markdown.innerHTML = p.text" not in source
+    assert "STATE.default_analyst" in source
+    assert "ANALYST_INITIALIZED" in source
+    assert "active:'Recording'" in source
+    assert "paused:'Paused'" in source
+    assert "function showRenameSessionForm()" in source
+    assert "function cancelRenameSession()" in source
+    assert "function renameSession(event)" in source
+    assert "function trashSelectedSession()" in source
+    assert "session.status !== 'stopped'" in source
+    assert "SELECTED_SESSION = ''" in source
+    assert "SESSION_SIGNATURE = ''" in source
+    assert "function clearFeedback()" in source
+    assert "if(sessionId !== SELECTED_SESSION) clearFeedback()" in source
+    assert "'PATCH'" in source
+    assert "Sealed sessions cannot be renamed." in source
+    assert "sessionTitle || 'Untitled session'" in source
+    assert "getElementById('sid')" not in source
+    assert "dialog.showModal()" in source
+    assert "function closePauseDialog()" in source
+    assert "prompt(" not in source
+    assert "STATE_RECEIVED_AT = performance.now()" in source
+    assert "if(LIVE_UPDATES) renderSessionStats()" in source
+    assert "appendInlineCode(sourceDescription, why)" in source
+    assert "sourceName.textContent = displayName" in source
+    assert "details.push('reason: '+col.reason)" not in source
+    assert "btn.setAttribute('role', 'switch')" in source
+    assert "btn.setAttribute('aria-checked', String(on))" in source
+    assert "Recorder disconnected. Retrying" in source
+    assert "function exportSession(formats, label)" in source
+    assert "function confirmExport(event)" in source
+    assert "await writeSessionExport(request.formats, request.label)" in source
+    assert "choose_destination:true" in source
+    assert "if(r.cancelled)" in source
+    assert "const destinations = paths.join('\\n')" in source
+    assert "Exported ${label}: ${destinations}" in source
+    assert "Exported ${paths.length} session files:\\n${destinations}" in source
+    assert "to:\\n${r.destination}" not in source
+    assert "EVENT_LIMIT += EVENT_PAGE_SIZE" in source
+    assert "const EVENT_PAGE_SIZE = 25" in source
+    assert "tail=true" in source
+    assert "EVENT_REFRESH_IN_PROGRESS" in source
+    assert "EVENT_REFRESH_PENDING" in source
+    assert "if(LIVE_UPDATES) refreshLog(); }, 1000" in source
+    assert "restoreScroll(host, anchor, previousTop)" in source
+    assert "row.dataset.eventKey = eventKey(event)" in source
+    assert "function renderSessionNavigation()" in source
+    assert "function selectSession(sessionId)" in source
+    assert "function openSessionFolder()" in source
+    assert "function toggleLiveUpdates()" in source
+    assert "function restoreFocus(element)" in source
+    assert "element.focus({preventScroll:true})" in source
+    assert source.count("restoreFocus(replacement)") == 3
+    assert "restoreFocus(menu)" in source
+    assert "restoreFocus(host)" in source
+    assert "input.focus()" in source
+    assert "reason.focus()" in source
+    assert "function toggleTheme()" in source
+    assert "localStorage.setItem(THEME_STORAGE_KEY, next)" in source
+    assert "THEME_MEDIA.addEventListener('change'" in source
+    assert "function renderSources(active)" in source
+    assert "dataset.source" in source
+    assert "dataset.eventControl" in source
+    assert "window.WfrecActivityDashboard.create" in source
+    assert "ACTIVITY_DASHBOARD.render(events" in source
+    assert "function dashboardOverview(events)" not in source
+    assert "function dashboardTimeline(events)" not in source
+    assert "DASHBOARD_PAGE_SIZE = 2000" in source
+    assert "const DASHBOARD_CACHE = new Map()" in source
+    assert "function dashboardEvents(sessionId, expectedTotal)" in source
+    assert "function sessionStat(value, modifier='')" in source
+    assert "dateTimeLabel:eventDateTime" in source
+    assert "limit=100000" not in source
+    assert "session.sealed ? 'PHI redaction applied'" in source
+    assert "'PHI redaction pending'" in source
+    assert "Pause or archive the session before exporting events." in source
+    assert "Preparing a pattern-checked export." in source
+
+
+def test_ui_serves_component_scoped_dashboard_styles(client):
+    response = client.get("/dashboard.css")
+    source = response.text
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/css")
+    assert response.headers["cache-control"] == "no-cache"
+    assert ".activity-overview-chart__segment" in source
+    assert ".activity-overview-chart__tooltip" in source
+    assert ".activity-timeline-chart__bucket" in source
+    assert ".activity-timeline-chart__segment" in source
+    assert ".activity-timeline-chart__tooltip" in source
+    assert ".dash-pie" not in source
+    assert ".dash-timeline .bucket" not in source
+
+
+def test_ui_serves_interactive_dashboard_javascript_without_credentials(client):
+    response = client.get("/dashboard.js")
+    source = response.text
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/javascript")
+    assert response.headers["cache-control"] == "no-cache"
+    assert "test-token" not in source
+    assert "@WFREC_TOKEN@" not in source
+    assert "window.WfrecActivityDashboard" in source
+    assert "Object.freeze({create, timelineModel})" in source
+    assert "TIMELINE_BUCKET_COUNT = 24" in source
+    assert "activity-overview-chart__segment" in source
+    assert "activity-timeline-chart__segment" in source
+    assert "pointerenter" in source
+    assert "ArrowLeft" in source
+    assert "ArrowRight" in source
+    assert "focus({preventScroll:true})" in source
+    assert "segment.style.flexGrow = count" in source
 
 
 def test_export_endpoint_writes_files(client):
