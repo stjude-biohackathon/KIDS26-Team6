@@ -8,6 +8,7 @@ mid-session rather than only at session start.
 
 from __future__ import annotations
 
+import contextlib
 import threading
 import time
 from pathlib import Path
@@ -362,19 +363,15 @@ class Recorder:
 
     def _stop_collectors(self) -> None:
         for source, collector in list(self._collectors.items()):
-            try:
+            with contextlib.suppress(Exception):  # pragma: no cover - defensive
                 collector.stop()
-            except Exception:  # pragma: no cover - defensive
-                pass
             self._collectors.pop(source, None)
 
     def _snapshot_files(self, trigger: str) -> None:
         collector = self._collectors.get("files")
         if isinstance(collector, FileCollector):
-            try:
+            with contextlib.suppress(Exception):  # pragma: no cover - defensive
                 collector.snapshot_all(trigger)
-            except Exception:  # pragma: no cover - defensive
-                pass
 
     # ------------------------------------------------------------- heartbeat
     def _start_heartbeat(self, reason: str) -> None:

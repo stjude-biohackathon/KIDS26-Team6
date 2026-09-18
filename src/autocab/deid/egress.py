@@ -37,7 +37,7 @@ from __future__ import annotations
 import ipaddress
 import os
 import socket
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Mapping, Sequence
 from urllib.parse import urlsplit
@@ -285,9 +285,7 @@ def no_proxy_matches(endpoint: Endpoint, env: Mapping[str, str]) -> bool:
             return True
         candidate = entry.lower().lstrip("[").rstrip("]")
         candidate, _, entry_port = candidate.rpartition(":")
-        if not candidate:
-            candidate, entry_port = entry.lower(), ""
-        elif entry_port and not entry_port.isdigit():
+        if not candidate or (entry_port and not entry_port.isdigit()):
             candidate, entry_port = entry.lower(), ""
         if entry_port and endpoint.port is not None and entry_port != str(endpoint.port):
             continue

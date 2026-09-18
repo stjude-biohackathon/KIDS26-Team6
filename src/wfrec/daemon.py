@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import secrets
 import signal
 import sys
@@ -65,10 +66,8 @@ def stop() -> dict[str, object]:
         os.kill(pid, signal.SIGTERM)
     except ProcessLookupError:
         clear_api()
-        try:
+        with contextlib.suppress(FileNotFoundError):
             paths.pid_path().unlink()
-        except FileNotFoundError:
-            pass
         return {"stopped": False, "pid": pid, "reason": "process not running; cleaned up stale files"}
     except PermissionError:
         return {"stopped": False, "pid": pid, "reason": "not permitted to signal that process"}
@@ -128,10 +127,8 @@ def _stop_indicator_processes(procs: list) -> None:
             proc.terminate()
             proc.wait(timeout=3)
         except Exception:
-            try:
+            with contextlib.suppress(Exception):
                 proc.kill()
-            except Exception:
-                pass
 
 
 def run(
@@ -199,10 +196,10 @@ def run(
         server.should_exit = True
 
     for sig in (signal.SIGINT, signal.SIGTERM):
-        try:
+        with contextlib.suppress(
+            ValueError, OSError
+        ):  # pragma: no cover - non-main thread
             signal.signal(sig, shutdown)
-        except (ValueError, OSError):  # pragma: no cover - non-main thread
-            pass
 
     rows = daemon_summary_rows(bind)
     if bind.listen_host not in ("127.0.0.1", "localhost"):
@@ -235,10 +232,8 @@ def run(
         _stop_indicator_processes(indicators)
         recorder.shutdown()
         clear_api()
-        try:
+        with contextlib.suppress(FileNotFoundError):
             paths.pid_path().unlink()
-        except FileNotFoundError:
-            pass
     return 0
 
 

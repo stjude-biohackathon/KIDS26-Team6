@@ -9,6 +9,7 @@ is capturing in the background.
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 from .daemon import daemon_alive
@@ -58,10 +59,8 @@ class Client:
         )
         if response.status_code >= 400:
             detail = response.text
-            try:
+            with contextlib.suppress(Exception):
                 detail = response.json().get("detail", detail)
-            except Exception:
-                pass
             raise RuntimeError(f"wfrec API {response.status_code}: {detail}")
         return response.json()
 

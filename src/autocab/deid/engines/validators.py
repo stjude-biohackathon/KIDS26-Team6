@@ -75,9 +75,7 @@ def ssn_plausible(value: str) -> bool:
     area, group, serial = digits[:3], digits[3:5], digits[5:]
     if area in {"000", "666"} or area.startswith("9"):
         return False
-    if group == "00" or serial == "0000":
-        return False
-    return True
+    return not (group == "00" or serial == "0000")
 
 
 def ipv4_ok(value: str) -> bool:

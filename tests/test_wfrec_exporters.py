@@ -92,7 +92,7 @@ def test_timestamps_are_truncated_to_whole_seconds(store):
     _record_commands(session, ["ls"])
     body, _ = build_terminal_log(session)
 
-    command_line = [l for l in body.splitlines() if not l.startswith("#")][0]
+    command_line = [line for line in body.splitlines() if not line.startswith("#")][0]
     stamp = command_line.split(" ", 1)[0]
     assert "." not in stamp and "Z" not in stamp
     assert len(stamp) == 19
@@ -236,7 +236,11 @@ def test_exports_are_chronological_even_when_the_file_is_not(store):
     assert raw != sorted(raw), "fixture must actually be out of order"
 
     body, _ = build_terminal_log(session)
-    stamps = [l.split(" ", 1)[0] for l in body.splitlines() if not l.startswith("#")]
+    stamps = [
+        line.split(" ", 1)[0]
+        for line in body.splitlines()
+        if not line.startswith("#")
+    ]
     assert stamps == sorted(stamps)
 
     trace, _ = build_trace(session)

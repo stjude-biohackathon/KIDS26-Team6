@@ -21,6 +21,7 @@ presence means enabled -- so adding a source never changes the parse.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import time
@@ -66,7 +67,7 @@ class RecorderState:
 
     active_session: str | None = None
     sources: dict[str, bool] = field(
-        default_factory=lambda: {name: True for name in SOURCES}
+        default_factory=lambda: dict.fromkeys(SOURCES, True)
     )
     shell_output: bool = False
     shell_backend: str = SHELL_BACKEND_SPOOL
@@ -96,7 +97,7 @@ class RecorderState:
 
     @classmethod
     def from_dict(cls, payload: dict) -> "RecorderState":
-        sources = {name: True for name in SOURCES}
+        sources = dict.fromkeys(SOURCES, True)
         for name, enabled in (payload.get("sources") or {}).items():
             if name in sources:
                 sources[name] = bool(enabled)
@@ -159,10 +160,8 @@ class RecorderState:
         if not self.active_session:
             # Absence means "not recording". Removing the file is the entire
             # stop operation as far as every already-open shell is concerned.
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 active.unlink()
-            except FileNotFoundError:
-                pass
             return
 
         spool = paths.session_dir(self.active_session) / "spool"
@@ -220,10 +219,8 @@ def clear_api() -> None:
     """Remove the published daemon address."""
 
     for path in (paths.api_path(), paths.boot_path()):
-        try:
+        with contextlib.suppress(FileNotFoundError):
             path.unlink()
-        except FileNotFoundError:
-            pass
 
 
 def mark_boot() -> str:

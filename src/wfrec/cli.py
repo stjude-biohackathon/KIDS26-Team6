@@ -493,7 +493,7 @@ def _via_daemon(client: Client, args: argparse.Namespace, as_json: bool) -> int:
                 "workflow_family": args.workflow_family,
                 "tags": args.tag,
                 "watch": [str(p) for p in args.watch],
-                "sources": {name: False for name in args.without},
+                "sources": dict.fromkeys(args.without, False),
             },
         )
     elif command == "pause":
@@ -539,7 +539,7 @@ def _direct(args: argparse.Namespace, as_json: bool) -> int:
             workflow_family=args.workflow_family,
             tags=args.tag,
             watch=args.watch,
-            sources={name: False for name in args.without},
+            sources=dict.fromkeys(args.without, False),
         )
     elif command == "pause":
         result = recorder.pause_session(

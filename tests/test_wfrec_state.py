@@ -8,7 +8,6 @@ from wfrec.state import (
     SHELL_BACKEND_DEVSQL,
     SHELL_BACKEND_SPOOL,
     StateTransaction,
-    read_api,
     read_sentinel,
     sentinel_enables,
 )
