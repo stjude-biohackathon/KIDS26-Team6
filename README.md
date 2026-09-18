@@ -147,6 +147,7 @@ background and open the web UI from your **laptop browser** (do not use
    wfrec start --title "My workflow" --watch /path/to/project
    wfrec status
    wfrec stop
+   wfrec seal
    wfrec export
    ```
 
