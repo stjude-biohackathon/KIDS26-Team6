@@ -3,7 +3,7 @@ name: $name
 description: $description_yaml
 compatibility: $compatibility_yaml
 metadata:
-  version: "0.1.0"
+  version: "$skill_version"
   status: draft
   packaging: CBD
   generated_by: skill-forge
@@ -56,6 +56,44 @@ GitHub Copilot, and compatibility paths are resolved by the helper. An explicit
 ## Dependencies
 
 $dependencies
+
+## Runtime environment (critical)
+
+$runtime_environment
+
+The `compatibility` field advertises requirements but does not install them.
+Use the machine-readable environment above or the sentinel-validated
+codebase-owned specification; never rely on an environment nickname. Record
+resolved versions and the codebase revision in every run manifest.
+
+## Reproducibility and run reporting (critical)
+
+Before the first setup, download, analysis, or validation command:
+
+1. save the request used for execution to a local request file;
+2. initialize a run with `scripts/record_run.py init`;
+3. execute every shell command through `scripts/record_run.py exec`, including
+   environment setup, composed-skill commands, failed attempts, and retries;
+4. capture a resolved environment snapshot and direct tool versions;
+5. use `record-action` for non-shell tools and manual steps;
+6. finalize from a structured summary and run `record_run.py validate`;
+7. read `run_summary.md` and display its key findings, outputs, parameters,
+   warnings, skills/tools used, versions, and run directory in chat.
+
+Each run must contain `agent_request.txt`, `agent_workflow.md`, `commands.sh`,
+`logs/commands.log`, `logs/commands.jsonl`, `logs/parameters.jsonl`, `run_manifest.json`,
+`run_manifest.md`, `run_summary.json`, and `run_summary.md`. The manifest must include every
+effective parameter, input/output, skill invoked with version/path/hash, tool
+version, resolved environment snapshot, codebase revision, command working
+directory, exit status, failure/retry, assumption, and manual action.
+
+Command shapes below are examples, not execution records. Only commands captured
+by the recorder during this run establish what was actually done. Redact
+credentials or protected data with explicit placeholders and record the
+redaction; never write secrets into logs.
+
+Follow the exact recorder commands and summary schema in
+[references/runtime-reproducibility.md](references/runtime-reproducibility.md).
 
 ## Workflow
 

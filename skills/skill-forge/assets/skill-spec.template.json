@@ -1,10 +1,11 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "operation": "create",
   "requestedPackaging": "cbd",
   "packaging": "cbd",
   "decision": "novel",
   "name": "example-workflow-cbd",
+  "skillVersion": "0.1.0",
   "title": "Example Workflow (CBD)",
   "description": "Run the example workflow through its maintained reference codebase. Use when the user asks to process an example input into the documented output.",
   "purpose": "Provide a reviewed, repeatable entry point to an existing custom workflow without copying its integrated implementation.",
@@ -75,6 +76,7 @@
         "ev-code-001"
       ],
       "install": null,
+      "environmentPackage": null,
       "versionConstraint": null,
       "sourcePath": null,
       "bundlePath": null,
@@ -82,6 +84,22 @@
       "notes": "Resolved at runtime through the CBD config."
     }
   ],
+  "runtimeEnvironment": {
+    "manager": "codebase",
+    "python": ">=3.8",
+    "channels": [],
+    "condaDependencies": [],
+    "pipDependencies": [],
+    "systemDependencies": [],
+    "externalArtifacts": [],
+    "containerImage": null,
+    "codebaseEnvironmentFile": "environment.yml",
+    "lockStrategy": "codebase-owned",
+    "verified": false,
+    "notes": [
+      "Validate the maintained environment specification before approving the skill."
+    ]
+  },
   "evidence": [
     {
       "id": "ev-doc-001",
@@ -128,7 +146,8 @@
       {
         "path": "/local/path/to/reference-code",
         "sentinels": [
-          "scripts/run_workflow.py"
+          "scripts/run_workflow.py",
+          "environment.yml"
         ],
         "gitRemote": null
       }

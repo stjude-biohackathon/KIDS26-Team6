@@ -1,0 +1,54 @@
+{
+  "status": "success",
+  "whatWasDone": [
+    "Describe each material stage that actually completed, in order."
+  ],
+  "findings": [
+    "Report result-specific findings or statistics; use an empty array only when the workflow has no interpretive findings."
+  ],
+  "parameters": {
+    "example_parameter": "effective value, including a default when it affected output"
+  },
+  "inputs": [
+    {
+      "name": "semantic input name",
+      "path": "/absolute/path/used/at/runtime",
+      "description": "Input role and relevant sample/reference identity."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "semantic output name",
+      "path": "/absolute/path/created/at/runtime",
+      "description": "Output role and validation status."
+    }
+  ],
+  "environmentSnapshot": {
+    "path": "/absolute/path/to/resolved-environment.txt",
+    "format": "conda-explicit",
+    "method": "For example: conda list --explicit, pip freeze --all, or immutable container inspection."
+  },
+  "skillsUsed": [
+    {
+      "name": "composed-skill-name",
+      "version": "version or null",
+      "path": "/resolved/skill/path or null",
+      "sha256": "64-character package hash or null",
+      "commit": "repository commit or null",
+      "role": "What this composed skill contributed."
+    }
+  ],
+  "versions": [
+    {
+      "name": "tool-name",
+      "version": "resolved runtime version",
+      "kind": "cli",
+      "path": "/resolved/executable/path",
+      "versionCommand": "tool-name --version"
+    }
+  ],
+  "warnings": [],
+  "assumptions": [],
+  "manualSteps": [],
+  "limitations": []
+}

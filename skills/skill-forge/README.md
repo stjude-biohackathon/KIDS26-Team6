@@ -18,6 +18,11 @@ examples.
   work, blocked, or no-update;
 - creates a validated SkillSpec and deterministic staged skill package;
 - supports codebase-dependent (CBD) and standalone (STD) packaging;
+- generates machine-readable runtime environment specifications rather than
+  relying on `compatibility` prose or remembered environment names;
+- bundles a runtime recorder that captures the request, actual commands,
+  parameters, skill/version chain, outputs, failures/retries, manifest, and
+  JSON/Markdown findings summary for every generated-skill run;
 - maintains portable, agent-aware CBD codebase location configuration;
 - keeps source-code copying, mode migration, installation, and publication
   behind explicit human approval.
@@ -63,6 +68,7 @@ PYTHON=/path/to/python3.10-or-newer
 "$PYTHON" scripts/forge_skill.py --help
 "$PYTHON" scripts/manage_cbd_config.py --help
 "$PYTHON" scripts/validate_skill_package.py --help
+"$PYTHON" assets/record_run.py --help
 "$PYTHON" scripts/validate_skill_package.py .
 ```
 
@@ -91,9 +97,11 @@ The design was informed by:
   reproducibility manifests, evaluation cases, safe script execution, and
   explicit dependency contracts.
 
-The package applies those controls proportionally. A guidance-only generated
-skill does not receive heavyweight environment or run-logging boilerplate
-unless its behavior needs it.
+The package applies those controls proportionally for analysis dependencies,
+but per-run provenance is mandatory. Every installable generated skill includes
+`skill-package.json`, a machine-readable environment contract, and
+`scripts/record_run.py`; command shapes in `SKILL.md` are never treated as proof
+of execution.
 
 ## Maintenance
 
