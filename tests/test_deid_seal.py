@@ -223,7 +223,12 @@ def test_force_stops_the_session_first_rather_than_sealing_anyway(store):
         Event(source="context", type="context.note", payload={"text": "MRN 4419902"})
     )
 
-    seal_session(session, force=True, key=b"\x01" * 32)
+    seal_session(
+        session,
+        force=True,
+        key=b"\x01" * 32,
+        stop_session=lambda: store.stop(session.session_id),
+    )
 
     from wfrec.session import STATUS_STOPPED
 
@@ -287,6 +292,17 @@ def test_a_partial_seal_is_refused_by_the_export_gate(unsealed):
         require_sealed(unsealed.root, what="test")
 
 
+def test_the_export_gate_rejects_post_seal_tampering(unsealed):
+    seal_session(unsealed, force=True, key=b"\x01" * 32)
+    (unsealed.root / "events.jsonl").write_text(
+        (unsealed.root / "events.jsonl").read_text(encoding="utf-8") + "{}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(NotSealed, match="sealed digest"):
+        require_sealed(unsealed.root, what="test")
+
+
 def test_the_timeline_self_documents_that_it_was_sealed(unsealed):
     seal_session(unsealed, force=True, key=b"\x01" * 32)
     lines = (unsealed.root / "events.jsonl").read_text(encoding="utf-8").splitlines()
@@ -300,6 +316,40 @@ def test_the_timeline_self_documents_that_it_was_sealed(unsealed):
 
     digest = hashlib.sha256((unsealed.root / "events.jsonl").read_bytes()).hexdigest()
     assert record["targets"]["events.jsonl"]["after_sha256"] == digest
+
+
+def test_manifest_is_sealed_alongside_the_timeline(unsealed):
+    unsealed.manifest.title = "MRN 4419902 analysis"
+    unsealed.manifest.tags = ["SJ-4817"]
+    unsealed.manifest.watch_roots = ["/data/SJ-4817"]
+    unsealed.save()
+
+    seal_session(unsealed, force=True, key=b"\x01" * 32)
+
+    manifest = json.loads((unsealed.root / "manifest.json").read_text(encoding="utf-8"))
+    assert "4419902" not in manifest["title"]
+    assert "SJ-4817" not in json.dumps(manifest)
+    assert "manifest.json" in json.loads(marker_path(unsealed.root).read_text(encoding="utf-8"))["targets"]
+
+
+def test_pseudonymize_analyst_scrubs_event_metadata_and_manifest(unsealed):
+    unsealed.manifest.analyst = "Jane Smith"
+    unsealed.manifest.host = "SJ-4817-host"
+    unsealed.save()
+
+    seal_session(
+        unsealed,
+        force=True,
+        key=b"\x01" * 32,
+        policy=Policy(render=RenderMode.PSEUDONYMIZE, pseudonymize_analyst=True),
+    )
+
+    timeline = (unsealed.root / "events.jsonl").read_text(encoding="utf-8")
+    manifest = (unsealed.root / "manifest.json").read_text(encoding="utf-8")
+    assert "Jane Smith" not in timeline
+    assert "SJ-4817-host" not in timeline
+    assert "Jane Smith" not in manifest
+    assert "SJ-4817-host" not in manifest
 
 
 def test_the_sealed_event_does_not_become_a_workflow_step(unsealed):
@@ -408,6 +458,14 @@ def test_a_sealed_session_refuses_appends(unsealed):
         )
 
 
+def test_a_writer_loaded_before_the_seal_still_refuses_new_appends(unsealed):
+    stale = unsealed.writer
+    seal_session(unsealed, force=True, key=b"\x01" * 32)
+
+    with pytest.raises(SessionSealed):
+        stale.append(Event(source="context", type="context.note", payload={"text": "MRN 4419903"}))
+
+
 def test_the_seal_itself_can_still_write_through_the_bypass(unsealed):
     seal_session(unsealed, force=True, key=b"\x01" * 32)
 
@@ -436,6 +494,28 @@ def test_detection_is_batched_not_per_string(unsealed):
 
     assert len(engine.batches) == 1, f"one batched call expected, got {engine.batches}"
     assert engine.batches[0] > 1
+
+
+def test_out_of_bounds_detector_offsets_abort_the_seal(store):
+    session, _ = store.start(title="A", analyst="a")
+    session.writer.append(
+        Event(source="context", type="context.note", payload={"text": "MRN 4419902"})
+    )
+    store.stop(session.session_id)
+    session = store.resolve(session.session_id)
+
+    class BadOffsets:
+        name = "bad"
+        kind = "model"
+
+        def info(self):
+            return DetectorInfo(name=self.name, kind=self.kind, available=True)
+
+        def detect(self, texts):
+            return [[Span(start=-1, end=3, label="MRN", detector="model:bad")] for _ in texts]
+
+    with pytest.raises(Exception, match="outside text of length"):
+        seal_session(session, detectors=[BadOffsets()], force=True, key=b"\x01" * 32)
 
 
 def test_identical_strings_are_detected_once(store):

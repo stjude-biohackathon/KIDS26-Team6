@@ -194,8 +194,10 @@ def test_full_pipeline_run_from_a_session_folder(store, tmp_path):
             "bcftools view -i 'QUAL>30' in.vcf.gz > out.vcf",
             "truvari bench -b giab_truth.vcf.gz -c out.vcf -o bench/",
         ],
+        seal=False,
     )
     session.add_note("Needed the GIAB HG008 truth set", label="why")
+    _seal(session)
 
     output = tmp_path / "drafts"
     pipeline = build_default_pipeline()
@@ -262,3 +264,16 @@ def test_merge_skips_empty_sessions(store, tmp_path):
     report = merge_sessions([good.session_id, empty.session_id], tmp_path / "m.json")
     assert report["traces"] == 1
     assert report["skipped"][0]["session"] == empty.session_id
+
+
+def test_merge_skips_unsealed_sessions(store, tmp_path):
+    sealed, _ = store.start(title="A", analyst="a")
+    _populate(sealed, ["ls"])
+    unsealed, _ = store.start(title="B", analyst="b")
+    _populate(unsealed, ["pwd"], seal=False)
+    store.stop(unsealed.session_id)
+
+    report = merge_sessions([sealed.session_id, unsealed.session_id], tmp_path / "m.json")
+
+    assert report["traces"] == 1
+    assert report["skipped"][0]["session"] == unsealed.session_id

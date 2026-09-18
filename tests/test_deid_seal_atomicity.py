@@ -12,6 +12,7 @@ import json
 import os
 import threading
 import time
+import hashlib
 
 import pytest
 
@@ -59,10 +60,31 @@ def _stage_a_fake_seal(session, *, state: str, with_files: bool = True):
     staged = staged_dir(session.root)
     staged.mkdir(parents=True, exist_ok=True)
     targets: list[str] = []
+    record_targets: dict[str, dict[str, str]] = {}
+    events = session.root / "events.jsonl"
+    manifest = session.root / "manifest.json"
+    staged_events = staged / "events.jsonl"
+    staged_manifest = staged / "manifest.json"
+    staged_deid = staged / "deid"
+    staged_deid.mkdir(parents=True, exist_ok=True)
+    staged_audit = staged_deid / "audit.jsonl"
+    staged_events.write_text(events.read_text(encoding="utf-8"), encoding="utf-8")
+    staged_manifest.write_text(manifest.read_text(encoding="utf-8"), encoding="utf-8")
+    staged_audit.write_text('{"label":"MRN"}\n', encoding="utf-8")
+    targets.extend(["events.jsonl", "manifest.json", "deid/audit.jsonl"])
     if with_files:
         (staged / "jobs").mkdir(parents=True, exist_ok=True)
         (staged / "jobs" / "1.out").write_text("MRN_deadbeefcafe\n", encoding="utf-8")
         targets.append("jobs/1.out")
+    for relpath in targets:
+        before = session.root / relpath
+        after = staged / relpath
+        record_targets[relpath] = {
+            "before_sha256": (
+                hashlib.sha256(before.read_bytes()).hexdigest() if before.exists() else ""
+            ),
+            "after_sha256": hashlib.sha256(after.read_bytes()).hexdigest(),
+        }
     journal = {
         "state": state,
         "session": session.session_id,
@@ -80,7 +102,7 @@ def _stage_a_fake_seal(session, *, state: str, with_files: bool = True):
             "findings": 1,
             "counts_by_label": {"MRN": 1},
             "distinct_values": 1,
-            "targets": {},
+            "targets": record_targets,
             "pseudonym_key": "discarded",
             "reverse_map": "not-written",
             "duration_seconds": 0.0,
@@ -170,7 +192,7 @@ def test_the_commit_loop_is_idempotent(populated):
     second = _commit_staged(populated.root, journal)
     third = _commit_staged(populated.root, journal)
 
-    assert first == ["jobs/1.out"]
+    assert first == ["events.jsonl", "manifest.json", "deid/audit.jsonl", "jobs/1.out"]
     assert second == [] and third == []
     assert (populated.root / "jobs" / "1.out").read_text(encoding="utf-8") == "MRN_deadbeefcafe\n"
 

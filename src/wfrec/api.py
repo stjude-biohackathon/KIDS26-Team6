@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import secrets
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -73,7 +73,7 @@ class ExportRequest(BaseModel):
 
 class SealRequest(BaseModel):
     session_id: str | None = None
-    profile: str = "balanced"
+    profile: Literal["regex-only", "balanced", "strict"] = "balanced"
     reseal: bool = False
     force: bool = False
     dry_run: bool = False
@@ -240,6 +240,11 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
                 reseal=payload.reseal,
                 force=payload.force,
                 dry_run=payload.dry_run,
+                stop_session=(
+                    None
+                    if not payload.force
+                    else lambda: recorder.stop_session(payload.session_id)
+                ),
             )
         except SealError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc

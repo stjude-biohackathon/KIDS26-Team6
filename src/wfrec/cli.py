@@ -951,6 +951,16 @@ def _seal(args: argparse.Namespace, as_json: bool) -> int:
         pseudonymize_analyst=args.pseudonymize_analyst,
     )
     deny_terms = ("patient", "diagnosis", "pathology", *args.deny_term)
+    stop_session = None
+    if args.force:
+        client = Client.discover()
+        if client is not None:
+            stop_session = lambda: client.post(
+                "/sessions/stop", {"session_id": session.session_id}
+            )
+        else:
+            recorder = Recorder(supervise=False)
+            stop_session = lambda: recorder.stop_session(session.session_id)
 
     try:
         result = seal_session(
@@ -962,6 +972,7 @@ def _seal(args: argparse.Namespace, as_json: bool) -> int:
             reseal=args.reseal,
             force=args.force,
             dry_run=args.dry_run,
+            stop_session=stop_session,
         )
     except SealError as exc:
         error(str(exc))

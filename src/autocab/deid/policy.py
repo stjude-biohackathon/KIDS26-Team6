@@ -57,8 +57,9 @@ class RenderMode(str, Enum):
     PSEUDONYMIZE = "pseudonymize"
 
 
-#: Profiles, in increasing strictness. ``balanced`` is the default.
-PROFILES: tuple[str, ...] = ("regex-only", "balanced", "strict", "limited-dataset")
+#: Profiles implemented today, in increasing strictness. ``balanced`` is the
+#: default.
+PROFILES: tuple[str, ...] = ("regex-only", "balanced", "strict")
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,8 +111,6 @@ class Policy:
     def action_for(self, label: str) -> Action:
         """Map a label to its action under this policy."""
 
-        if label in GENERALIZED_LABELS:
-            return Action.GENERALIZE
         if label == DeidLabel.DENY.value:
             # A deny term is **always** masked, never pseudonymized, even during
             # a seal. A surrogate exists to preserve linkage -- "this is the same
@@ -121,6 +120,10 @@ class Policy:
             # where `[REDACTED_TERM]: NAME_e481...` says the same thing and
             # reads, and it inflated `distinct_values` with vocabulary.
             return Action.MASK
+        if self.strict:
+            return Action.MASK
+        if label in GENERALIZED_LABELS:
+            return Action.GENERALIZE
         if self.render is RenderMode.PSEUDONYMIZE:
             return Action.PSEUDONYMIZE
         return Action.MASK

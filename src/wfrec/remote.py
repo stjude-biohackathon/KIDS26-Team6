@@ -110,6 +110,15 @@ def interactive_shell(host: str, session_id: str, extra_args: list[str] | None =
         return 1
 
 
+def _redact_required(text: str, *, what: str):
+    redacted = shared_redactor().apply(text)
+    if text and not redacted.available:
+        raise RuntimeError(
+            f"cannot record {what}: shared redactor is unavailable"
+        )
+    return redacted
+
+
 def pull_spool(host: str, session, *, session_id: str | None = None) -> dict[str, Any]:
     """Copy remote spool files into ``<session>/shell/remote/`` for ingest."""
 
@@ -134,7 +143,8 @@ def pull_spool(host: str, session, *, session_id: str | None = None) -> dict[str
         # verbatim -- which left the seal as its only control over the one
         # channel most likely to contain a clinical grep.
         (target_dir / name).write_text(
-            shared_redactor().apply(proc.stdout).text, encoding="utf-8"
+            _redact_required(proc.stdout, what="remote spool output").text,
+            encoding="utf-8",
         )
         pulled.append(name)
 
@@ -168,7 +178,9 @@ def collect_slurm(host: str, session, job_ids: list[str]) -> list[Event]:
             for key in ("JobName", "WorkDir", "Comment"):
                 value = record.get(key)
                 if isinstance(value, str) and value:
-                    redacted = redactor.apply(value)
+                    redacted = _redact_required(
+                        value, what=f"slurm accounting field {key}"
+                    )
                     record[key] = redacted.text
                     findings.update(redacted.findings)
             events.append(
@@ -219,6 +231,7 @@ def collect_slurm(host: str, session, job_ids: list[str]) -> list[Event]:
             # whatever the pipeline printed, which routinely includes sample
             # manifests and file paths. Also written verbatim until now.
             (jobs_dir / f"{host}-{job_id}.out").write_text(
-                shared_redactor().apply(out.stdout).text, encoding="utf-8"
+                _redact_required(out.stdout, what="slurm job output").text,
+                encoding="utf-8",
             )
     return events
