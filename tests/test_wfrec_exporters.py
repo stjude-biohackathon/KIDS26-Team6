@@ -200,6 +200,148 @@ def test_waits_become_workflow_steps(store):
     assert "bwa align" in waits[0]["detail"]
 
 
+def test_trace_projects_each_supported_event_without_changing_details(store):
+    session, _ = store.start(title="A", analyst="a")
+    session.writer.extend(
+        [
+            Event(
+                source="shell",
+                type="shell.command.completed",
+                ts="2030-01-01T00:00:01.000Z",
+                host="node1",
+                origin="remote",
+                payload={
+                    "command": "bwa mem ref.fa reads.fq",
+                    "cwd": "/data",
+                    "exit_code": 0,
+                    "duration_ms": 15,
+                },
+            ),
+            Event(
+                source="screen",
+                type="screen.ocr",
+                ts="2030-01-01T00:00:02.000Z",
+                payload={"ocr_text": "screen text"},
+            ),
+            Event(
+                source="notes",
+                type="context.note",
+                ts="2030-01-01T00:00:03.000Z",
+                payload={"label": "decision", "text": "keep sample"},
+            ),
+            Event(
+                source="agents",
+                type="agent.message",
+                ts="2030-01-01T00:00:04.000Z",
+                payload={
+                    "tool": "codex",
+                    "role": "assistant",
+                    "text": "inspect output",
+                },
+            ),
+            Event(
+                source="files",
+                type="file.diff",
+                ts="2030-01-01T00:00:05.000Z",
+                payload={"path": "workflow.py", "added": 3, "deleted": 1},
+            ),
+            Event(
+                source="files",
+                type="git.snapshot",
+                ts="2030-01-01T00:00:06.000Z",
+                payload={"trigger": "manual", "branch": "main", "changed_count": 2},
+            ),
+            Event(
+                source="jobs",
+                type="job.submitted",
+                ts="2030-01-01T00:00:07.000Z",
+                payload={
+                    "scheduler": "slurm",
+                    "job_id": "42",
+                    "jobname": "align",
+                    "workdir": "/work",
+                },
+            ),
+            Event(
+                source="session",
+                type="session.paused",
+                ts="2030-01-01T00:00:08.000Z",
+                payload={"reason": "wait", "expect": "6h"},
+            ),
+            Event(
+                source="session",
+                type="session.resumed",
+                ts="2030-01-01T00:00:09.000Z",
+                payload={"gap_ms": 5000},
+            ),
+            Event(
+                source="session",
+                type="session.waiting",
+                ts="2030-01-01T00:00:10.000Z",
+                payload={"reason": "wait", "elapsed_ms": 1000},
+            ),
+            Event(
+                source="notes",
+                type="marker.user",
+                ts="2030-01-01T00:00:11.000Z",
+                payload={"label": "review", "detail": "accepted"},
+            ),
+            Event(
+                source="deid",
+                type="deid.sealed",
+                ts="2030-01-01T00:00:12.000Z",
+            ),
+            Event(
+                source="screen",
+                type="screen.window",
+                ts="2030-01-01T00:00:13.000Z",
+            ),
+        ]
+    )
+
+    trace, step_count = build_trace(session)
+
+    assert step_count == 11
+    assert [
+        {key: step[key] for key in ("tool", "action", "detail")} for step in trace["steps"]
+    ] == [
+        {
+            "tool": "terminal",
+            "action": "align",
+            "detail": (
+                "Executed command: bwa mem ref.fa reads.fq cwd=/data exit=0 "
+                "duration=15ms host=node1"
+            ),
+        },
+        {"tool": "screen", "action": "observe", "detail": "Screen text: screen text"},
+        {
+            "tool": "notes",
+            "action": "annotate",
+            "detail": "Analyst note (decision): keep sample",
+        },
+        {"tool": "codex", "action": "converse", "detail": "assistant: inspect output"},
+        {"tool": "editor", "action": "edit", "detail": "Edited workflow.py (+3/-1)"},
+        {
+            "tool": "git",
+            "action": "version",
+            "detail": "Git snapshot (manual) on branch main: 2 changed paths",
+        },
+        {
+            "tool": "scheduler",
+            "action": "submit",
+            "detail": "Submitted slurm job 42 align workdir=/work",
+        },
+        {"tool": "session", "action": "wait", "detail": "Paused: wait (expected 6h)"},
+        {"tool": "session", "action": "wait", "detail": "Resumed after 5000ms"},
+        {
+            "tool": "session",
+            "action": "wait",
+            "detail": "Still waiting (wait) after 1000ms",
+        },
+        {"tool": "notes", "action": "mark", "detail": "Marker review: accepted"},
+    ]
+
+
 def test_action_hints_map_bioinformatics_tools(store):
     session, _ = store.start(title="A", analyst="a")
     _record_commands(session, ["bwa mem ref.fa r1.fq", "sbatch job.sh", "samtools sort in.bam"])
