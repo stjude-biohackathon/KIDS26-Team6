@@ -1,6 +1,38 @@
-# AutoCAB
+![AutoCAB](images/autocab-logo.png)
 
-AutoCAB is a BioHackathon 2026 project for turning repeated CAB bioinformatics workflows into governed, privacy-conscious AI agent skill proposals.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
+[![Tests](https://github.com/stjude-biohackathon/KIDS26-Team6/actions/workflows/tests.yml/badge.svg)](https://github.com/stjude-biohackathon/KIDS26-Team6/actions/workflows/tests.yml)
+[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](src/wfrec/README.md)
+
+Every recurring fix, workaround, and analysis step that lives only in one
+person's head or one messy terminal history is knowledge the next analyst has
+to rediscover from scratch. AutoCAB watches how you actually work, and turns
+that observation into a shared, reviewed skill — instead of leaving it tacit
+or duplicated across the team.
+
+![wfrec activity dashboard screenshot](images/clipboard-2893987244.png)
+
+## Features
+
+- **Governed pipeline**: workflow evidence is normalized, redacted, and
+  compared against existing skills before a draft is proposed — nothing
+  becomes a shared skill without a human reviewing, editing, and approving it.
+- **Cross-platform recording** with `wfrec` (macOS, Linux, Windows, and HPC
+  login nodes): five independently toggleable capture sources — screen, shell,
+  context notes, agent transcripts, and file changes.
+- **Privacy by construction**: an always-on regex redaction tier runs inline
+  during capture, with optional heavier tiers (model-based, Presidio, or
+  LLM-gated) layered on top, plus `wfrec seal` to retroactively scrub an
+  already-recorded session before sharing it.
+- **Live activity dashboard**: session composition, an activity timeline, and
+  event/window/agent breakdowns, right in the recorder's own GUI.
+- **Always know you're being recorded**: a menu-bar/tray indicator and a
+  floating on-screen badge, so recording is never silent or easy to miss.
+- **Remote and multi-analyst workflows**: SSH-based capture on HPC clusters,
+  a remotely reachable dashboard, and session merging across analysts.
+- **skill-forge**: an evidence-linked toolchain for turning incomplete
+  activity records into a validated, human-approved skill package.
 
 ## Project Background
 
@@ -115,6 +147,7 @@ background and open the web UI from your **laptop browser** (do not use
    wfrec start --title "My workflow" --watch /path/to/project
    wfrec status
    wfrec stop
+   wfrec seal
    wfrec export
    ```
 
@@ -267,41 +300,16 @@ Run the test suite from the repository-local environment:
 ## Repository Layout
 
 ```text
-README.md                       Project overview and run instructions
-pyproject.toml                  Python project configuration
-docs/                           Supporting project documentation
-docs/proposal/                  Challenge brief and proposal files
-docs/team/                      Team registration and member information
-docs/biohackathon-framework.md  Framework architecture notes
-project-management/             Planning templates and meeting notes
-data/                           Sample inputs used by the prototype
-src/autocab/                    CLI, orchestration, models, and input adapters
-src/autocab/framework/          Extensible pipeline framework
-src/wfrec/                      Cross-platform workflow recorder (the observation front end)
-src/wfrec/README.md             Recorder usage guide: install, record, export, troubleshoot
-src/wfrec/hooks/                Shell hooks: bash, zsh, fish, PowerShell, POSIX sh (remote)
-src/wfrec/collectors/           Per-source capture backends
-src/wfrec/exporters/            Lossy projections into AutoCAB's input formats
-.claude/skills/recorder/        `recorder` agent skill that drives wfrec in natural language
-src/aggregation/                Workflow aggregation and matching helpers
-src/redaction/                  Privacy redaction helpers
-src/triage_console/             Minimal review queue support
-src/pr_generator/               PR-ready draft export
-tests/                          Unit and pipeline tests
-skills/setup-activity-tracking/ Maintained local activity-tracking setup skill
-skills/generated-drafts/        Generated output folders from demo runs
+src/autocab/       CLI, orchestration, pipeline framework, and de-identification engine
+src/wfrec/         Cross-platform workflow recorder (the observation front end)
+skills/            Agent skills, including skill-forge and setup-activity-tracking
+docs/              Project documentation, proposal, and team information
+data/              Sample inputs used by the prototype
+tests/             Unit and pipeline tests
 ```
 
-### Key Files
-
-- `data/sample_workflow_traces.json`: synthetic workflow traces
-- `data/sample_screen_capture.json`: pre-exported screen activity timeline example
-- `data/sample_skill_catalog.json`: curated sample skill catalog
-- `docs/proposal/AutoCAB-challenge-description.docx`: project challenge brief
-- `docs/team/registration.md`: registration notes
-- `docs/team/team_member_info.md`: team member details
-- `docs/mgatta42/plan.md`: design plan for the `wfrec` workflow recorder
-- `skills/setup-activity-tracking/SKILL.md`: maintained DevSQL and Atuin setup skill
+See [`src/wfrec/README.md`](src/wfrec/README.md) for the recorder's own layout
+(collectors, exporters, hooks) in detail.
 
 ## Team
 
