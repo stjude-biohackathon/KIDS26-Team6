@@ -258,7 +258,7 @@ def test_seal_endpoint_force_stops_via_the_live_recorder(client):
 def test_seal_endpoint_rejects_unknown_profiles(client):
     client.post("/sessions/start", json={"title": "A", "analyst": "a"})
     client.post("/sessions/stop", json={})
-    response = client.post("/sessions/seal", json={"profile": "limited-dataset"})
+    response = client.post("/sessions/seal", json={"profile": "balanced"})
 
     assert response.status_code == 422
 

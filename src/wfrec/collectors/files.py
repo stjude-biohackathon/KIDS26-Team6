@@ -20,6 +20,7 @@ modified tracked file, so one touched 100 GB BAM would make git read all
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import time
 from collections import deque
@@ -93,6 +94,7 @@ TRACKED_BLOB_REFUSE = 100 * 1024 * 1024  # skip git entirely if tracked blobs ex
 FLOOD_QUEUE_MAX = 10000
 DEBOUNCE_SECONDS = 1.0
 GIT_MIN_INTERVAL = 5.0
+SAFE_DIFF_NAME = re.compile(r"[^A-Za-z0-9._-]+")
 
 #: Pathspec exclusions handed to git. Only the CLI supports this magic syntax,
 #: which is the main reason this module shells out instead of using pygit2.
@@ -565,7 +567,7 @@ class FileCollector(Collector):
             safe = rel.replace(os.sep, "__").replace("/", "__")
             # The *filename* is derived from the unredacted relative path, so it
             # would otherwise reintroduce the identifier the content just lost.
-            safe = redactor.apply(safe).text.replace("[", "_").replace("]", "_")
+            safe = SAFE_DIFF_NAME.sub("_", redactor.apply(safe).text).strip("._") or "redacted"
             relative = f"files/diffs/{int(time.time() * 1000)}_{safe}.patch"
             destination = self.session.root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)

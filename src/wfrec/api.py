@@ -73,7 +73,7 @@ class ExportRequest(BaseModel):
 
 class SealRequest(BaseModel):
     session_id: str | None = None
-    profile: Literal["regex-only", "balanced", "strict"] = "balanced"
+    profile: Literal["regex-only"] = "regex-only"
     reseal: bool = False
     force: bool = False
     dry_run: bool = False
@@ -102,6 +102,20 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
     guard = [Depends(authorize)]
 
+    def _sanitize_doctor(node: Any) -> Any:
+        if isinstance(node, dict):
+            return {
+                key: (
+                    "unavailable"
+                    if key == "error" and isinstance(value, str)
+                    else _sanitize_doctor(value)
+                )
+                for key, value in node.items()
+            }
+        if isinstance(node, list):
+            return [_sanitize_doctor(item) for item in node]
+        return node
+
     @app.exception_handler(NoActiveSession)
     async def _no_session(_request: Request, exc: NoActiveSession) -> JSONResponse:
         return JSONResponse(status_code=409, content={"detail": str(exc)})
@@ -129,7 +143,7 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     def doctor() -> dict[str, Any]:
         from .doctor import diagnose
 
-        return diagnose()
+        return _sanitize_doctor(diagnose())
 
     @app.get("/sessions", dependencies=guard)
     def sessions() -> dict[str, Any]:
