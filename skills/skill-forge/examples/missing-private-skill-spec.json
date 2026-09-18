@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "1.0",
+  "operation": "create",
+  "requestedPackaging": "cbd",
+  "packaging": "cbd",
+  "decision": "blocked",
+  "name": "private-peak-filter-cbd",
+  "title": "Private Peak Filter (CBD)",
+  "description": "Run a maintained private peak-filtering workflow. Use when the referenced implementation and its configuration have been made available for inspection.",
+  "purpose": "Preserve the observed peak-filtering intent without guessing unavailable custom logic.",
+  "triggers": [
+    "Apply the project-approved private peak classes to this BED file."
+  ],
+  "nonTriggers": [
+    "Apply a generic public interval filter with different behavior."
+  ],
+  "inputs": [
+    {
+      "name": "input_peak_bed",
+      "description": "Peak BED consumed by the missing custom script.",
+      "required": true,
+      "evidenceIds": [
+        "ev-log-001"
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "filtered_peak_bed",
+      "description": "Filtered BED observed after the private command.",
+      "required": true,
+      "evidenceIds": [
+        "ev-log-002"
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "id": "private-filter",
+      "summary": "Apply the unavailable project-specific peak filter.",
+      "status": "blocked",
+      "basis": "observed",
+      "evidenceIds": [
+        "ev-log-001",
+        "ev-log-002"
+      ],
+      "existingSkill": null,
+      "commandShape": "python <CODEBASE>/private_peak_filter.py <INPUT_BED> --output <FILTERED_BED>",
+      "dependencies": [
+        "private-peak-filter"
+      ],
+      "rationale": "The command and output were observed, but the filtering implementation and policy were not available.",
+      "approvalRequired": false
+    },
+    {
+      "id": "review-workbook",
+      "summary": "Review and correct sample labels in the generated workbook.",
+      "status": "manual",
+      "basis": "observed",
+      "evidenceIds": [
+        "ev-log-003"
+      ],
+      "existingSkill": null,
+      "commandShape": null,
+      "dependencies": [
+        "workbook-review"
+      ],
+      "rationale": "The activity record explicitly marks a manual workbook correction before the report step.",
+      "approvalRequired": true
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "private-peak-filter",
+      "kind": "missing",
+      "required": true,
+      "evidenceIds": [
+        "ev-log-001"
+      ],
+      "install": null,
+      "versionConstraint": null,
+      "sourcePath": null,
+      "bundlePath": null,
+      "licenseStatus": "unknown",
+      "notes": "Need source, local imports, config/policy assets, and one example input/output pair."
+    },
+    {
+      "name": "workbook-review",
+      "kind": "manual",
+      "required": true,
+      "evidenceIds": [
+        "ev-log-003"
+      ],
+      "install": null,
+      "versionConstraint": null,
+      "sourcePath": null,
+      "bundlePath": null,
+      "licenseStatus": "not_applicable",
+      "notes": "Human confirms and corrects sample labels; the edited workbook is the handoff artifact."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-log-001",
+      "source": "incomplete-cbd-log.jsonl",
+      "locator": "evt-001",
+      "basis": "observed",
+      "confidence": "high",
+      "summary": "A private peak-filtering command completed successfully."
+    },
+    {
+      "id": "ev-log-002",
+      "source": "incomplete-cbd-log.jsonl",
+      "locator": "evt-002",
+      "basis": "observed",
+      "confidence": "high",
+      "summary": "The command produced a filtered peak BED."
+    },
+    {
+      "id": "ev-log-003",
+      "source": "incomplete-cbd-log.jsonl",
+      "locator": "evt-003",
+      "basis": "observed",
+      "confidence": "high",
+      "summary": "The analyst manually corrected sample labels in a workbook before continuing."
+    }
+  ],
+  "assumptions": [],
+  "unresolvedQuestions": [
+    {
+      "id": "q-private-filter-source",
+      "question": "Where is the exact private_peak_filter.py implementation and its runtime dependency closure?",
+      "blocking": true,
+      "neededArtifacts": [
+        "private_peak_filter.py",
+        "local imported modules",
+        "filter policy/config files",
+        "one sanitized input/output example"
+      ]
+    }
+  ],
+  "qualityChecks": [
+    "The filtered BED follows the project-approved policy once that policy is available."
+  ],
+  "failureModes": [
+    {
+      "trigger": "The custom implementation is unavailable.",
+      "response": "Keep the proposal blocked and request the exact artifacts; do not substitute generic filtering logic."
+    }
+  ],
+  "existingSkillCoverage": [],
+  "codebase": {
+    "roots": []
+  },
+  "updateAssessment": null,
+  "licenseDecision": "Unknown until the custom source and ownership are available.",
+  "sourceManifests": [
+    "evidence/source-manifest.json"
+  ]
+}

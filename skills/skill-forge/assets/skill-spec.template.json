@@ -1,0 +1,142 @@
+{
+  "schemaVersion": "1.0",
+  "operation": "create",
+  "requestedPackaging": "cbd",
+  "packaging": "cbd",
+  "decision": "novel",
+  "name": "example-workflow-cbd",
+  "title": "Example Workflow (CBD)",
+  "description": "Run the example workflow through its maintained reference codebase. Use when the user asks to process an example input into the documented output.",
+  "purpose": "Provide a reviewed, repeatable entry point to an existing custom workflow without copying its integrated implementation.",
+  "triggers": [
+    "Run the example workflow on these inputs."
+  ],
+  "nonTriggers": [
+    "Rewrite or refactor the reference implementation."
+  ],
+  "inputs": [
+    {
+      "name": "example_input",
+      "description": "Input file accepted by the maintained workflow.",
+      "required": true,
+      "evidenceIds": [
+        "ev-doc-001"
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "example_output",
+      "description": "Validated result produced by the workflow.",
+      "required": true,
+      "evidenceIds": [
+        "ev-doc-002"
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "id": "step-001",
+      "summary": "Validate the input before invoking the maintained workflow.",
+      "status": "supported",
+      "basis": "documented",
+      "evidenceIds": [
+        "ev-doc-001"
+      ],
+      "existingSkill": null,
+      "commandShape": null,
+      "dependencies": [],
+      "rationale": "The source documentation defines the required input contract.",
+      "approvalRequired": false
+    },
+    {
+      "id": "step-002",
+      "summary": "Run the maintained custom entrypoint.",
+      "status": "supported",
+      "basis": "inspected_code",
+      "evidenceIds": [
+        "ev-code-001"
+      ],
+      "existingSkill": null,
+      "commandShape": "python <CODEBASE_ROOT>/scripts/run_workflow.py <INPUT> --output <OUTPUT_DIR>",
+      "dependencies": [
+        "reference-workflow"
+      ],
+      "rationale": "The inspected entrypoint exposes this command-line contract.",
+      "approvalRequired": false
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "reference-workflow",
+      "kind": "custom_integrated",
+      "required": true,
+      "evidenceIds": [
+        "ev-code-001"
+      ],
+      "install": null,
+      "versionConstraint": null,
+      "sourcePath": null,
+      "bundlePath": null,
+      "licenseStatus": "not_applicable",
+      "notes": "Resolved at runtime through the CBD config."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-doc-001",
+      "source": "workflow-notes.md",
+      "locator": "Input section",
+      "basis": "documented",
+      "confidence": "medium",
+      "summary": "The notes identify the required input type."
+    },
+    {
+      "id": "ev-doc-002",
+      "source": "workflow-notes.md",
+      "locator": "Expected results section",
+      "basis": "documented",
+      "confidence": "medium",
+      "summary": "The notes identify the required output artifact."
+    },
+    {
+      "id": "ev-code-001",
+      "source": "reference-code",
+      "locator": "scripts/run_workflow.py main",
+      "basis": "inspected_code",
+      "confidence": "high",
+      "summary": "The maintained script exposes the documented workflow entrypoint."
+    }
+  ],
+  "assumptions": [
+    "The configured codebase version remains compatible with the inspected entrypoint."
+  ],
+  "unresolvedQuestions": [],
+  "qualityChecks": [
+    "The required output exists and is non-empty.",
+    "The workflow command exits successfully."
+  ],
+  "failureModes": [
+    {
+      "trigger": "The configured codebase root or entrypoint is missing.",
+      "response": "Stop and request an updated codebase location; do not substitute another script."
+    }
+  ],
+  "existingSkillCoverage": [],
+  "codebase": {
+    "roots": [
+      {
+        "path": "/local/path/to/reference-code",
+        "sentinels": [
+          "scripts/run_workflow.py"
+        ],
+        "gitRemote": null
+      }
+    ]
+  },
+  "updateAssessment": null,
+  "licenseDecision": "No custom code is copied in CBD mode.",
+  "sourceManifests": [
+    "evidence/source-manifest.json"
+  ]
+}
