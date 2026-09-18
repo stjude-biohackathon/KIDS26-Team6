@@ -248,7 +248,11 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
         from .seal import SealError, seal_session, seal_status
 
         if payload.status:
-            session = recorder.store.resolve(payload.session_id)
+            session = (
+                recorder.store.resolve(payload.session_id)
+                if payload.session_id
+                else (recorder.session or recorder.store.resolve(None))
+            )
             return seal_status(session.root)
         session = recorder.store.resolve(payload.session_id)
         try:
