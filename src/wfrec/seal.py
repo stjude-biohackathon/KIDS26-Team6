@@ -358,6 +358,7 @@ class Scrubber:
             candidates: list[Span] = []
             for results in per_detector:
                 candidates.extend(results[index])
+            check_bounds(normalized[index], candidates)
             self._spans[text] = resolve(
                 normalized[index], candidates, keeps=self._allowlist.keeps
             )
@@ -399,6 +400,9 @@ class Scrubber:
         # Invariant 3. Abort the whole seal rather than clip: a replacement in
         # the wrong region looks exactly like success.
         check_bounds(normalized, spans)
+        cached = self._rewritten.get(text)
+        if cached is not None:
+            return cached
 
         # One replacement decision per span, recorded for the audit and reused
         # for the rewrite. Computing them twice would be harmless (both are pure
@@ -428,9 +432,6 @@ class Scrubber:
                 )
             )
 
-        cached = self._rewritten.get(text)
-        if cached is not None:
-            return cached
         rewritten = render(normalized, spans, lambda span, _surface: replacements[span.start])
         self._rewritten[text] = rewritten
         return rewritten
@@ -660,7 +661,9 @@ def _commit_staged(session_dir: Path, journal: Mapping[str, Any]) -> list[str]:
 # --------------------------------------------------------------------------
 # preconditions
 # --------------------------------------------------------------------------
-def assert_idle(session, *, force: bool = False) -> None:
+def assert_idle(
+    session, *, force: bool = False, stop_session: Callable[[], Any] | None = None
+) -> None:
     """Refuse unless the session is genuinely idle, checked **three** ways.
 
     Any one of them can be stale: ``RecorderState`` is written by whichever
@@ -710,10 +713,19 @@ def assert_idle(session, *, force: bool = False) -> None:
     # size check would keep failing against a file that is still growing until
     # the tail budget ran out and the whole seal aborted. Stopping is the only
     # thing that actually makes the precondition true.
-    from .session import SessionStore
+    if stop_session is None:
+        from .client import Client
+        from .session import SessionStore
 
+        if Client.discover() is None:
+            stop_session = lambda: SessionStore().stop(session_id)
+        else:
+            raise SessionActive(
+                f"--force cannot stop session {session_id} safely from this process. "
+                "Stop it through the live recorder first, then seal."
+            )
     try:
-        SessionStore().stop(session_id)
+        stop_session()
     except Exception as exc:
         raise SessionActive(
             f"--force could not stop session {session_id}: {exc}. "
@@ -790,6 +802,7 @@ def require_sealed(session_dir: Path, *, what: str) -> dict[str, Any]:
             "`verified`; re-seal with a working engine, or accept the partial "
             "seal explicitly."
         )
+    _verify_seal_targets(session_dir, record, what=what)
     return record
 
 
@@ -799,6 +812,45 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _verify_seal_targets(session_dir: Path, record: Mapping[str, Any], *, what: str) -> None:
+    targets = record.get("targets")
+    if not isinstance(targets, Mapping):
+        raise NotSealed(f"{what} refuses session {session_dir.name}: seal.json has no target digests.")
+    expected = {
+        "events.jsonl",
+        "manifest.json",
+        AUDIT_RELPATH,
+        *(str(path.relative_to(session_dir)) for path in iter_text_targets(session_dir)),
+    }
+    recorded = {str(name) for name in targets}
+    missing = sorted(expected - recorded)
+    unexpected = sorted(recorded - expected)
+    if missing or unexpected:
+        detail: list[str] = []
+        if missing:
+            detail.append(f"missing targets: {', '.join(missing)}")
+        if unexpected:
+            detail.append(f"unexpected targets: {', '.join(unexpected)}")
+        raise NotSealed(
+            f"{what} refuses session {session_dir.name}: seal target set does not match the session "
+            f"({'; '.join(detail)})."
+        )
+    for name, digests in targets.items():
+        path = session_dir / str(name)
+        if not path.is_file():
+            raise NotSealed(f"{what} refuses session {session_dir.name}: sealed target missing: {name}")
+        if not isinstance(digests, Mapping):
+            raise NotSealed(f"{what} refuses session {session_dir.name}: invalid digest entry for {name}")
+        expected_digest = str(digests.get("after_sha256") or "")
+        if not expected_digest:
+            raise NotSealed(f"{what} refuses session {session_dir.name}: target {name} has no after_sha256")
+        actual_digest = _sha256_file(path)
+        if actual_digest != expected_digest:
+            raise NotSealed(
+                f"{what} refuses session {session_dir.name}: {name} no longer matches its sealed digest."
+            )
 
 
 _CREDENTIAL_PATTERNS = tuple(pattern for _name, pattern in CREDENTIAL_SHAPES)
@@ -819,6 +871,57 @@ def _scrub_secrets(text: str) -> str:
     return out
 
 
+def _scrub_manifest(session, scrubber: Scrubber, policy: Policy) -> dict[str, Any]:
+    payload = json.loads((session.root / "manifest.json").read_text(encoding="utf-8"))
+    for key in ("title", "workflow_family"):
+        value = payload.get(key)
+        if isinstance(value, str) and value:
+            payload[key] = scrubber.rewrite_field(
+                value,
+                path_field=False,
+                target="manifest.json",
+                field_path=key,
+                seq=None,
+            )
+    if isinstance(payload.get("tags"), list):
+        payload["tags"] = [
+            scrubber.rewrite_field(
+                tag,
+                path_field=False,
+                target="manifest.json",
+                field_path=f"tags[{index}]",
+                seq=None,
+            )
+            if isinstance(tag, str) and tag
+            else tag
+            for index, tag in enumerate(payload["tags"])
+        ]
+    if isinstance(payload.get("watch_roots"), list):
+        payload["watch_roots"] = [
+            scrubber.rewrite_field(
+                root,
+                path_field=True,
+                target="manifest.json",
+                field_path=f"watch_roots[{index}]",
+                seq=None,
+            )
+            if isinstance(root, str) and root
+            else root
+            for index, root in enumerate(payload["watch_roots"])
+        ]
+    if policy.pseudonymize_analyst:
+        for key in ("analyst", "host"):
+            value = payload.get(key)
+            if isinstance(value, str) and value:
+                payload[key] = _rewrite_workforce_value(scrubber, key, value)
+    return payload
+
+
+def _rewrite_workforce_value(scrubber: Scrubber, key: str, value: str) -> str:
+    label = "NAME" if key == "analyst" else "DEVICE"
+    return scrubber._pseudo.surrogate_for(label, value).text
+
+
 def seal_session(
     session,
     *,
@@ -833,6 +936,7 @@ def seal_session(
     degraded: bool = False,
     degraded_reasons: Sequence[str] = (),
     key: bytes | None = None,
+    stop_session: Callable[[], Any] | None = None,
 ) -> SealResult:
     """Seal ``session``. The three-phase commit, start to finish.
 
@@ -865,7 +969,7 @@ def seal_session(
         except (OSError, json.JSONDecodeError, TypeError, ValueError):  # pragma: no cover
             generation = 2
 
-    assert_idle(session, force=force)
+    assert_idle(session, force=force, stop_session=stop_session)
 
     started = time.perf_counter()
     events_path = session_dir / "events.jsonl"
@@ -928,6 +1032,7 @@ def seal_session(
             scrubber.prepare(atoms)
 
             staged_events, changed_events = _scrub_events(events, scrubber, policy)
+            staged_manifest = _scrub_manifest(session, scrubber, policy)
             staged_files = {
                 path: scrubber.rewrite_field(
                     content,
@@ -987,6 +1092,7 @@ def seal_session(
                     generation=generation,
                     sealed_through_seq=sealed_through_seq,
                     staged_events=staged_events,
+                    staged_manifest=staged_manifest,
                     staged_files=staged_files,
                     events_path=events_path,
                 )
@@ -1004,22 +1110,23 @@ def seal_session(
 
         # ------------------------------------------------------------ phase 3
         # Commit under `.events.lock`, for milliseconds.
-        record = _build_record(
-            session=session,
+        record = _commit(
+            session_dir,
+            journal,
+            targets=targets,
             scrubber=scrubber,
+            session=session,
             pseudonymizer=pseudonymizer,
             policy=policy,
             engine_label=engine_label,
             generation=generation,
-            sealed_through_seq=sealed_through_seq,
-            targets=targets,
-            duration=time.perf_counter() - started,
+            events_path=events_path,
+            snapshot_bytes=snapshot_bytes,
+            started=started,
             degraded=degraded,
             degraded_reasons=degraded_reasons,
             deny_terms=deny_terms,
         )
-        journal["seal_record"] = record
-        _commit(session_dir, journal, scrubber, events_path, snapshot_bytes, policy)
 
         return SealResult(
             record=record,
@@ -1054,6 +1161,11 @@ def _scrub_events(
             changed += 1
         payload = event.to_dict()
         payload["payload"] = after
+        if policy.pseudonymize_analyst:
+            for key in ("host", "analyst"):
+                value = payload.get(key)
+                if isinstance(value, str) and value:
+                    payload[key] = _rewrite_workforce_value(scrubber, key, value)
         staged.append(payload)
     return staged, changed
 
@@ -1071,11 +1183,21 @@ def _write_audit(session_dir: Path, staged_root: Path, scrubber: Scrubber) -> No
 def _commit(
     session_dir: Path,
     journal: dict[str, Any],
+    *,
+    targets: dict[str, dict[str, str]],
     scrubber: Scrubber,
+    session,
+    pseudonymizer: Pseudonymizer,
+    policy: Policy,
+    engine_label: str,
+    generation: int,
     events_path: Path,
     snapshot_bytes: int,
-    policy: Policy,
-) -> None:
+    started: float,
+    degraded: bool,
+    degraded_reasons: Sequence[str],
+    deny_terms: Sequence[str],
+) -> dict[str, Any]:
     """Phase 3. Verify the size, then replace. Bounded tail catch-up.
 
     A size mismatch means a straggler appended after the snapshot -- a shell
@@ -1094,6 +1216,31 @@ def _commit(
         with file_lock(session_dir / ".events.lock"):
             current = events_path.stat().st_size if events_path.exists() else 0
             if current == snapshot_bytes:
+                digest = _finalize_staged_timeline(
+                    staged_timeline,
+                    sealed_through_seq=int(journal["sealed_through_seq"]),
+                    findings=len(scrubber.findings),
+                    distinct_values=pseudonymizer.distinct_values,
+                )
+                targets["events.jsonl"] = {
+                    "before_sha256": _sha256_file(events_path) if events_path.exists() else "",
+                    "after_sha256": digest,
+                }
+                record = _build_record(
+                    session=session,
+                    scrubber=scrubber,
+                    pseudonymizer=pseudonymizer,
+                    policy=policy,
+                    engine_label=engine_label,
+                    generation=generation,
+                    sealed_through_seq=int(journal["sealed_through_seq"]),
+                    targets=targets,
+                    duration=time.perf_counter() - started,
+                    degraded=degraded,
+                    degraded_reasons=degraded_reasons,
+                    deny_terms=deny_terms,
+                )
+                journal["seal_record"] = record
                 journal["state"] = STATE_COMMITTING
                 journal["targets"] = sorted(journal.get("targets") or [])
                 write_journal(session_dir, journal)
@@ -1106,7 +1253,7 @@ def _commit(
                 )
                 _bump_seq_locked(session_dir, journal)
                 shutil.rmtree(seal_dir(session_dir), ignore_errors=True)
-                return
+                return record
 
             tail = _read_tail(events_path, snapshot_bytes)
 
@@ -1123,7 +1270,8 @@ def _commit(
         snapshot_bytes = current
         journal["snapshot_bytes"] = snapshot_bytes
         journal["sealed_through_seq"] = max(
-            (event.seq or 0 for event in tail), default=journal["sealed_through_seq"]
+            int(journal["sealed_through_seq"]),
+            max((event.seq or 0 for event in tail), default=0),
         )
         _write_audit(session_dir, staged_dir(session_dir), scrubber)
 
@@ -1134,6 +1282,36 @@ def _commit(
         "Nothing was committed and the session is unchanged. Stop the session "
         "and seal again."
     )
+
+
+def _finalize_staged_timeline(
+    staged_timeline: Path, *, sealed_through_seq: int, findings: int, distinct_values: int
+) -> str:
+    payloads: list[dict[str, Any]] = []
+    sealed: dict[str, Any] | None = None
+    for line in staged_timeline.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        payload = json.loads(line)
+        if payload.get("type") == DEID_SEALED:
+            sealed = payload
+            continue
+        payloads.append(payload)
+    if sealed is None:
+        raise SealAborted(f"{staged_timeline} is missing its staged {DEID_SEALED} event.")
+    sealed["seq"] = sealed_through_seq + 1
+    if isinstance(sealed.get("payload"), dict):
+        sealed["payload"]["sealed_through_seq"] = sealed_through_seq
+        sealed["payload"]["findings"] = findings
+        sealed["payload"]["distinct_values"] = distinct_values
+    staged_timeline.write_text(
+        "".join(
+            json.dumps(payload, ensure_ascii=False, default=str) + "\n"
+            for payload in [*payloads, sealed]
+        ),
+        encoding="utf-8",
+    )
+    return _sha256_file(staged_timeline)
 
 
 def _read_tail(events_path: Path, offset: int) -> list[Event]:
@@ -1243,6 +1421,7 @@ def _stage_all(
     generation: int,
     sealed_through_seq: int,
     staged_events: Sequence[dict[str, Any]],
+    staged_manifest: Mapping[str, Any],
     staged_files: Mapping[Path, str],
     events_path: Path,
 ) -> dict[str, dict[str, str]]:
@@ -1269,6 +1448,15 @@ def _stage_all(
             "after_sha256": _sha256_file(destination),
         }
 
+    staged_manifest_path = staged_root / "manifest.json"
+    staged_manifest_path.write_text(
+        json.dumps(staged_manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    targets["manifest.json"] = {
+        "before_sha256": _sha256_file(session_dir / "manifest.json"),
+        "after_sha256": _sha256_file(staged_manifest_path),
+    }
+
     # The `deid.sealed` event is the **last line of the staged events.jsonl,
     # before hashing**, so the timeline self-documents and `after_sha256` covers
     # the statement rather than stopping just short of it.
@@ -1284,8 +1472,16 @@ def _stage_all(
             "sealed_through_seq": sealed_through_seq,
         },
         session=session.session_id,
-        host=session.manifest.host,
-        analyst=session.manifest.analyst,
+        host=(
+            _rewrite_workforce_value(scrubber, "host", session.manifest.host)
+            if policy.pseudonymize_analyst and session.manifest.host
+            else session.manifest.host
+        ),
+        analyst=(
+            _rewrite_workforce_value(scrubber, "analyst", session.manifest.analyst)
+            if policy.pseudonymize_analyst and session.manifest.analyst
+            else session.manifest.analyst
+        ),
         seq=sealed_through_seq + 1,
     )
     staged_timeline = staged_root / "events.jsonl"

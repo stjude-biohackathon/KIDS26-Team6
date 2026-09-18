@@ -247,6 +247,31 @@ def test_seal_endpoint_refuses_a_live_session(client):
     assert "not idle" in response.json()["detail"]
 
 
+def test_seal_endpoint_force_stops_via_the_live_recorder(client):
+    client.post("/sessions/start", json={"title": "A", "analyst": "a"})
+    response = client.post("/sessions/seal", json={"force": True})
+
+    assert response.status_code == 200
+    assert response.json()["assurance"] == "regex-only"
+
+
+def test_seal_status_works_for_the_current_session_without_an_explicit_id(client):
+    client.post("/sessions/start", json={"title": "A", "analyst": "a"})
+    client.post("/sessions/stop", json={})
+    response = client.post("/sessions/seal", json={"status": True})
+
+    assert response.status_code == 200
+    assert response.json()["sealed"] is False
+
+
+def test_seal_endpoint_rejects_unknown_profiles(client):
+    client.post("/sessions/start", json={"title": "A", "analyst": "a"})
+    client.post("/sessions/stop", json={})
+    response = client.post("/sessions/seal", json={"profile": "balanced"})
+
+    assert response.status_code == 422
+
+
 # ----------------------------------------------------------------------- cli
 def test_cli_start_status_stop(wfrec_home, capsys):
     assert main(["start", "--title", "CLI session", "--analyst", "mgatta42", "--no-daemon"]) == 0

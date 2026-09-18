@@ -219,3 +219,34 @@ def test_slurm_job_output_and_accounting_fields_are_redacted(store, monkeypatch)
     blob = written[0].read_text(encoding="utf-8")
     assert "4419902" not in blob
     assert "SJ-4817" not in blob
+
+
+def test_remote_pull_refuses_when_redaction_is_unavailable(store, monkeypatch):
+    import subprocess
+
+    from wfrec import remote
+
+    session, _ = store.start(title="A", analyst="a")
+
+    class BrokenRedactor:
+        available = False
+        error = "boom"
+
+        def apply(self, text):
+            from wfrec.redaction import Redacted
+
+            return Redacted(text=text, findings=[], available=False)
+
+    def fake_run(argv, **kwargs):
+        joined = " ".join(argv)
+        if "ls " in joined or "find" in joined:
+            return subprocess.CompletedProcess(argv, 0, "/tmp/wfrec-spool/host-1.tsv\n", "")
+        if "cat" in joined:
+            return subprocess.CompletedProcess(argv, 0, "MRN 4419902\n", "")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(remote, "_run", fake_run)
+    monkeypatch.setattr(remote, "shared_redactor", lambda: BrokenRedactor())
+
+    with pytest.raises(RuntimeError, match="shared redactor is unavailable"):
+        remote.pull_spool("hpc-login", session)

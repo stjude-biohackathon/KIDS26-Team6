@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import secrets
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -73,7 +73,7 @@ class ExportRequest(BaseModel):
 
 class SealRequest(BaseModel):
     session_id: str | None = None
-    profile: str = "balanced"
+    profile: Literal["regex-only"] = "regex-only"
     reseal: bool = False
     force: bool = False
     dry_run: bool = False
@@ -102,6 +102,26 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
     guard = [Depends(authorize)]
 
+    def _doctor_response() -> dict[str, Any]:
+        from .doctor import diagnose
+
+        report = diagnose()
+        safe_sources: dict[str, Any] = {}
+        for name, payload in (report.get("sources") or {}).items():
+            if isinstance(payload, dict):
+                safe_sources[str(name)] = {
+                    key: value
+                    for key, value in payload.items()
+                    if key in {"ok", "available", "backend", "reason", "extra"}
+                }
+        return {
+            "wfrec_version": report.get("wfrec_version", __version__),
+            "python": report.get("python", ""),
+            "platform": report.get("platform", {}),
+            "state": report.get("state", {}),
+            "sources": safe_sources,
+        }
+
     @app.exception_handler(NoActiveSession)
     async def _no_session(_request: Request, exc: NoActiveSession) -> JSONResponse:
         return JSONResponse(status_code=409, content={"detail": str(exc)})
@@ -127,9 +147,7 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
     @app.get("/doctor", dependencies=guard)
     def doctor() -> dict[str, Any]:
-        from .doctor import diagnose
-
-        return diagnose()
+        return _doctor_response()
 
     @app.get("/sessions", dependencies=guard)
     def sessions() -> dict[str, Any]:
@@ -229,9 +247,14 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
         from .seal import SealError, seal_session, seal_status
 
-        session = recorder.store.resolve(payload.session_id)
         if payload.status:
+            session = (
+                recorder.store.resolve(payload.session_id)
+                if payload.session_id
+                else (recorder.session or recorder.store.resolve(None))
+            )
             return seal_status(session.root)
+        session = recorder.store.resolve(payload.session_id)
         try:
             result = seal_session(
                 session,
@@ -240,6 +263,11 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
                 reseal=payload.reseal,
                 force=payload.force,
                 dry_run=payload.dry_run,
+                stop_session=(
+                    None
+                    if not payload.force
+                    else lambda: recorder.stop_session(session.session_id)
+                ),
             )
         except SealError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc

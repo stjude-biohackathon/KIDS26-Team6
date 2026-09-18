@@ -907,13 +907,12 @@ def _seal(args: argparse.Namespace, as_json: bool) -> int:
     from .seal import SealError, seal_session, seal_status
 
     store = SessionStore()
-    try:
-        session = store.resolve(args.session_id)
-    except Exception as exc:
-        error(str(exc))
-        return 1
-
     if args.status:
+        try:
+            session = store.resolve(args.session_id)
+        except Exception as exc:
+            error(str(exc))
+            return 1
         status = seal_status(session.root)
         if as_json:
             _emit(status, True)
@@ -930,6 +929,12 @@ def _seal(args: argparse.Namespace, as_json: bool) -> int:
                     rows.append((key.replace("_", " ").title(), record[key]))
             summary(f"Seal status for {session.session_id}", rows)
         return 0
+
+    try:
+        session = store.resolve(args.session_id)
+    except Exception as exc:
+        error(str(exc))
+        return 1
 
     detectors = []
     names = [name for name in args.engine.split("+") if name and name != "regex"]
@@ -951,6 +956,16 @@ def _seal(args: argparse.Namespace, as_json: bool) -> int:
         pseudonymize_analyst=args.pseudonymize_analyst,
     )
     deny_terms = ("patient", "diagnosis", "pathology", *args.deny_term)
+    stop_session = None
+    if args.force:
+        client = Client.discover()
+        if client is not None:
+            stop_session = lambda: client.post(
+                "/sessions/stop", {"session_id": session.session_id}
+            )
+        else:
+            recorder = Recorder(supervise=False)
+            stop_session = lambda: recorder.stop_session(session.session_id)
 
     try:
         result = seal_session(
@@ -962,6 +977,7 @@ def _seal(args: argparse.Namespace, as_json: bool) -> int:
             reseal=args.reseal,
             force=args.force,
             dry_run=args.dry_run,
+            stop_session=stop_session,
         )
     except SealError as exc:
         error(str(exc))

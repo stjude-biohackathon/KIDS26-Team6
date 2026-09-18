@@ -218,12 +218,19 @@ def test_normalize_surface_folds_width_and_case():
 # --------------------------------------------------------------------------
 # policy
 # --------------------------------------------------------------------------
-def test_dates_and_ages_generalize_regardless_of_render_mode():
+def test_dates_and_ages_generalize_under_balanced_profiles():
     for render_mode in (RenderMode.MASK, RenderMode.PSEUDONYMIZE):
-        policy = Policy(render=render_mode)
+        policy = Policy(profile="balanced", render=render_mode)
         assert policy.action_for("DATE_BARE") is Action.GENERALIZE
         assert policy.action_for("AGE_OVER_89") is Action.GENERALIZE
         assert policy.action_for("DOB_LABELLED") is Action.GENERALIZE
+
+
+def test_strict_profile_masks_even_generalized_labels():
+    policy = Policy(profile="strict", render=RenderMode.PSEUDONYMIZE)
+
+    assert policy.action_for("DATE_BARE") is Action.MASK
+    assert policy.action_for("NAME") is Action.MASK
 
 
 def test_strict_profile_refuses_overrides_rather_than_ignoring_them():

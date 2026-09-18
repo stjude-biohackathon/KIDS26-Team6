@@ -1,0 +1,4 @@
+{"event_id":"evt-001","action":"command_finished","command_shape":"python <CODEBASE>/private_peak_filter.py <INPUT_BED> --output <FILTERED_BED>","status":"success","exit_code":0,"comment":"Keep only project-approved peak classes."}
+{"event_id":"evt-002","action":"file_created","output_role":"filtered_peak_bed","status":"success"}
+{"event_id":"evt-003","action":"user_marker","comment":"Opened the workbook and corrected two sample labels before continuing."}
+{"event_id":"evt-004","action":"command_finished","command_shape":"python <CODEBASE>/build_report.py <EDITED_WORKBOOK> --peaks <FILTERED_BED>","status":"success","exit_code":0}

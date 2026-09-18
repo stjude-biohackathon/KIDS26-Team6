@@ -217,24 +217,16 @@ class EventWriter:
         # the common case -- no seal in flight -- costs a single syscall per
         # Session construction.
         if (session_dir / ".seal" / "journal.json").exists():
-            try:
-                from .seal import recover
+            from .seal import recover
 
-                recover(session_dir)
-            except Exception:  # pragma: no cover - recovery must not break capture
-                pass
-
-        # One `stat` per Session construction. Cached rather than re-checked on
-        # every append: a session cannot become unsealed, and re-stating on the
-        # OCR path would add a syscall per frame.
-        self._sealed = (session_dir / "seal.json").exists()
+            recover(session_dir)
 
     @property
     def sealed(self) -> bool:
-        return self._sealed
+        return (self._dir / "seal.json").exists()
 
-    def _refuse_if_sealed(self) -> None:
-        if self._sealed and not self._allow_sealed:
+    def _refuse_if_sealed_locked(self) -> None:
+        if self.sealed and not self._allow_sealed:
             raise SessionSealed(
                 f"session {self._session_id} is sealed ({self._dir / 'seal.json'}); "
                 "appending to it would add unredacted text underneath a seal that "
@@ -249,13 +241,13 @@ class EventWriter:
     def append(self, event: Event) -> Event:
         """Assign a sequence number and append one event atomically."""
 
-        self._refuse_if_sealed()
         event.session = event.session or self._session_id
         event.host = event.host or self._host
         event.analyst = event.analyst or self._analyst
 
         self._dir.mkdir(parents=True, exist_ok=True)
         with file_lock(self._lock_path):
+            self._refuse_if_sealed_locked()
             event.seq = self._next_seq_locked()
             line = json.dumps(event.to_dict(), ensure_ascii=False, default=str)
             with self._path.open("a", encoding="utf-8") as handle:
@@ -269,9 +261,9 @@ class EventWriter:
 
         if not events:
             return []
-        self._refuse_if_sealed()
         self._dir.mkdir(parents=True, exist_ok=True)
         with file_lock(self._lock_path):
+            self._refuse_if_sealed_locked()
             seq = self._next_seq_locked(count=len(events))
             with self._path.open("a", encoding="utf-8") as handle:
                 for offset, event in enumerate(events):

@@ -1,0 +1,571 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/skill-forge/skill-spec.schema.json",
+  "title": "Skill Forge SkillSpec",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "operation",
+    "requestedPackaging",
+    "packaging",
+    "decision",
+    "name",
+    "title",
+    "description",
+    "purpose",
+    "triggers",
+    "nonTriggers",
+    "inputs",
+    "outputs",
+    "steps",
+    "dependencies",
+    "evidence",
+    "assumptions",
+    "unresolvedQuestions",
+    "qualityChecks",
+    "failureModes",
+    "existingSkillCoverage",
+    "codebase",
+    "updateAssessment",
+    "licenseDecision"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "operation": {
+      "enum": [
+        "create",
+        "update"
+      ]
+    },
+    "requestedPackaging": {
+      "enum": [
+        "cbd",
+        "std",
+        "auto"
+      ]
+    },
+    "packaging": {
+      "enum": [
+        "cbd",
+        "std"
+      ]
+    },
+    "decision": {
+      "enum": [
+        "reuse",
+        "compose",
+        "novel",
+        "blocked",
+        "no-update"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "triggers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "nonTriggers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ioRole"
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ioRole"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dependency"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidence"
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "unresolvedQuestions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/unresolvedQuestion"
+      }
+    },
+    "qualityChecks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "failureModes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/failureMode"
+      }
+    },
+    "existingSkillCoverage": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/coverage"
+      }
+    },
+    "codebase": {
+      "$ref": "#/$defs/codebase"
+    },
+    "updateAssessment": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/updateAssessment"
+        }
+      ]
+    },
+    "licenseDecision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceManifests": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    }
+  },
+  "$defs": {
+    "ioRole": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "required",
+        "evidenceIds"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/idList"
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "summary",
+        "status",
+        "basis",
+        "evidenceIds",
+        "existingSkill",
+        "commandShape",
+        "dependencies",
+        "rationale",
+        "approvalRequired"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "supported",
+            "proposed",
+            "blocked",
+            "manual",
+            "optional"
+          ]
+        },
+        "basis": {
+          "$ref": "#/$defs/basis"
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "existingSkill": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "commandShape": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dependencies": {
+          "$ref": "#/$defs/idList"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "approvalRequired": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "kind",
+        "required",
+        "evidenceIds",
+        "install",
+        "versionConstraint",
+        "sourcePath",
+        "bundlePath",
+        "licenseStatus",
+        "notes"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "public_tool",
+            "public_pipeline",
+            "custom_standalone",
+            "custom_integrated",
+            "missing",
+            "manual"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "install": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "versionConstraint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sourcePath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "bundlePath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "licenseStatus": {
+          "enum": [
+            "approved",
+            "unknown",
+            "prohibited",
+            "not_applicable"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "source",
+        "locator",
+        "basis",
+        "confidence",
+        "summary"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "basis": {
+          "$ref": "#/$defs/basis"
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "unresolvedQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "question",
+        "blocking",
+        "neededArtifacts"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "blocking": {
+          "type": "boolean"
+        },
+        "neededArtifacts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "failureMode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trigger",
+        "response"
+      ],
+      "properties": {
+        "trigger": {
+          "type": "string",
+          "minLength": 1
+        },
+        "response": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "skill",
+        "version",
+        "actionsCovered",
+        "gaps",
+        "handoffCompatible"
+      ],
+      "properties": {
+        "skill": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "actionsCovered": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "handoffCompatible": {
+          "type": "boolean"
+        }
+      }
+    },
+    "codebase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "roots"
+      ],
+      "properties": {
+        "roots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/codebaseRoot"
+          }
+        }
+      }
+    },
+    "codebaseRoot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sentinels",
+        "gitRemote"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sentinels": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "gitRemote": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "updateAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetSkill",
+        "materialDelta",
+        "summary",
+        "migrationSuggested",
+        "migrationApproved"
+      ],
+      "properties": {
+        "targetSkill": {
+          "type": "string",
+          "minLength": 1
+        },
+        "materialDelta": {
+          "type": "boolean"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "migrationSuggested": {
+          "enum": [
+            "none",
+            "cbd-to-std",
+            "std-to-cbd"
+          ]
+        },
+        "migrationApproved": {
+          "type": "boolean"
+        }
+      }
+    },
+    "basis": {
+      "enum": [
+        "observed",
+        "inspected_code",
+        "documented",
+        "existing_skill",
+        "user_confirmed",
+        "domain_inference"
+      ]
+    },
+    "idList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  }
+}

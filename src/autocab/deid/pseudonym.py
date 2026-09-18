@@ -201,6 +201,9 @@ class Pseudonymizer:
 
         for index in range(len(self._key)):
             self._key[index] = 0
+        self._value_ids.clear()
+        self._surrogates.clear()
+        self._collisions.clear()
         self._closed = True
 
     def __repr__(self) -> str:

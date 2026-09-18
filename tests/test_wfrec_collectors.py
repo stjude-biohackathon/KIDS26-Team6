@@ -696,3 +696,26 @@ def test_a_diff_filename_cannot_reintroduce_the_identifier(store, tmp_path):
     names = [path.name for path in (session.root / "files" / "diffs").glob("*.patch")]
     assert names
     assert all("SJ-4817" not in name for name in names), names
+
+
+def test_git_snapshot_redacts_root_branch_and_reports_findings(store, tmp_path):
+    import subprocess
+
+    session, _ = store.start(title="A", analyst="a")
+    root = tmp_path / "repo3"
+    root.mkdir()
+    for args in (["init", "-q"], ["config", "user.email", "t@example.org"], ["config", "user.name", "t"]):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "checkout", "-qb", "SJ-4817-branch"], cwd=root, check=True, capture_output=True)
+    tracked = root / "SJ-4817.txt"
+    tracked.write_text("one\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=root, check=True, capture_output=True)
+    tracked.write_text("two\n", encoding="utf-8")
+
+    collector = FileCollector(session, roots=[root])
+    collector._git_snapshot(root, trigger="test", force=True)
+
+    event = [item for item in session.writer.read() if item.type == "git.snapshot"][-1]
+    assert "SJ-4817" not in json.dumps(event.payload)
+    assert "sj_id" in event.redactions

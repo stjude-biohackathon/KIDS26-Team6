@@ -1,0 +1,152 @@
+{
+  "schemaVersion": "1.0",
+  "operation": "create",
+  "requestedPackaging": "cbd",
+  "packaging": "std",
+  "decision": "novel",
+  "name": "bam-preflight-std",
+  "title": "BAM Preflight (STD)",
+  "description": "Sort, index, and summarize a BAM with samtools before downstream analysis. Use when a user needs a coordinate-sorted BAM, BAI index, and flagstat report without custom code.",
+  "purpose": "Provide a portable preflight workflow using only the public samtools program.",
+  "triggers": [
+    "Prepare this BAM for downstream analysis and report its mapping summary."
+  ],
+  "nonTriggers": [
+    "Align FASTQ reads or call genomic peaks."
+  ],
+  "inputs": [
+    {
+      "name": "input_bam",
+      "description": "Readable BAM to sort and summarize.",
+      "required": true,
+      "evidenceIds": [
+        "ev-outline-001"
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "sorted_bam",
+      "description": "Coordinate-sorted BAM.",
+      "required": true,
+      "evidenceIds": [
+        "ev-outline-001"
+      ]
+    },
+    {
+      "name": "bam_index",
+      "description": "BAI index for the sorted BAM.",
+      "required": true,
+      "evidenceIds": [
+        "ev-outline-001"
+      ]
+    },
+    {
+      "name": "flagstat_report",
+      "description": "Non-empty samtools flagstat text report.",
+      "required": true,
+      "evidenceIds": [
+        "ev-outline-001"
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "id": "sort",
+      "summary": "Coordinate-sort the input BAM.",
+      "status": "supported",
+      "basis": "documented",
+      "evidenceIds": [
+        "ev-outline-001"
+      ],
+      "existingSkill": null,
+      "commandShape": "samtools sort -o <SORTED_BAM> <INPUT_BAM>",
+      "dependencies": [
+        "samtools"
+      ],
+      "rationale": "The outline explicitly documents sorting.",
+      "approvalRequired": false
+    },
+    {
+      "id": "index",
+      "summary": "Index the sorted BAM.",
+      "status": "supported",
+      "basis": "documented",
+      "evidenceIds": [
+        "ev-outline-001"
+      ],
+      "existingSkill": null,
+      "commandShape": "samtools index <SORTED_BAM>",
+      "dependencies": [
+        "samtools"
+      ],
+      "rationale": "The outline explicitly documents indexing.",
+      "approvalRequired": false
+    },
+    {
+      "id": "summarize",
+      "summary": "Write the mapping summary.",
+      "status": "supported",
+      "basis": "documented",
+      "evidenceIds": [
+        "ev-outline-001"
+      ],
+      "existingSkill": null,
+      "commandShape": "samtools flagstat <SORTED_BAM> > <FLAGSTAT_REPORT>",
+      "dependencies": [
+        "samtools"
+      ],
+      "rationale": "The outline explicitly documents flagstat output.",
+      "approvalRequired": false
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "samtools",
+      "kind": "public_tool",
+      "required": true,
+      "evidenceIds": [
+        "ev-outline-001"
+      ],
+      "install": "conda install -c bioconda samtools",
+      "versionConstraint": null,
+      "sourcePath": null,
+      "bundlePath": null,
+      "licenseStatus": "not_applicable",
+      "notes": "Public program; do not vendor its implementation."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-outline-001",
+      "source": "public-tool-outline.md",
+      "locator": "Observed examples",
+      "basis": "documented",
+      "confidence": "high",
+      "summary": "The outline defines sort, index, flagstat, and their output roles."
+    }
+  ],
+  "assumptions": [
+    "The input is a valid BAM readable by the installed samtools version."
+  ],
+  "unresolvedQuestions": [],
+  "qualityChecks": [
+    "All commands exit successfully.",
+    "The sorted BAM, BAI index, and flagstat report exist and are non-empty."
+  ],
+  "failureModes": [
+    {
+      "trigger": "samtools rejects the input BAM.",
+      "response": "Stop and report the exact validation error; do not overwrite the input."
+    }
+  ],
+  "existingSkillCoverage": [],
+  "codebase": {
+    "roots": []
+  },
+  "updateAssessment": null,
+  "licenseDecision": "No custom code is copied; samtools remains a declared public dependency.",
+  "sourceManifests": [
+    "evidence/source-manifest.json"
+  ]
+}
