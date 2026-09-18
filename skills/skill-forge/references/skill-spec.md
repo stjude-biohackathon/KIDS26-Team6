@@ -7,6 +7,7 @@
 - Evidence
 - Steps
 - Dependencies
+- Runtime environment
 - Codebase data
 - Update assessment
 - Validation invariants
@@ -28,13 +29,15 @@ starting document.
 
 Required fields:
 
-- `schemaVersion`: currently `"1.0"`.
+- `schemaVersion`: currently `"1.1"`.
 - `operation`: `create` or `update`.
 - `requestedPackaging`: `cbd`, `std`, or `auto`. Treat omitted user preference
   as CBD at intake, then record the analyzed result in `packaging`.
 - `packaging`: analyzed output, `cbd` or `std`.
 - `decision`: `reuse`, `compose`, `novel`, `blocked`, or `no-update`.
 - `name`: lowercase skill slug.
+- `skillVersion`: semantic version written to `SKILL.md`, package metadata, and
+  runtime manifests.
 - `title`: human-readable title; may use uppercase CBD/STD.
 - `description`: what the skill does and when to use it.
 - `purpose`: evidence-bounded job to be done.
@@ -42,6 +45,7 @@ Required fields:
 - `inputs` and `outputs`: semantic contracts.
 - `steps`: ordered operational behavior.
 - `dependencies`: public and custom runtime requirements.
+- `runtimeEnvironment`: environment construction and locking contract.
 - `evidence`: source-linked claims.
 - `assumptions`: disclosed non-blocking assumptions.
 - `unresolvedQuestions`: missing decisions or artifacts.
@@ -131,10 +135,14 @@ Each dependency contains:
 
 - `name`;
 - `kind`: `public_tool`, `public_pipeline`, `custom_standalone`,
-  `custom_integrated`, `missing`, or `manual`;
+  `custom_integrated`, `missing`, `manual`, `existing_skill`, or
+  `reference_data`;
 - `required`;
 - `evidenceIds`;
 - `install`: public installation declaration, when relevant;
+- `environmentPackage`: exact Conda/Pip/system package name used by
+  `runtimeEnvironment` for a required `public_tool`, or exact
+  `externalArtifacts` identity for a required `public_pipeline`;
 - `versionConstraint`;
 - `sourcePath`: local custom source, kept out of shareable prose;
 - `bundlePath`: STD destination under the generated skill;
@@ -145,6 +153,50 @@ Each dependency contains:
 `licenseStatus: approved`, and a safe relative `bundlePath`. It never copies a
 directory, symlink, public tool, integrated component, or unknown-license file.
 The complete closure must therefore be enumerated explicitly.
+
+## Runtime environment
+
+`runtimeEnvironment` contains:
+
+```json
+{
+  "manager": "conda",
+  "python": "3.11",
+  "channels": ["conda-forge", "bioconda"],
+  "condaDependencies": ["samtools=1.20", "bedtools=2.31.*"],
+  "pipDependencies": [],
+  "systemDependencies": [],
+  "externalArtifacts": [],
+  "containerImage": null,
+  "codebaseEnvironmentFile": null,
+  "lockStrategy": "direct-pins",
+  "verified": true,
+  "notes": ["Validated from a clean prefix on linux-64."]
+}
+```
+
+Allowed managers are `none`, `conda`, `venv`, `container`, `system`, and
+`codebase`.
+
+- `conda` renders `environment.yml`; use it for mixed scientific binaries and
+  Python/R packages.
+- `venv` renders `requirements.txt` plus `python-requirement.txt`; use it only for
+  pure-Python skills.
+- `container` renders `container-image.txt`; use an immutable digest.
+- `system` renders `system-requirements.txt`; use it only when packages cannot
+  be expressed portably and document platform-specific setup.
+- `externalArtifacts` renders `external-artifacts.txt` for versioned public
+  pipelines, references, models, or data that are acquired separately from the
+  package manager.
+- `codebase` is valid for CBD only when a sentinel-validated environment or
+  container specification exists in the reference codebase.
+- `none` is valid only when no executable or non-stdlib runtime dependency
+  exists.
+
+`lockStrategy` is `none`, `direct-pins`, `container-digest`,
+`codebase-owned`, or `unresolved`. A generated package may remain draft with
+`unresolved`, but it must not be described as portable/stable. Never invent
+versions to satisfy validation.
 
 ## Codebase data
 
@@ -191,7 +243,13 @@ The bundled validator enforces:
 11. STD custom files name safe bundle paths and require approved licenses before
     copying;
 12. unapproved mode migration blocks final rendering;
-13. descriptions and names meet Agent Skills limits.
+13. executable dependencies have a compatible machine-readable runtime
+    environment;
+14. `none` is not used to hide public tools or custom runtime libraries;
+15. a verified environment cannot use `lockStrategy: unresolved`;
+16. the semantic `skillVersion` is consistent across instructions, package
+    metadata, and runtime identity;
+17. descriptions and names meet Agent Skills limits.
 
 Validation cannot prove scientific correctness or complete dynamic dependency
 discovery. Those remain human review and smoke-test obligations.
@@ -205,6 +263,8 @@ discovery. Those remain human review and smoke-test obligations.
 - renders `SKILL.md` from the CBD or STD template;
 - creates a skill-local README, changelog, provenance reference, and evaluation
   prompts;
+- writes `skill-package.json` and the applicable environment specification;
+- bundles `scripts/record_run.py` into every installable proposal;
 - adds the CBD config helper only for CBD;
 - copies custom STD files only with `--allowCodeCopy`;
 - creates no proposal directory for `reuse`, `blocked`, or `no-update`.

@@ -8,7 +8,7 @@ import re
 from typing import Any
 
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 RENDERABLE_DECISIONS = {"compose", "novel"}
 OPERATIONS = {"create", "update"}
 PACKAGING = {"cbd", "std"}
@@ -30,8 +30,18 @@ DEPENDENCY_KINDS = {
     "custom_integrated",
     "missing",
     "manual",
+    "existing_skill",
+    "reference_data",
 }
 LICENSE_STATUSES = {"approved", "unknown", "prohibited", "not_applicable"}
+ENVIRONMENT_MANAGERS = {"none", "conda", "venv", "container", "system", "codebase"}
+LOCK_STRATEGIES = {
+    "none",
+    "direct-pins",
+    "container-digest",
+    "codebase-owned",
+    "unresolved",
+}
 REQUIRED_FIELDS = {
     "schemaVersion",
     "operation",
@@ -39,6 +49,7 @@ REQUIRED_FIELDS = {
     "packaging",
     "decision",
     "name",
+    "skillVersion",
     "title",
     "description",
     "purpose",
@@ -48,6 +59,7 @@ REQUIRED_FIELDS = {
     "outputs",
     "steps",
     "dependencies",
+    "runtimeEnvironment",
     "evidence",
     "assumptions",
     "unresolvedQuestions",
@@ -117,6 +129,62 @@ def safeRelativePath(value: str) -> bool:
         and ".." not in path.parts
         and "." not in {part for part in path.parts if part}
     )
+
+
+def hasVersionConstraint(value: str) -> bool:
+    """Return whether a package/reference string carries a version constraint."""
+    return bool(re.search(r"(?:[<>=!~]=?|@\s*\S|@sha256:)", value))
+
+
+def normalizedPackageName(value: str) -> str:
+    """Extract a comparison-safe package name from Conda/Pip-style syntax."""
+    candidate = value.split("::")[-1].strip()
+    candidate = re.split(
+        r"\s+@\s+|(?<=[A-Za-z0-9_./-])@(?=[vV0-9])|[<>=!~\s]",
+        candidate,
+        maxsplit=1,
+    )[0]
+    candidate = candidate.split("[", 1)[0]
+    return re.sub(r"[-_.]+", "-", candidate).lower()
+
+
+def canonicalConstraintExpression(value: str) -> str:
+    """Canonicalize a dependency-side exact or range constraint."""
+    candidate = value.replace(" ", "")
+    if candidate.startswith("@"):
+        candidate = candidate[1:]
+    exact = re.fullmatch(r"={1,2}(.+)", candidate)
+    if exact:
+        return "exact:" + exact.group(1).lstrip("vV")
+    if re.fullmatch(r"[vV]?[0-9][0-9A-Za-z.+_-]*", candidate):
+        return "exact:" + candidate.lstrip("vV")
+    return "range:" + candidate
+
+
+def declaredConstraint(value: str) -> str | None:
+    """Extract and canonicalize the constraint from a package declaration."""
+    candidate = value.split("::")[-1].strip()
+    direct = re.match(r"^[A-Za-z0-9_.\-/]+(?:\[[^]]+\])?\s+@\s+(.+)$", candidate)
+    if direct:
+        return "direct:" + direct.group(1).strip()
+    match = re.match(r"^[A-Za-z0-9_.\-/]+(?:\[[^]]+\])?(.*)$", candidate)
+    if not match or not match.group(1).strip():
+        return None
+    return canonicalConstraintExpression(match.group(1).strip())
+
+
+def constraintsCompatible(expected: str, declared: str | None) -> bool:
+    """Return whether a mapped declaration preserves an expected constraint."""
+    if declared is None:
+        return False
+    if expected.startswith("exact:") and declared.startswith("exact:"):
+        expectedValue = expected.removeprefix("exact:")
+        declaredValue = declared.removeprefix("exact:")
+        if "=" not in expectedValue:
+            return declaredValue == expectedValue or declaredValue.startswith(
+                expectedValue + "="
+            )
+    return declared == expected
 
 
 def validateEvidenceList(spec: dict[str, Any], issues: list[str]) -> set[str]:
@@ -205,6 +273,23 @@ def validateDependencies(
         if not isinstance(dependency, dict):
             issues.append(f"{prefix} must be an object.")
             continue
+        expectedFields = {
+            "name",
+            "kind",
+            "required",
+            "evidenceIds",
+            "install",
+            "environmentPackage",
+            "versionConstraint",
+            "sourcePath",
+            "bundlePath",
+            "licenseStatus",
+            "notes",
+        }
+        for field in sorted(expectedFields - set(dependency)):
+            issues.append(f"{prefix} missing field: {field}")
+        for field in sorted(set(dependency) - expectedFields):
+            issues.append(f"{prefix} has unknown field: {field}")
         name = dependency.get("name")
         if not isinstance(name, str) or not name.strip():
             issues.append(f"{prefix}.name must be a non-empty string.")
@@ -225,6 +310,7 @@ def validateDependencies(
             issues.append(f"{prefix}.licenseStatus is invalid.")
         for nullableField in (
             "install",
+            "environmentPackage",
             "versionConstraint",
             "sourcePath",
             "bundlePath",
@@ -249,6 +335,15 @@ def validateDependencies(
                     issues.append(
                         f"{prefix}: STD bundlePath must be a safe relative path."
                     )
+                elif bundlePath in {
+                    "scripts/record_run.py",
+                    "examples/run-summary.template.json",
+                    "references/runtime-reproducibility.md",
+                    "skill-package.json",
+                }:
+                    issues.append(
+                        f"{prefix}: STD bundlePath is reserved by skill-forge."
+                    )
                 if dependency.get("licenseStatus") != "approved":
                     issues.append(
                         f"{prefix}: STD custom code requires licenseStatus 'approved'."
@@ -257,9 +352,355 @@ def validateDependencies(
             "sourcePath"
         ):
             issues.append(f"{prefix}: public dependencies must not be copied.")
+        if (
+            kind == "public_pipeline"
+            and dependency.get("required") is True
+            and renderable
+            and not (
+                isinstance(dependency.get("versionConstraint"), str)
+                and dependency["versionConstraint"].strip()
+            )
+        ):
+            issues.append(
+                f"{prefix}: required public_pipeline needs versionConstraint."
+            )
     for duplicate in duplicateValues(names):
         issues.append(f"Duplicate dependency name: {duplicate}")
     return set(names)
+
+
+def validateRuntimeEnvironment(spec: dict[str, Any], issues: list[str]) -> None:
+    """Validate the generated skill's environment and locking contract."""
+    environment = spec.get("runtimeEnvironment")
+    if not isinstance(environment, dict):
+        issues.append("runtimeEnvironment must be an object.")
+        return
+
+    expectedFields = {
+        "manager",
+        "python",
+        "channels",
+        "condaDependencies",
+        "pipDependencies",
+        "systemDependencies",
+        "externalArtifacts",
+        "containerImage",
+        "codebaseEnvironmentFile",
+        "lockStrategy",
+        "verified",
+        "notes",
+    }
+    missing = sorted(expectedFields - set(environment))
+    unknown = sorted(set(environment) - expectedFields)
+    issues.extend(f"runtimeEnvironment missing field: {field}" for field in missing)
+    issues.extend(f"runtimeEnvironment has unknown field: {field}" for field in unknown)
+    if missing:
+        return
+
+    manager = environment.get("manager")
+    lockStrategy = environment.get("lockStrategy")
+    if manager not in ENVIRONMENT_MANAGERS:
+        issues.append("runtimeEnvironment.manager is invalid.")
+    if lockStrategy not in LOCK_STRATEGIES:
+        issues.append("runtimeEnvironment.lockStrategy is invalid.")
+
+    for field in (
+        "channels",
+        "condaDependencies",
+        "pipDependencies",
+        "systemDependencies",
+        "externalArtifacts",
+        "notes",
+    ):
+        value = environment.get(field)
+        if not isStringList(value) and value != []:
+            issues.append(
+                f"runtimeEnvironment.{field} must be an array of non-empty strings."
+            )
+        elif isinstance(value, list):
+            for duplicate in duplicateValues(value):
+                issues.append(
+                    f"runtimeEnvironment.{field} contains duplicate value: {duplicate}"
+                )
+            if any("\n" in item or "\r" in item for item in value):
+                issues.append(f"runtimeEnvironment.{field} values must be single-line.")
+
+    for field in ("python", "containerImage", "codebaseEnvironmentFile"):
+        value = environment.get(field)
+        if value is not None and (
+            not isinstance(value, str)
+            or not value.strip()
+            or "\n" in value
+            or "\r" in value
+        ):
+            issues.append(
+                f"runtimeEnvironment.{field} must be a non-empty single-line string or null."
+            )
+
+    if not isinstance(environment.get("verified"), bool):
+        issues.append("runtimeEnvironment.verified must be boolean.")
+    if environment.get("verified") is True and lockStrategy == "unresolved":
+        issues.append(
+            "A verified runtimeEnvironment cannot use lockStrategy 'unresolved'."
+        )
+    condaDependencies = environment.get("condaDependencies", [])
+    pipDependencies = environment.get("pipDependencies", [])
+    systemDependencies = environment.get("systemDependencies", [])
+    externalArtifacts = environment.get("externalArtifacts", [])
+    condaDependencies = (
+        condaDependencies if isinstance(condaDependencies, list) else []
+    )
+    pipDependencies = pipDependencies if isinstance(pipDependencies, list) else []
+    systemDependencies = (
+        systemDependencies if isinstance(systemDependencies, list) else []
+    )
+    externalArtifacts = (
+        externalArtifacts if isinstance(externalArtifacts, list) else []
+    )
+    if lockStrategy == "direct-pins":
+        declaredPackages = (
+            condaDependencies
+            + pipDependencies
+            + systemDependencies
+            + externalArtifacts
+        )
+        unpinned = [
+            value
+            for value in declaredPackages
+            if isinstance(value, str) and not hasVersionConstraint(value)
+        ]
+        if unpinned:
+            issues.append(
+                "runtimeEnvironment direct-pins lacks constraints for: "
+                + ", ".join(unpinned)
+            )
+        pythonConstraint = environment.get("python")
+        if isinstance(pythonConstraint, str) and not hasVersionConstraint(
+            pythonConstraint
+        ):
+            issues.append(
+                "runtimeEnvironment direct-pins requires a constrained Python version."
+            )
+
+    renderable = spec.get("decision") in RENDERABLE_DECISIONS
+    containerImage = environment.get("containerImage")
+    codebaseEnvironmentFile = environment.get("codebaseEnvironmentFile")
+
+    if not renderable:
+        return
+
+    if not isinstance(environment.get("python"), str):
+        issues.append(
+            "Renderable skills require a Python constraint for scripts/record_run.py."
+        )
+
+    executableKinds = {
+        "public_tool",
+        "public_pipeline",
+        "custom_standalone",
+        "custom_integrated",
+    }
+    hasExecutableDependencies = any(
+        isinstance(dependency, dict)
+        and dependency.get("kind") in executableKinds
+        and dependency.get("required") is True
+        for dependency in spec.get("dependencies", [])
+    )
+    if manager == "none":
+        if hasExecutableDependencies:
+            issues.append(
+                "runtimeEnvironment.manager 'none' is incompatible with required "
+                "executable dependencies."
+            )
+        if (
+            condaDependencies
+            or pipDependencies
+            or systemDependencies
+            or externalArtifacts
+            or containerImage is not None
+            or codebaseEnvironmentFile is not None
+        ):
+            issues.append(
+                "runtimeEnvironment.manager 'none' cannot declare runtime packages or files."
+            )
+        if lockStrategy != "none":
+            issues.append(
+                "runtimeEnvironment.manager 'none' requires lockStrategy 'none'."
+            )
+    elif manager == "conda":
+        if not condaDependencies:
+            issues.append(
+                "Conda runtimeEnvironment requires condaDependencies."
+            )
+        if not environment.get("channels"):
+            issues.append("Conda runtimeEnvironment requires channels.")
+        if containerImage is not None or codebaseEnvironmentFile is not None:
+            issues.append(
+                "Conda runtimeEnvironment cannot set containerImage or "
+                "codebaseEnvironmentFile."
+            )
+        if lockStrategy not in {"direct-pins", "unresolved"}:
+            issues.append(
+                "Conda runtimeEnvironment lockStrategy must be direct-pins or unresolved."
+            )
+    elif manager == "venv":
+        if not pipDependencies:
+            issues.append("Venv runtimeEnvironment requires pipDependencies.")
+        if not isinstance(environment.get("python"), str):
+            issues.append("Venv runtimeEnvironment requires a Python constraint.")
+        if condaDependencies or environment.get("channels"):
+            issues.append(
+                "Venv runtimeEnvironment cannot declare Conda channels or dependencies."
+            )
+        if containerImage is not None or codebaseEnvironmentFile is not None:
+            issues.append(
+                "Venv runtimeEnvironment cannot set containerImage or "
+                "codebaseEnvironmentFile."
+            )
+        if lockStrategy not in {"direct-pins", "unresolved"}:
+            issues.append(
+                "Venv runtimeEnvironment lockStrategy must be direct-pins or unresolved."
+            )
+    elif manager == "container":
+        if not isinstance(containerImage, str):
+            issues.append("Container runtimeEnvironment requires containerImage.")
+        if lockStrategy == "container-digest" and isinstance(containerImage, str):
+            if "@sha256:" not in containerImage:
+                issues.append(
+                    "container-digest requires containerImage with an @sha256: digest."
+                )
+        if lockStrategy not in {"container-digest", "unresolved"}:
+            issues.append(
+                "Container runtimeEnvironment lockStrategy must be "
+                "container-digest or unresolved."
+            )
+        if codebaseEnvironmentFile is not None:
+            issues.append(
+                "Container runtimeEnvironment cannot set codebaseEnvironmentFile."
+            )
+    elif manager == "system":
+        if not systemDependencies:
+            issues.append("System runtimeEnvironment requires systemDependencies.")
+        if containerImage is not None or codebaseEnvironmentFile is not None:
+            issues.append(
+                "System runtimeEnvironment cannot set containerImage or "
+                "codebaseEnvironmentFile."
+            )
+        if lockStrategy not in {"direct-pins", "unresolved"}:
+            issues.append(
+                "System runtimeEnvironment lockStrategy must be direct-pins or unresolved."
+            )
+    elif manager == "codebase":
+        if spec.get("packaging") != "cbd":
+            issues.append(
+                "Codebase runtimeEnvironment is only valid for CBD packaging."
+            )
+        if not isinstance(codebaseEnvironmentFile, str) or not safeRelativePath(
+            codebaseEnvironmentFile or ""
+        ):
+            issues.append(
+                "Codebase runtimeEnvironment requires a safe relative "
+                "codebaseEnvironmentFile."
+            )
+        if lockStrategy not in {"codebase-owned", "unresolved"}:
+            issues.append(
+                "Codebase runtimeEnvironment lockStrategy must be "
+                "codebase-owned or unresolved."
+            )
+        if containerImage is not None:
+            issues.append(
+                "Codebase runtimeEnvironment cannot set containerImage."
+            )
+        roots = spec.get("codebase", {}).get("roots", [])
+        if isinstance(codebaseEnvironmentFile, str) and roots and not any(
+            codebaseEnvironmentFile in root.get("sentinels", [])
+            for root in roots
+            if isinstance(root, dict)
+        ):
+            issues.append(
+                "codebaseEnvironmentFile must be included in at least one "
+                "codebase root sentinel list."
+            )
+
+    if manager in {"conda", "venv", "system"}:
+        packageValues: list[str] = []
+        if manager == "conda":
+            packageValues.extend(condaDependencies)
+            packageValues.extend(pipDependencies)
+        elif manager == "venv":
+            packageValues.extend(pipDependencies)
+        else:
+            packageValues.extend(systemDependencies)
+        packageMap = {
+            name: [
+                value
+                for value in packageValues
+                if isinstance(value, str)
+                and normalizedPackageName(value) == name
+            ]
+            for name in {
+                normalizedPackageName(value)
+                for value in packageValues
+                if isinstance(value, str)
+            }
+        }
+        artifactMap = {
+            name: [
+                value
+                for value in externalArtifacts
+                if isinstance(value, str)
+                and normalizedPackageName(value) == name
+            ]
+            for name in {
+                normalizedPackageName(value)
+                for value in externalArtifacts
+                if isinstance(value, str)
+            }
+        }
+        for index, dependency in enumerate(spec.get("dependencies", [])):
+            if (
+                not isinstance(dependency, dict)
+                or dependency.get("kind") not in {"public_tool", "public_pipeline"}
+                or dependency.get("required") is not True
+            ):
+                continue
+            packageName = dependency.get("environmentPackage")
+            if not isinstance(packageName, str) or not packageName.strip():
+                issues.append(
+                    f"dependencies[{index}]: required {dependency.get('kind')} needs "
+                    "environmentPackage."
+                )
+                continue
+            expectedName = normalizedPackageName(packageName)
+            availableMap = (
+                artifactMap
+                if dependency.get("kind") == "public_pipeline"
+                else packageMap
+            )
+            matchingSpecs = availableMap.get(expectedName, [])
+            if not matchingSpecs:
+                issues.append(
+                    f"dependencies[{index}]: environmentPackage {packageName!r} "
+                    "is absent from the applicable runtimeEnvironment list."
+                )
+                continue
+            versionConstraint = dependency.get("versionConstraint")
+            if (
+                isinstance(versionConstraint, str)
+                and versionConstraint.strip()
+                and not any(
+                    constraintsCompatible(
+                        canonicalConstraintExpression(versionConstraint),
+                        declaredConstraint(value),
+                    )
+                    for value in matchingSpecs
+                )
+            ):
+                issues.append(
+                    f"dependencies[{index}]: versionConstraint "
+                    f"{versionConstraint!r} is not represented in the mapped "
+                    "runtimeEnvironment declaration."
+                )
 
 
 def validateSteps(
@@ -526,10 +967,21 @@ def validateSpec(spec: dict[str, Any]) -> list[str]:
         issues.append("name must contain lowercase letters/numbers and single hyphens.")
     elif len(name) > 64:
         issues.append("name must be at most 64 characters.")
-    elif spec.get("operation") == "create":
+    elif spec.get("operation") == "create" or spec.get(
+        "decision"
+    ) in RENDERABLE_DECISIONS:
         expectedSuffix = f"-{spec.get('packaging')}"
         if not name.endswith(expectedSuffix):
-            issues.append(f"Create name must end in {expectedSuffix}.")
+            issues.append(
+                f"Renderable skill name must end in {expectedSuffix}."
+            )
+
+    skillVersion = spec.get("skillVersion")
+    if not isinstance(skillVersion, str) or not re.fullmatch(
+        r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?",
+        skillVersion,
+    ):
+        issues.append("skillVersion must be a semantic version such as 1.2.3.")
 
     for field in ("title", "description", "purpose", "licenseDecision"):
         if not isinstance(spec.get(field), str) or not spec[field].strip():
@@ -542,6 +994,7 @@ def validateSpec(spec: dict[str, Any]) -> list[str]:
     validateIoRoles(spec, "outputs", evidenceIds, issues)
     validateQuestions(spec, issues)
     dependencyNames = validateDependencies(spec, evidenceIds, issues)
+    validateRuntimeEnvironment(spec, issues)
     validateSteps(spec, evidenceIds, dependencyNames, issues)
     validateCodebase(spec, issues)
     validateCoverage(spec, issues)

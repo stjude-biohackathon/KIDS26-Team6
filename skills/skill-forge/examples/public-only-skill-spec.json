@@ -1,10 +1,11 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "operation": "create",
   "requestedPackaging": "cbd",
   "packaging": "std",
   "decision": "novel",
   "name": "bam-preflight-std",
+  "skillVersion": "0.1.0",
   "title": "BAM Preflight (STD)",
   "description": "Sort, index, and summarize a BAM with samtools before downstream analysis. Use when a user needs a coordinate-sorted BAM, BAI index, and flagstat report without custom code.",
   "purpose": "Provide a portable preflight workflow using only the public samtools program.",
@@ -109,6 +110,7 @@
         "ev-outline-001"
       ],
       "install": "conda install -c bioconda samtools",
+      "environmentPackage": "samtools",
       "versionConstraint": null,
       "sourcePath": null,
       "bundlePath": null,
@@ -116,6 +118,27 @@
       "notes": "Public program; do not vendor its implementation."
     }
   ],
+  "runtimeEnvironment": {
+    "manager": "conda",
+    "python": ">=3.8",
+    "channels": [
+      "conda-forge",
+      "bioconda"
+    ],
+    "condaDependencies": [
+      "samtools"
+    ],
+    "pipDependencies": [],
+    "systemDependencies": [],
+    "externalArtifacts": [],
+    "containerImage": null,
+    "codebaseEnvironmentFile": null,
+    "lockStrategy": "unresolved",
+    "verified": false,
+    "notes": [
+      "Resolve and constrain a tested samtools version before final installation."
+    ]
+  },
   "evidence": [
     {
       "id": "ev-outline-001",

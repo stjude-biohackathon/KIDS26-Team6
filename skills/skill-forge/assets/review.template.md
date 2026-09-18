@@ -5,6 +5,7 @@
 - Operation: `$operation`
 - Requested packaging: `$requested_packaging`
 - Analyzed packaging: `$packaging`
+- Proposed skill version: `$skill_version`
 - Coverage decision: `$decision`
 - Installable proposal rendered: `$proposal_rendered`
 
@@ -32,6 +33,10 @@ $manual_blocked_steps
 
 $dependency_summary
 
+## Runtime environment and reproducibility
+
+$runtime_environment_review
+
 ## Unresolved questions
 
 $unresolved_questions
@@ -49,5 +54,9 @@ $update_summary
 - [ ] CBD/STD packaging and any migration were approved.
 - [ ] Custom-code redistribution was approved before STD copying.
 - [ ] Manual checkpoints are explicit.
+- [ ] Machine-readable environment setup succeeds from a clean runtime.
+- [ ] Runtime recorder smoke test captures the request, commands, parameters,
+      skills/versions, outputs, failures/retries, and JSON/Markdown summaries.
+- [ ] The generated skill requires a final findings summary in interactive chat.
 - [ ] Package tests and smallest safe smoke case passed.
 - [ ] Installation destination was approved.

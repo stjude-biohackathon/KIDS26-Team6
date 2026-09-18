@@ -1,10 +1,11 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "operation": "create",
   "requestedPackaging": "cbd",
   "packaging": "cbd",
   "decision": "blocked",
   "name": "private-peak-filter-cbd",
+  "skillVersion": "0.1.0",
   "title": "Private Peak Filter (CBD)",
   "description": "Run a maintained private peak-filtering workflow. Use when the referenced implementation and its configuration have been made available for inspection.",
   "purpose": "Preserve the observed peak-filtering intent without guessing unavailable custom logic.",
@@ -78,6 +79,7 @@
         "ev-log-001"
       ],
       "install": null,
+      "environmentPackage": null,
       "versionConstraint": null,
       "sourcePath": null,
       "bundlePath": null,
@@ -92,6 +94,7 @@
         "ev-log-003"
       ],
       "install": null,
+      "environmentPackage": null,
       "versionConstraint": null,
       "sourcePath": null,
       "bundlePath": null,
@@ -99,6 +102,22 @@
       "notes": "Human confirms and corrects sample labels; the edited workbook is the handoff artifact."
     }
   ],
+  "runtimeEnvironment": {
+    "manager": "none",
+    "python": ">=3.8",
+    "channels": [],
+    "condaDependencies": [],
+    "pipDependencies": [],
+    "systemDependencies": [],
+    "externalArtifacts": [],
+    "containerImage": null,
+    "codebaseEnvironmentFile": null,
+    "lockStrategy": "none",
+    "verified": false,
+    "notes": [
+      "The runtime cannot be established until the private implementation is supplied."
+    ]
+  },
   "evidence": [
     {
       "id": "ev-log-001",

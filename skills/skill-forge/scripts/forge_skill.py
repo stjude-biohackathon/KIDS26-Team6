@@ -27,7 +27,7 @@ from skill_spec import (
 )
 
 
-FORGE_VERSION = "0.1.0"
+FORGE_VERSION = "0.2.0"
 RUN_ID_PATTERN = re.compile(r"^\d{8}T\d{6}Z$")
 
 
@@ -179,6 +179,10 @@ def renderDependencies(dependencies: list[dict[str, Any]]) -> str:
     lines: list[str] = []
     for dependency in dependencies:
         details = [dependency["kind"]]
+        if dependency["environmentPackage"]:
+            details.append(
+                f"environment package `{dependency['environmentPackage']}`"
+            )
         if dependency["versionConstraint"]:
             details.append(f"version {dependency['versionConstraint']}")
         if dependency["install"]:
@@ -276,13 +280,97 @@ def compatibilityText(spec: dict[str, Any]) -> str:
     publicText = ", ".join(public) if public else "no additional public tools"
     if spec["packaging"] == "cbd":
         return (
-            "Requires local filesystem access, a validated AutoCAB CBD codebase "
-            f"configuration, and {publicText}."
+            "Requires Python 3.8+ for runtime provenance, local filesystem "
+            "access, a validated AutoCAB CBD codebase configuration, the "
+            f"declared machine-readable environment, and {publicText}."
         )
     return (
-        "Requires local filesystem access, all custom helpers bundled in this "
-        f"skill, and {publicText}."
+        "Requires Python 3.8+ for runtime provenance, local filesystem access, "
+        "all custom helpers bundled in this skill, the declared machine-readable "
+        f"environment, and {publicText}."
     )
+
+
+def runtimeEnvironmentFile(environment: dict[str, Any]) -> str | None:
+    """Return the primary generated environment artifact name."""
+    return {
+        "conda": "environment.yml",
+        "venv": "requirements.txt",
+        "container": "container-image.txt",
+        "system": "system-requirements.txt",
+        "codebase": "skill-package.json",
+        "none": "skill-package.json",
+    }.get(environment["manager"])
+
+
+def renderRuntimeEnvironment(spec: dict[str, Any]) -> str:
+    """Render executable environment setup and verification guidance."""
+    environment = spec["runtimeEnvironment"]
+    manager = environment["manager"]
+    lock = environment["lockStrategy"]
+    verified = str(environment["verified"]).lower()
+    primaryFile = runtimeEnvironmentFile(environment)
+    lines = [
+        f"- Manager: `{manager}`.",
+        f"- Primary specification: `{primaryFile}`.",
+        f"- Lock strategy: `{lock}`; clean-environment verified: `{verified}`.",
+    ]
+    if environment["python"]:
+        lines.append(f"- Python constraint: `{environment['python']}`.")
+    if environment["externalArtifacts"]:
+        lines.append(
+            "- Versioned external workflows/data: `external-artifacts.txt`."
+        )
+    if manager == "conda":
+        lines.extend(
+            [
+                "- Create a persistent isolated prefix with "
+                "`micromamba create -y -p <ENV_PREFIX> -f "
+                '"$SKILL_DIR/environment.yml"` (or equivalent Mamba/Conda).',
+                "- Reuse that exact prefix until `environment.yml` changes; record "
+                "`conda list --explicit` or equivalent resolved versions in the "
+                "run manifest.",
+            ]
+        )
+    elif manager == "venv":
+        lines.extend(
+            [
+                "- Create a fresh virtual environment satisfying "
+                "`python-requirement.txt`, then run "
+                "`python -m pip install -r requirements.txt`.",
+                "- Record the resolved interpreter path and `pip freeze` versions.",
+            ]
+        )
+    elif manager == "container":
+        lines.append(
+            "- Pull and verify the immutable image in `container-image.txt`; "
+            "record the runtime and image digest."
+        )
+    elif manager == "system":
+        lines.append(
+            "- Install and verify every entry in `system-requirements.txt`; "
+            "record platform, executable paths, and resolved versions."
+        )
+    elif manager == "codebase":
+        lines.append(
+            "- Resolve and validate the codebase-owned environment file "
+            f"`{environment['codebaseEnvironmentFile']}` through the CBD root "
+            "sentinels before running."
+        )
+    else:
+        lines.append(
+            "- No analysis environment is required beyond a Python 3.8+ host "
+            "interpreter for `scripts/record_run.py`."
+        )
+    if environment["notes"]:
+        lines.append("- Environment notes:")
+        lines.extend(f"  - {note}" for note in environment["notes"])
+    if not environment["verified"]:
+        lines.append(
+            "- **Draft limitation:** do not claim cross-user portability until "
+            "this environment is built from scratch and smoke-tested."
+        )
+    return "\n".join(lines)
 
 
 def fillSkillTemplate(spec: dict[str, Any], assetsDir: Path) -> str:
@@ -295,6 +383,7 @@ def fillSkillTemplate(spec: dict[str, Any], assetsDir: Path) -> str:
     template = Template((assetsDir / templateName).read_text(encoding="utf-8"))
     values = {
         "name": spec["name"],
+        "skill_version": spec["skillVersion"],
         "description_yaml": jsonScalar(spec["description"]),
         "compatibility_yaml": jsonScalar(compatibilityText(spec)),
         "review_date": datetime.now(timezone.utc).date().isoformat(),
@@ -309,6 +398,7 @@ def fillSkillTemplate(spec: dict[str, Any], assetsDir: Path) -> str:
         "required_inputs": renderIo(spec["inputs"], True),
         "optional_inputs": renderIo(spec["inputs"], False),
         "dependencies": renderDependencies(spec["dependencies"]),
+        "runtime_environment": renderRuntimeEnvironment(spec),
         "workflow": renderWorkflow(spec["steps"]),
         "outputs": renderOutputs(spec["outputs"]),
         "quality_checks": markdownList(
@@ -379,6 +469,28 @@ def dependencyReview(spec: dict[str, Any], allowCodeCopy: bool) -> str:
     return "\n".join(lines)
 
 
+def runtimeEnvironmentReview(spec: dict[str, Any]) -> str:
+    """Render environment and per-run reproducibility review state."""
+    environment = spec["runtimeEnvironment"]
+    primaryFile = runtimeEnvironmentFile(environment)
+    notes = markdownList(environment["notes"], "No environment notes.")
+    return (
+        f"- Manager: `{environment['manager']}`\n"
+        f"- Primary specification: `{primaryFile}`\n"
+        f"- Python constraint: `{environment['python'] or 'not declared'}`\n"
+        f"- Lock strategy: `{environment['lockStrategy']}`\n"
+        f"- Clean-environment verified: "
+        f"`{str(environment['verified']).lower()}`\n"
+        "- Mandatory runtime artifacts: `agent_request.txt`, `commands.sh`, "
+        "`logs/commands.log`, `logs/commands.jsonl`, `logs/parameters.jsonl`, "
+        "`run_manifest.json`, "
+        "`run_manifest.md`, `run_summary.json`, and `run_summary.md`\n"
+        "- Bundled recorder: `scripts/record_run.py`\n\n"
+        "Environment notes:\n\n"
+        f"{notes}"
+    )
+
+
 def unresolvedReview(spec: dict[str, Any]) -> str:
     """Render exact unresolved questions and requested artifacts."""
     if not spec["unresolvedQuestions"]:
@@ -422,6 +534,7 @@ def renderReview(
         template.substitute(
             {
                 "name": spec["name"],
+                "skill_version": spec["skillVersion"],
                 "operation": spec["operation"],
                 "requested_packaging": spec["requestedPackaging"],
                 "packaging": spec["packaging"],
@@ -435,6 +548,7 @@ def renderReview(
                     spec, {"manual", "blocked"}
                 ),
                 "dependency_summary": dependencyReview(spec, allowCodeCopy),
+                "runtime_environment_review": runtimeEnvironmentReview(spec),
                 "unresolved_questions": unresolvedReview(spec),
                 "update_summary": updateReview(spec),
             }
@@ -454,6 +568,7 @@ def renderProvenanceReference(spec: dict[str, Any]) -> str:
         "## Decision",
         "",
         f"- Operation: `{spec['operation']}`",
+        f"- Skill version: `{spec['skillVersion']}`",
         f"- Packaging: `{spec['packaging']}`",
         f"- Coverage decision: `{spec['decision']}`",
         f"- License/copy decision: {spec['licenseDecision']}",
@@ -534,9 +649,12 @@ def generatedReadme(spec: dict[str, Any]) -> str:
         "`references/forge-provenance.md` and resolve all pending approvals before "
         "installation.\n\n"
         "## Validation\n\n"
-        "Run the package validator, each script's `--help`, unit tests, and the "
-        "smallest safe end-to-end example. Runtime outputs must remain outside "
-        "the skill source directory.\n"
+        "Build the machine-readable environment from scratch. Run the package "
+        "validator, each script's `--help`, unit tests, the runtime-recorder "
+        "smoke test, and the smallest safe end-to-end example. Every execution "
+        "must produce the records described in "
+        "`references/runtime-reproducibility.md`. Runtime outputs must remain "
+        "outside the skill source directory.\n"
     )
 
 
@@ -548,7 +666,11 @@ def generatedChangelog(spec: dict[str, Any]) -> str:
         "# Changelog\n\n"
         f"## {date}\n\n"
         f"- {action} `{spec['name']}` from evidence-linked SkillSpec "
-        f"(`{spec['packaging'].upper()}`, decision `{spec['decision']}`).\n"
+        f"version `{spec['skillVersion']}` (`{spec['packaging'].upper()}`, "
+        f"decision `{spec['decision']}`).\n"
+        "- Added a machine-readable runtime environment contract.\n"
+        "- Added mandatory request, exact-command, parameter, skill/version, "
+        "manifest, and JSON/Markdown summary recording for every run.\n"
         "- Recorded generated workflow evidence and review requirements.\n"
     )
 
@@ -570,6 +692,162 @@ def safeCopyExisting(source: Path, destination: Path) -> None:
         elif item.is_file():
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(item, target)
+
+
+def pythonCondaDependency(pythonConstraint: str | None) -> str:
+    """Convert a Python constraint into a Conda dependency string."""
+    constraint = pythonConstraint or ">=3.8"
+    if constraint.startswith(("=", "<", ">", "!", "~")):
+        return f"python{constraint}"
+    return f"python={constraint}"
+
+
+def renderCondaEnvironment(spec: dict[str, Any]) -> str:
+    """Render a minimal deterministic Conda environment specification."""
+    environment = spec["runtimeEnvironment"]
+    dependencies = list(environment["condaDependencies"])
+    if not any(re.match(r"^python(?:$|[<>=!~ ])", value) for value in dependencies):
+        dependencies.insert(0, pythonCondaDependency(environment["python"]))
+    lines = [
+        f"name: {json.dumps(spec['name'])}",
+        "channels:",
+    ]
+    lines.extend(f"  - {json.dumps(value)}" for value in environment["channels"])
+    lines.append("dependencies:")
+    lines.extend(f"  - {json.dumps(value)}" for value in dependencies)
+    if environment["pipDependencies"]:
+        if not any(
+            re.match(r"^pip(?:$|[<>=!~ ])", value) for value in dependencies
+        ):
+            lines.append('  - "pip"')
+        lines.append("  - pip:")
+        lines.extend(
+            f"      - {json.dumps(value)}"
+            for value in environment["pipDependencies"]
+        )
+    return "\n".join(lines) + "\n"
+
+
+def writeRuntimePackageFiles(
+    spec: dict[str, Any],
+    proposalDir: Path,
+    skillRoot: Path,
+) -> list[dict[str, str]]:
+    """Write environment, runtime recorder, templates, and package metadata."""
+    assetsDir = skillRoot / "assets"
+    scriptsDir = proposalDir / "scripts"
+    referencesDir = proposalDir / "references"
+    examplesDir = proposalDir / "examples"
+    scriptsDir.mkdir(parents=True, exist_ok=True)
+    referencesDir.mkdir(parents=True, exist_ok=True)
+    examplesDir.mkdir(parents=True, exist_ok=True)
+
+    recorderTarget = scriptsDir / "record_run.py"
+    shutil.copy2(assetsDir / "record_run.py", recorderTarget)
+    recorderTarget.chmod(0o755)
+    runtimeReference = (
+        assetsDir / "runtime-reproducibility.template.md"
+    ).read_text(encoding="utf-8").replace("$name", spec["name"])
+    (referencesDir / "runtime-reproducibility.md").write_text(
+        runtimeReference.rstrip() + "\n", encoding="utf-8"
+    )
+    shutil.copy2(
+        assetsDir / "run-summary.template.json",
+        examplesDir / "run-summary.template.json",
+    )
+
+    environment = spec["runtimeEnvironment"]
+    manager = environment["manager"]
+    if manager == "conda":
+        (proposalDir / "environment.yml").write_text(
+            renderCondaEnvironment(spec), encoding="utf-8"
+        )
+    elif manager == "venv":
+        (proposalDir / "requirements.txt").write_text(
+            "\n".join(environment["pipDependencies"]) + "\n",
+            encoding="utf-8",
+        )
+        (proposalDir / "python-requirement.txt").write_text(
+            (environment["python"] or ">=3.8") + "\n",
+            encoding="utf-8",
+        )
+    elif manager == "container":
+        (proposalDir / "container-image.txt").write_text(
+            environment["containerImage"].strip() + "\n",
+            encoding="utf-8",
+        )
+    if environment["systemDependencies"]:
+        (proposalDir / "system-requirements.txt").write_text(
+            "\n".join(environment["systemDependencies"]) + "\n",
+            encoding="utf-8",
+        )
+    if environment["externalArtifacts"]:
+        (proposalDir / "external-artifacts.txt").write_text(
+            "\n".join(environment["externalArtifacts"]) + "\n",
+            encoding="utf-8",
+        )
+    if manager in {"none", "system", "codebase"}:
+        (proposalDir / "python-requirement.txt").write_text(
+            (environment["python"] or ">=3.8") + "\n",
+            encoding="utf-8",
+        )
+
+    packageMetadata = {
+        "schemaVersion": "1.0",
+        "name": spec["name"],
+        "version": spec["skillVersion"],
+        "packaging": spec["packaging"],
+        "generatedBy": "skill-forge",
+        "generatedByVersion": FORGE_VERSION,
+        "dependencies": [
+            {
+                key: value
+                for key, value in dependency.items()
+                if key != "sourcePath"
+            }
+            for dependency in spec["dependencies"]
+        ],
+        "commandExecutionExpected": any(
+            isinstance(step.get("commandShape"), str)
+            and bool(step["commandShape"].strip())
+            and step.get("status") != "blocked"
+            for step in spec["steps"]
+        ),
+        "runtimeEnvironment": environment,
+        "runtimeRecordSchemaVersion": "1.0",
+        "requiredRunArtifacts": [
+            "agent_request.txt",
+            "agent_workflow.md",
+            "commands.sh",
+            "logs/commands.log",
+            "logs/commands.jsonl",
+            "logs/parameters.jsonl",
+            "run_manifest.json",
+            "run_manifest.md",
+            "run_summary.json",
+            "run_summary.md",
+        ],
+    }
+    writeJson(proposalDir / "skill-package.json", packageMetadata)
+    return [
+        {
+            "kind": "skill-forge-helper",
+            "bundlePath": "scripts/record_run.py",
+            "sha256": fileSha256(recorderTarget),
+        },
+        {
+            "kind": "skill-forge-runtime-contract",
+            "bundlePath": "references/runtime-reproducibility.md",
+            "sha256": fileSha256(
+                referencesDir / "runtime-reproducibility.md"
+            ),
+        },
+        {
+            "kind": "skill-forge-runtime-template",
+            "bundlePath": "examples/run-summary.template.json",
+            "sha256": fileSha256(examplesDir / "run-summary.template.json"),
+        },
+    ]
 
 
 def prepareProposal(
@@ -632,7 +910,7 @@ def prepareProposal(
     )
 
     scriptsDir = proposalDir / "scripts"
-    copied: list[dict[str, str]] = []
+    copied = writeRuntimePackageFiles(spec, proposalDir, skillRoot)
     if spec["packaging"] == "cbd":
         scriptsDir.mkdir(parents=True, exist_ok=True)
         configSource = skillRoot / "scripts" / "manage_cbd_config.py"
@@ -730,7 +1008,8 @@ def parseArgs(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--runId", help="UTC run ID (YYYYMMDDTHHMMSSZ).")
     parser.add_argument(
-        "--agentRequestFile", help="Caller-prepared sanitized request summary."
+        "--agentRequestFile",
+        help="Caller-prepared request used for forging (verbatim or explicitly redacted).",
     )
     parser.add_argument(
         "--agentWorkflowFile", help="Caller-prepared workflow/provenance notes."
@@ -796,7 +1075,7 @@ def runForge(args: argparse.Namespace) -> int:
     copyTextInput(
         args.agentRequestFile,
         runDir / "agent_request.txt",
-        "Sanitized request summary was not supplied by the calling agent.",
+        "Request capture was not supplied by the calling agent.",
     )
     copyTextInput(
         args.agentWorkflowFile,
@@ -813,6 +1092,10 @@ def runForge(args: argparse.Namespace) -> int:
     writeJson(
         evidenceDir / "dependency-report.json",
         [sanitizedDependencyRecord(value) for value in spec["dependencies"]],
+    )
+    writeJson(
+        evidenceDir / "runtime-environment.json",
+        spec["runtimeEnvironment"],
     )
     writeJson(
         evidenceDir / "coverage-report.json",
@@ -844,10 +1127,12 @@ def runForge(args: argparse.Namespace) -> int:
         "runId": runId,
         "generatedAtUtc": utcNow(),
         "operation": spec["operation"],
+        "proposedSkillVersion": spec["skillVersion"],
         "requestedPackaging": spec["requestedPackaging"],
         "packaging": spec["packaging"],
         "decision": spec["decision"],
         "proposalRendered": proposalRendered,
+        "runtimeEnvironment": spec["runtimeEnvironment"],
         "sourceManifests": spec.get("sourceManifests", []),
         "evidenceIds": [record["id"] for record in spec["evidence"]],
         "copiedFiles": copied,
@@ -866,9 +1151,12 @@ def runForge(args: argparse.Namespace) -> int:
         ),
         "parameters": {
             "operation": spec["operation"],
+            "proposedSkillVersion": spec["skillVersion"],
             "packaging": spec["packaging"],
             "decision": spec["decision"],
             "allowCodeCopy": args.allowCodeCopy,
+            "environmentManager": spec["runtimeEnvironment"]["manager"],
+            "environmentVerified": spec["runtimeEnvironment"]["verified"],
         },
         "summary": {
             "evidenceRecords": len(spec["evidence"]),

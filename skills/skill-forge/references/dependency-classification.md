@@ -8,6 +8,7 @@
 - Integrated custom code
 - Missing or opaque code
 - Manual operations
+- Existing skills and reference data
 - Recursive inspection
 - Environment inference
 - Packaging closure
@@ -25,6 +26,8 @@ these SkillSpec kinds:
 - `custom_integrated`
 - `missing`
 - `manual`
+- `existing_skill`
+- `reference_data`
 
 Classification is evidence-based and may change after source inspection. A file
 ending in `.py` is not automatically standalone, and a repository is not
@@ -39,6 +42,8 @@ Examples include `samtools`, `bedtools`, `bowtie2`, and a versioned public
 nf-core pipeline. Treat these as dependencies:
 
 - record the executable/package and installation channel;
+- map every required public executable to its exact machine-readable package
+  using `environmentPackage`;
 - record a version or compatibility range when behavior depends on it;
 - record external data/reference requirements;
 - declare network, container, scheduler, or architecture constraints;
@@ -111,6 +116,19 @@ Use `manual` for intentional user actions such as:
 
 Document prerequisites, user decision, resulting artifact, and post-step
 validation. Manual does not mean optional.
+
+## Existing skills and reference data
+
+Use `existing_skill` when a workflow composes a separately installed Agent
+Skill. Record its resolved package path, version, hash/commit, role, and
+invocation order in every runtime manifest. The composed skill's own environment
+remains authoritative for its internal commands, but the parent run must still
+record those commands or link a validated child run manifest.
+
+Use `reference_data` for genome assemblies, indices, annotations, model weights,
+or other versioned data that is not an executable package. Record assembly or
+release identity, acquisition source, integrity hash when practical, and local
+resolved path. Do not force reference data into `requirements.txt`.
 
 ## Recursive inspection
 
@@ -187,6 +205,22 @@ Build an environment contract from:
 Do not preserve an environment nickname as the only setup instruction. Do not
 pin versions solely because one old log used them; document why the pin matters.
 
+The Agent Skills `compatibility` field is a routing hint, not an environment
+contract. Translate classified runtime dependencies into the SkillSpec
+`runtimeEnvironment` object and a generated machine-readable artifact:
+
+- `environment.yml` for Conda/Mamba tools, mixed languages, and scientific
+  command-line programs;
+- `requirements.txt` plus `.python-version` for pure Python;
+- an immutable digest for containers;
+- a sentinel-validated codebase-owned environment specification for CBD;
+- `manager: none` only for instruction-only skills with no runtime dependency.
+
+Record direct constraints separately from resolved transitive versions.
+Clean-environment verification records what actually resolved; platform lock
+files or immutable containers provide the strongest cross-user repeatability.
+If versions are unknown, say so and keep the package draft instead of guessing.
+
 ## Packaging closure
 
 ### CBD closure
@@ -197,6 +231,7 @@ The package must contain:
 - a config resolver;
 - root and sentinel requirements;
 - public dependency declarations;
+- a machine-readable runtime environment contract;
 - expected codebase version/remote information when known;
 - validation and failure behavior.
 
@@ -209,6 +244,7 @@ The package must contain:
 - every approved custom source file required at runtime;
 - local modules, sourced scripts, templates, schemas, and static assets;
 - declared public dependencies;
+- a machine-readable runtime environment contract;
 - portable configuration/defaults;
 - licenses/notices required for copied code;
 - tests that run against bundled paths.

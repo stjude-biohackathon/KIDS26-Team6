@@ -3,7 +3,7 @@ name: skill-forge
 description: Analyze incomplete activity logs, command histories, documentation, examples, or human/AI outlines and turn them into evidence-linked proposals for new or updated Agent Skills. Use when reconstructing a reusable workflow, deciding between codebase-dependent (CBD) and standalone (STD) packaging, auditing custom script dependencies, or determining whether new evidence warrants a skill update.
 compatibility: Requires Python 3.10+ and local filesystem access. Bundled helper scripts use only the Python standard library; document readers and optional web access depend on the host agent.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   status: experimental
   last_reviewed: "2026-09-17"
 allowed-tools: shell python
@@ -51,6 +51,12 @@ codebase with no requested skill deliverable.
    narrow, behavior-preserving change.
 7. Generate into a staging run directory. Installation, code copying, mode
    migration, source changes, and publication require explicit approval.
+8. Treat `compatibility` as discovery metadata only. Every generated skill with
+   runtime dependencies needs a machine-readable environment specification and
+   a clean-environment verification path.
+9. Every generated skill run must record the request, exact executed commands,
+   parameters, skills used, outputs, versions, failures/retries, and a
+   human-readable plus JSON summary. Reproducibility is not optional.
 
 Read [references/evidence-and-inference.md](references/evidence-and-inference.md)
 before interpreting noisy or contradictory evidence.
@@ -151,7 +157,25 @@ Read
 [references/dependency-classification.md](references/dependency-classification.md)
 for the decision rules and escalation conditions.
 
-### 4. Compare existing coverage
+### 4. Define a reproducible runtime
+
+Populate the SkillSpec `runtimeEnvironment` contract. The Agent Skills
+`compatibility` frontmatter field is standard, but it does not install, resolve,
+or pin dependencies.
+
+- Mixed scientific binaries and Python/R packages: generate `environment.yml`.
+- Pure Python: generate `requirements.txt` and record the Python constraint.
+- Containerized runtime: require an immutable image digest.
+- CBD codebase-owned runtime: identify a machine-readable spec or container in
+  the codebase and validate it through a sentinel; do not rely on an environment
+  nickname.
+- No runtime dependencies: explicitly select `manager: none`.
+
+Use verified direct constraints and, when feasible, a platform lock file.
+Unknown versions keep the generated skill in draft status until a clean setup
+and smoke test succeed.
+
+### 5. Compare existing coverage
 
 Search available skills before proposing a new one. Compare required actions,
 input/output roles, validation, and environment compatibility—not names or
@@ -168,7 +192,7 @@ Choose one decision:
 For `reuse` or `no-update`, recommend no new package or mutation. For `compose`,
 make the generated skill a thin orchestration layer.
 
-### 5. Build an evidence-linked SkillSpec
+### 6. Build an evidence-linked SkillSpec
 
 Create `skill-spec.json` using
 [assets/skill-spec.template.json](assets/skill-spec.template.json) and
@@ -185,7 +209,7 @@ Every operational step must be supported by evidence or an existing skill. A
 domain-inferred missing command is allowed only as `status: proposed`, with a
 non-empty rationale and `approvalRequired: true`.
 
-### 6. Render a staged proposal
+### 7. Render a staged proposal
 
 Use an explicit empty run directory outside this skill package:
 
@@ -206,10 +230,11 @@ closure, then obtain explicit approval and add `--allowCodeCopy`. Never vendor
 public tools that should be installed normally.
 
 The renderer creates a deterministic draft plus `REVIEW.md`, provenance,
-evidence summaries, logs, and run metadata. A `blocked` or `no-update` decision
-creates review artifacts but no installable proposal.
+evidence summaries, logs, run metadata, a machine-readable environment, and a
+runtime recorder. A `blocked` or `no-update` decision creates review artifacts
+but no installable proposal.
 
-### 7. Review and resolve gaps
+### 8. Review and resolve gaps
 
 Present:
 
@@ -225,23 +250,62 @@ Present:
 
 Do not hide gaps by weakening tests or labeling assumptions as facts.
 
-### 8. Finalize only after approval
+### 9. Finalize only after approval
 
 After user approval:
 
 1. resolve all blocking questions;
 2. for STD, copy the complete approved custom-code closure into `scripts/`;
 3. for CBD, validate or create the agent-appropriate local config entry;
-4. run `scripts/validate_skill_package.py`;
-5. run generated script `--help`, unit tests, and the smallest safe smoke case;
-6. install or update only the approved skill directory;
-7. record the decision and checks in the skill-local changelog/provenance.
+4. verify the generated environment specification and setup command;
+5. run `scripts/validate_skill_package.py`;
+6. build a fresh runtime and run script `--help`, unit tests, and the smallest
+   safe smoke case;
+7. execute the runtime recorder smoke test and verify all mandatory run files;
+8. install or update only the approved skill directory;
+9. record the decision and checks in the skill-local changelog/provenance.
 
 ## Outputs
 
 The default forge run layout is documented in
 [references/validation-and-provenance.md](references/validation-and-provenance.md).
 Keep runtime artifacts outside the skill source package.
+
+Every generated skill must also use this per-execution layout:
+
+```text
+<outputRoot>/<skill-name>-<runId>/
+├── agent_request.txt
+├── agent_workflow.md
+├── commands.sh
+├── run_manifest.json
+├── run_manifest.md
+├── run_summary.json
+├── run_summary.md
+└── logs/
+    ├── commands.log
+    ├── commands.jsonl
+    ├── parameters.jsonl
+    └── <step>.stdout.log / <step>.stderr.log
+```
+
+Before the first runtime command, initialize this directory with the bundled
+`scripts/record_run.py`. Execute every setup, analysis, validation, retry, and
+composed-skill shell command through its `exec` subcommand. Record non-shell and
+manual actions explicitly. Capture the resolved environment and tool versions,
+not only requested constraints. Finalize from a structured summary input,
+verify the manifest, then display the key contents of `run_summary.md` in the
+interactive chat.
+
+Never backfill an unrecorded run from the generic command shapes in `SKILL.md`.
+Mark it non-reproducible. A forensic reconstruction may use preserved terminal
+events or tool logs, but each reconstructed command must retain that evidence
+basis and cannot be relabeled as recorder-captured execution.
+
+`agent_request.txt` should contain the request actually used for the run.
+Redact credentials, PHI, or other prohibited values and record the redactions
+and original request hash; store a verbatim sensitive copy only with explicit
+approval and restrictive permissions.
 
 ## Resources
 
@@ -263,6 +327,10 @@ Keep runtime artifacts outside the skill source package.
 - Source records are hashed, sanitized where shared, and treated as untrusted.
 - Each step has evidence, an existing-skill source, or approved proposed status.
 - Public tools are declared; custom code has a recursive dependency assessment.
+- `compatibility` agrees with a machine-readable environment specification;
+  dependency prose alone is insufficient.
+- Environment setup is reusable, clean-environment tested, and records resolved
+  versions; unresolved versions keep the package in draft.
 - CBD skills use `-cbd`, contain no copied integrated code, and define sentinels.
 - STD skills use `-std`, contain every permitted custom runtime dependency, and
   contain no private absolute paths or unresolved external custom-code links.
@@ -272,6 +340,11 @@ Keep runtime artifacts outside the skill source package.
 - `SKILL.md` is under 500 lines and directly linked resources exist.
 - Evaluation includes success, edge, missing-input, misuse, and adversarial
   external-content cases as applicable.
+- Every executable generated skill includes `scripts/record_run.py` and requires
+  request, command, parameter, skill-chain, output, version, failure/retry, and
+  summary records for every run.
+- Final chat output summarizes what ran, findings, deliverables, parameters,
+  warnings, skills used, versions, and the run directory.
 
 ## Failure and escalation
 
@@ -283,4 +356,9 @@ Keep runtime artifacts outside the skill source package.
 - Unknown redistribution rights: CBD is safer; do not copy code into STD.
 - Multiple CBD config files found: require an explicit config path.
 - Stale CBD roots: request replacement roots; do not pull or mutate the repo.
+- Missing or unverified environment spec: do not claim cross-user portability.
+- A command bypassed the runtime recorder: mark the run incomplete and record or
+  rerun it; never report it as fully reproducible.
+- Sensitive request/command values: redact with an explicit record and hash;
+  never write secrets into command logs.
 - No material update delta: return `no-update` and leave the skill unchanged.

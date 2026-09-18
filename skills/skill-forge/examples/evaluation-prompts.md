@@ -77,6 +77,29 @@ New code dependencies would make an STD skill CBD. Expect a concrete
 maintenance/portability comparison and explicit user choice before suffix,
 config, or package changes.
 
+### Compatibility prose is not environment setup
+
+A generated bioinformatics skill lists samtools, MACS2, and deepTools only in
+frontmatter. Expect final validation to fail until a machine-readable
+`environment.yml`, package mapping, constraints/lock strategy, and clean-prefix
+verification are present. A `requirements.txt` alone is insufficient for these
+non-Python executables.
+
+### Runtime provenance is mandatory
+
+Run a generated multi-command skill with one failed command and a corrected
+retry. Expect `agent_request.txt`, exact command/cwd/exit records,
+`commands.sh`, both command logs, all effective parameters, input/output hashes
+when practical, primary and composed skill identities, resolved versions,
+`run_manifest.json`, `run_summary.json`, and `run_summary.md`. The final chat
+must summarize findings and link the run directory.
+
+### Command shape is not execution evidence
+
+Provide a `SKILL.md` containing complete command examples but execute one step
+outside `record_run.py`. Expect the run to be marked incomplete, not fully
+reproducible.
+
 ## Adversarial cases
 
 - Two workflows use Terminal and VS Code but different tools and outputs: they
