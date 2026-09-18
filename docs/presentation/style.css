@@ -1,0 +1,428 @@
+/* AutoCAB deck styles — dark "instrument panel" aesthetic.
+
+   Two layers live in this file:
+
+   1. The `--viz-*` data roles. These come from the validated reference palette
+      (categorical slots 1-3 blue / orange / aqua, the blue sequential ramp, and
+      the fixed status palette) and are re-stepped for this deck's cool dark
+      surface rather than flipped from the light set. Both sets pass the
+      colorblind-separation, lightness-band and contrast checks on their own
+      surface. Data marks use only these.
+   2. The deck chrome: `--accent*`, the panel surfaces, the glows. Chrome is
+      decoration and never encodes a value, so it is free to be a hue the data
+      palette does not own.
+
+   The deck ships dark. `html.light` keeps a working light set for anyone who
+   toggles, but the aesthetic is designed on the dark plane. */
+
+.viz-root,
+:root {
+  color-scheme: dark;
+
+  /* surfaces */
+  --page-plane: #0b1220;
+  --surface-1: #101826;
+  --panel-edge: rgba(148, 178, 222, 0.16);
+  --hairline: rgba(255, 255, 255, 0.1);
+  --gridline: rgba(148, 178, 222, 0.14);
+  --baseline: rgba(148, 178, 222, 0.3);
+
+  /* ink */
+  --text-primary: #f3f7ff;
+  --text-secondary: #b7c6dd;
+  --text-muted: #8496b0;
+
+  /* data roles — validated against #101826 */
+  --series-1: #3987e5; /* blue   */
+  --series-2: #d95926; /* orange */
+  --series-3: #199e70; /* aqua   */
+  --seq-track: #184f95;
+  --seq-fill: #3987e5;
+  --status-good: #3fd07a;
+  --status-warning: #fbc34a;
+  --status-serious: #ec835a;
+  --status-critical: #f06565;
+
+  /* chrome only — never a data encoding */
+  --accent: #22d3ee;
+  --accent-ink: #67e8f9;
+  --accent-deep: #3987e5;
+  --accent-wash: rgba(34, 211, 238, 0.12);
+}
+
+html.light .viz-root,
+html.light {
+  color-scheme: light;
+  --page-plane: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --panel-edge: rgba(11, 11, 11, 0.12);
+  --hairline: rgba(11, 11, 11, 0.1);
+  --gridline: #e1e0d9;
+  --baseline: #c3c2b7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --seq-track: #cde2fb;
+  --seq-fill: #2a78d6;
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+  --accent: #0e7490;
+  --accent-ink: #0e7490;
+  --accent-deep: #2a78d6;
+  --accent-wash: rgba(14, 116, 144, 0.1);
+}
+
+/* --- the plane ---------------------------------------------------------- */
+
+:root {
+  --slidev-code-font-size: 0.68em;
+  --slidev-code-line-height: 1.55;
+  --slidev-theme-primary: #22d3ee;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.slidev-layout {
+  color: var(--text-secondary);
+  background-color: var(--page-plane);
+  background-image:
+    radial-gradient(1100px 620px at 8% -14%, rgba(34, 211, 238, 0.13), transparent 62%),
+    radial-gradient(900px 560px at 104% 112%, rgba(57, 135, 229, 0.16), transparent 60%);
+}
+
+/* A faint instrument grid over the plane. Decorative, so it is masked out of
+   the reading band and never lands behind body copy at full strength. */
+.slidev-layout::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(var(--gridline) 1px, transparent 1px),
+    linear-gradient(90deg, var(--gridline) 1px, transparent 1px);
+  background-size: 46px 46px;
+  opacity: 0.32;
+  mask-image: radial-gradient(120% 100% at 50% 0%, #000 0%, transparent 78%);
+  -webkit-mask-image: radial-gradient(120% 100% at 50% 0%, #000 0%, transparent 78%);
+}
+
+.slidev-layout > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- type -------------------------------------------------------------- */
+
+.slidev-layout h1 {
+  color: var(--text-primary);
+  font-weight: 680;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin-bottom: 0.15em;
+}
+
+/* The title rule: a short accent bar under every slide headline. */
+.slidev-layout:not(.slidev-layout-cover) h1::after {
+  content: '';
+  display: block;
+  width: 3.4rem;
+  height: 3px;
+  margin-top: 0.5rem;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-deep));
+}
+
+.slidev-layout h2,
+.slidev-layout h3 {
+  color: var(--text-primary);
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+
+.slidev-layout h3 {
+  font-size: 1.02em;
+}
+
+.slidev-layout strong {
+  color: var(--text-primary);
+  font-weight: 620;
+}
+
+.slidev-layout a {
+  color: var(--accent-ink);
+}
+
+/* Inline code reads as a token, not as prose. */
+.slidev-layout :not(pre) > code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  color: var(--accent-ink);
+  background: var(--accent-wash);
+  border: 1px solid var(--panel-edge);
+  border-radius: 4px;
+  padding: 0.05em 0.3em;
+}
+
+/* --- code blocks as terminal panes ------------------------------------- */
+
+.slidev-layout .slidev-code-wrapper,
+.slidev-layout pre.slidev-code {
+  border-radius: 10px;
+}
+
+.slidev-layout pre.slidev-code {
+  position: relative;
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.07), transparent 42%),
+    var(--surface-1) !important;
+  border: 1px solid var(--panel-edge);
+  padding: 0.75rem 0.9rem 0.8rem !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* The accent seam along the top edge of a pane. */
+.slidev-layout pre.slidev-code::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0.9rem;
+  right: 0.9rem;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: linear-gradient(90deg, var(--accent), transparent 70%);
+  opacity: 0.8;
+}
+
+/* --- tables ------------------------------------------------------------ */
+
+.slidev-layout table {
+  font-size: 0.78em;
+  border-collapse: collapse;
+}
+
+.slidev-layout table th {
+  text-align: left;
+  font-weight: 620;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--baseline);
+}
+
+.slidev-layout table td {
+  border-bottom: 1px solid var(--gridline);
+}
+
+/* --- reusable slide furniture ------------------------------------------ */
+
+/* A short kicker above a slide title, naming where you are in the deck. */
+.kicker {
+  font-family: var(--mono);
+  font-size: 0.64em;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.kicker::before {
+  content: '';
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 1px;
+  rotate: 45deg;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+/* The one-line claim a slide is allowed to make. */
+.claim {
+  border-left: 3px solid var(--accent);
+  background: linear-gradient(90deg, var(--accent-wash), transparent 78%);
+  border-radius: 0 8px 8px 0;
+  padding: 0.6rem 0.9rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* A panel: the default container for a block of related lines. */
+.panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 60%),
+    var(--surface-1);
+  border: 1px solid var(--panel-edge);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem 0.75rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  min-width: 0;
+}
+
+/* A callout tinted by state. State always ships with its own glyph and word in
+   the markup, so the tint is the third channel and never the only one. */
+.callout {
+  border: 1px solid var(--panel-edge);
+  border-left-width: 3px;
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  background: var(--surface-1);
+}
+
+.callout.is-good {
+  border-left-color: var(--status-good);
+  background: linear-gradient(90deg, rgba(63, 208, 122, 0.1), transparent 80%), var(--surface-1);
+}
+
+.callout.is-warning {
+  border-left-color: var(--status-warning);
+  background: linear-gradient(90deg, rgba(251, 195, 74, 0.1), transparent 80%), var(--surface-1);
+}
+
+.callout.is-critical {
+  border-left-color: var(--status-critical);
+  background: linear-gradient(90deg, rgba(240, 101, 101, 0.1), transparent 80%), var(--surface-1);
+}
+
+.callout.is-accent {
+  border-left-color: var(--accent);
+  background: linear-gradient(90deg, var(--accent-wash), transparent 80%), var(--surface-1);
+}
+
+.callout .lede {
+  color: var(--text-primary);
+  font-weight: 620;
+}
+
+.callout.is-good .lede { color: var(--status-good); }
+.callout.is-warning .lede { color: var(--status-warning); }
+.callout.is-critical .lede { color: var(--status-critical); }
+.callout.is-accent .lede { color: var(--accent-ink); }
+
+/* A row of small monospace chips, used for enumerations that are not prose. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chip {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  border: 1px solid var(--panel-edge);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  white-space: nowrap;
+}
+
+.chip.on {
+  color: var(--accent-ink);
+  border-color: rgba(34, 211, 238, 0.45);
+  background: var(--accent-wash);
+}
+
+/* A label + line pair, dense enough for three or four per column. */
+.spec {
+  font-size: 0.78em;
+  line-height: 1.4;
+}
+
+.spec dt {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  color: var(--accent-ink);
+  letter-spacing: 0.02em;
+}
+
+.spec dd {
+  color: var(--text-muted);
+  margin: 0.05rem 0 0.5rem;
+}
+
+/* --- cover & closing ---------------------------------------------------- */
+
+.slidev-layout.slidev-layout-cover,
+.slidev-layout.slidev-layout-center {
+  background-image:
+    radial-gradient(760px 520px at 50% -12%, rgba(34, 211, 238, 0.2), transparent 64%),
+    radial-gradient(900px 620px at 84% 118%, rgba(57, 135, 229, 0.22), transparent 62%);
+}
+
+.wordmark {
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  background: linear-gradient(100deg, var(--text-primary) 18%, var(--accent-ink) 58%, var(--accent-deep) 96%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* The built-in two-column layouts ship with no gutter. */
+.slidev-layout.two-cols-header,
+.slidev-layout.two-cols {
+  column-gap: 2rem;
+}
+
+/* Mermaid sits on the plane, not on a white card. */
+.slidev-layout .mermaid {
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.35));
+}
+
+/* --- the type scale ----------------------------------------------------- */
+
+/* This theme's UnoCSS config does not emit the `text-*` size utilities, so the
+   size classes used in the slides are defined here. They have to reach the
+   markdown children too: the theme sets `.slidev-layout p { line-height:
+   1.5rem }`, a fixed value that would otherwise survive a smaller parent. */
+
+.slidev-layout p {
+  margin: 0.5rem 0;
+  line-height: 1.5;
+}
+
+.slidev-layout ul,
+.slidev-layout ol {
+  line-height: 1.5;
+}
+
+.slidev-layout .text-xs { font-size: 0.7rem; }
+.slidev-layout .text-sm { font-size: 0.82rem; }
+.slidev-layout .text-base { font-size: 1rem; }
+.slidev-layout .text-lg { font-size: 1.15rem; }
+.slidev-layout .text-xl { font-size: 1.35rem; }
+
+.slidev-layout .text-xs p,
+.slidev-layout .text-xs li,
+.slidev-layout .text-sm p,
+.slidev-layout .text-sm li,
+.slidev-layout .text-base p,
+.slidev-layout .text-base li,
+.slidev-layout .text-lg p,
+.slidev-layout .text-xl p,
+.slidev-layout .panel p,
+.slidev-layout .callout p,
+.slidev-layout .claim p {
+  font-size: inherit;
+  line-height: 1.5;
+  margin: 0 0 0.45rem;
+}
+
+.slidev-layout .panel p:last-child,
+.slidev-layout .callout p:last-child,
+.slidev-layout .claim p:last-child,
+.slidev-layout .text-xs p:last-child,
+.slidev-layout .text-sm p:last-child {
+  margin-bottom: 0;
+}
+
+.slidev-layout .panel > :first-child,
+.slidev-layout .callout > :first-child {
+  margin-top: 0;
+}

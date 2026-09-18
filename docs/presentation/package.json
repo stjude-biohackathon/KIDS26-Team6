@@ -1,0 +1,22 @@
+{
+  "name": "autocab-presentation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AutoCAB architecture, impact, and versatility — Slidev deck (plus a 3-slide lightning cut)",
+  "scripts": {
+    "dev": "slidev --open",
+    "start": "slidev",
+    "build": "slidev build --base /presentation/",
+    "export": "slidev export",
+    "export:notes": "slidev export-notes",
+    "dev:lightning": "slidev lightning.md --open",
+    "build:lightning": "slidev build lightning.md --base /presentation/lightning/ --out dist/lightning",
+    "export:lightning": "slidev export lightning.md"
+  },
+  "dependencies": {
+    "@slidev/cli": "^53.0.0",
+    "@slidev/theme-default": "^0.25.0",
+    "vue": "^3.5.13"
+  }
+}
