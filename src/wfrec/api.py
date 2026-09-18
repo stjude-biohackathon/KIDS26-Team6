@@ -14,17 +14,23 @@ is worth keeping easy to verify.
 
 from __future__ import annotations
 
+import json
 import secrets
+from itertools import islice
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from . import SOURCES, __version__
+from .events import Event
+from .markdown import render_markdown
 from .recorder import NoActiveSession, Recorder
-from .session import SessionNotFound
+from .session import Session, SessionNotFound
+
+MAX_EVENT_PAGE_SIZE = 2_000
 
 
 class StartRequest(BaseModel):
@@ -78,6 +84,57 @@ class SealRequest(BaseModel):
     force: bool = False
     dry_run: bool = False
     status: bool = False
+
+
+def _event_count(session: Session) -> int:
+    """Return the append counter without parsing the complete event timeline."""
+
+    try:
+        return max(0, int((session.root / ".seq").read_text(encoding="utf-8")))
+    except (OSError, ValueError):
+        try:
+            with session.writer.path.open(encoding="utf-8") as handle:
+                return sum(1 for line in handle if line.strip())
+        except FileNotFoundError:
+            return 0
+
+
+def _read_event_page(session: Session, *, offset: int, limit: int) -> list[Event]:
+    """Parse only the requested JSONL rows instead of loading the full session."""
+
+    events: list[Event] = []
+    try:
+        handle = session.writer.path.open(encoding="utf-8")
+    except FileNotFoundError:
+        return events
+    with handle:
+        for line in islice(handle, offset, offset + limit):
+            try:
+                payload = json.loads(line)
+                if isinstance(payload, dict):
+                    events.append(Event.from_dict(payload))
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+                # A partial final line is expected when the daemon is writing.
+                continue
+    return events
+
+
+def _event_response(event: Event) -> dict[str, Any]:
+    """Add safe display HTML without changing the persisted event payload."""
+
+    response = event.to_dict()
+    if event.type not in {"agent.message", "context.note"}:
+        return response
+
+    text = event.payload.get("text")
+    if not isinstance(text, str) or not text.strip():
+        return response
+
+    response["presentation"] = {
+        "detail_format": "markdown",
+        "detail_html": render_markdown(text),
+    }
+    return response
 
 
 def create_app(recorder: Recorder, token: str) -> FastAPI:
@@ -167,15 +224,20 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
         }
 
     @app.get("/sessions/{session_id}/events", dependencies=guard)
-    def events(session_id: str, limit: int = 200, offset: int = 0) -> dict[str, Any]:
-        from .session import Session
-
+    def events(
+        session_id: str,
+        limit: int = Query(default=200, ge=1, le=MAX_EVENT_PAGE_SIZE),
+        offset: int = Query(default=0, ge=0),
+        tail: bool = False,
+    ) -> dict[str, Any]:
         session = Session.load(session_id)
-        all_events = session.writer.read()
-        window = all_events[offset : offset + limit]
+        total = _event_count(session)
+        page_offset = max(0, total - limit) if tail else offset
+        window = _read_event_page(session, offset=page_offset, limit=limit)
         return {
-            "total": len(all_events),
-            "events": [event.to_dict() for event in window],
+            "total": total,
+            "offset": page_offset,
+            "events": [_event_response(event) for event in window],
         }
 
     # ------------------------------------------------------------- lifecycle

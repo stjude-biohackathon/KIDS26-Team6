@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from wfrec import paths
 from wfrec.api import create_app
 from wfrec.cli import main
-from wfrec.recorder import NoActiveSession, Recorder
+from wfrec.recorder import Recorder
 from wfrec.session import Manifest, Session, SessionStore
 
 
@@ -151,6 +151,82 @@ def test_events_endpoint_paginates(client):
     page = client.get(f"/sessions/{session_id}/events?limit=3&offset=0").json()
     assert len(page["events"]) == 3
     assert page["total"] >= 12
+    assert page["offset"] == 0
+
+    tail = client.get(
+        f"/sessions/{session_id}/events?limit=3&offset=0&tail=true"
+    ).json()
+    assert tail["offset"] == tail["total"] - 3
+    assert [event["payload"]["label"] for event in tail["events"]] == [
+        "m7",
+        "m8",
+        "m9",
+    ]
+
+
+def test_events_endpoint_adds_sanitized_markdown_presentation(client):
+    from wfrec.events import Event
+
+    started = client.post("/sessions/start", json={"title": "A"}).json()
+    session_id = started["session"]["id"]
+    note_text = "**Result** [unsafe](javascript:alert(1))"
+    client.post("/notes", json={"text": note_text, "label": "finding"})
+    Session.load(session_id).writer.append(
+        Event(
+            source="agents",
+            type="agent.message",
+            payload={"tool": "codex", "role": "assistant", "text": "- item"},
+        )
+    )
+
+    events = client.get(f"/sessions/{session_id}/events").json()["events"]
+    note = next(event for event in events if event["type"] == "context.note")
+    agent = next(event for event in events if event["type"] == "agent.message")
+
+    assert note["payload"]["text"] == note_text
+    assert note["payload"]["label"] == "finding"
+    assert note["presentation"]["detail_format"] == "markdown"
+    assert "<strong>Result</strong>" in note["presentation"]["detail_html"]
+    assert 'href="javascript:' not in note["presentation"]["detail_html"]
+    assert "<li>item</li>" in agent["presentation"]["detail_html"]
+
+
+def test_events_endpoint_makes_redacted_note_link_non_clickable(client):
+    started = client.post("/sessions/start", json={"title": "A"}).json()
+    session_id = started["session"]["id"]
+    client.post(
+        "/notes",
+        json={"text": "[Docs](https://example.org/private?subject=1)"},
+    )
+
+    events = client.get(f"/sessions/{session_id}/events").json()["events"]
+    note = next(event for event in events if event["type"] == "context.note")
+    presentation = note["presentation"]["detail_html"]
+
+    assert note["payload"]["text"] == "[Docs]([REDACTED_URL])"
+    assert "Docs [link redacted]" in presentation
+    assert "<a " not in presentation
+    assert "%5BREDACTED" not in presentation
+
+
+def test_events_endpoint_leaves_non_prose_events_plain(client):
+    started = client.post("/sessions/start", json={"title": "A"}).json()
+    session_id = started["session"]["id"]
+    client.post("/markers", json={"label": "**plain marker**"})
+
+    events = client.get(f"/sessions/{session_id}/events").json()["events"]
+    marker = next(event for event in events if event["type"] == "marker.user")
+
+    assert "presentation" not in marker
+
+
+def test_events_endpoint_rejects_unbounded_pages(client):
+    started = client.post("/sessions/start", json={"title": "A"}).json()
+    session_id = started["session"]["id"]
+
+    response = client.get(f"/sessions/{session_id}/events?limit=2001")
+
+    assert response.status_code == 422
 
 
 def test_doctor_endpoint_reports_sources(client):

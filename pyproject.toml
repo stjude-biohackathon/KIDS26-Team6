@@ -38,6 +38,11 @@ dependencies = [
   "opencv-python-headless>=4.8",
   "psutil>=5.9",                   # process names for window attribution
   "rich>=15.0",                    # readable terminal status tables
+  # Markdown event details are rendered server-side and sanitized before the
+  # browser receives them. markdown-it-py is already pulled in by Rich, but it
+  # remains direct here because wfrec imports and relies on its public API.
+  "markdown-it-py>=4.2",
+  "nh3>=0.3.7",
   # Menu-bar (macOS) / system-tray (Windows) recording indicator. Skipped on
   # Linux for now: a working tray needs AppIndicator/GTK system packages pip
   # cannot install, so it would fail at runtime rather than install cleanly.
