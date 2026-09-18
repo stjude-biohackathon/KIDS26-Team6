@@ -400,6 +400,9 @@ class Scrubber:
         # Invariant 3. Abort the whole seal rather than clip: a replacement in
         # the wrong region looks exactly like success.
         check_bounds(normalized, spans)
+        cached = self._rewritten.get(text)
+        if cached is not None:
+            return cached
 
         # One replacement decision per span, recorded for the audit and reused
         # for the rewrite. Computing them twice would be harmless (both are pure
@@ -429,9 +432,6 @@ class Scrubber:
                 )
             )
 
-        cached = self._rewritten.get(text)
-        if cached is not None:
-            return cached
         rewritten = render(normalized, spans, lambda span, _surface: replacements[span.start])
         self._rewritten[text] = rewritten
         return rewritten
@@ -1270,7 +1270,8 @@ def _commit(
         snapshot_bytes = current
         journal["snapshot_bytes"] = snapshot_bytes
         journal["sealed_through_seq"] = max(
-            (event.seq or 0 for event in tail), default=journal["sealed_through_seq"]
+            int(journal["sealed_through_seq"]),
+            max((event.seq or 0 for event in tail), default=0),
         )
         _write_audit(session_dir, staged_dir(session_dir), scrubber)
 

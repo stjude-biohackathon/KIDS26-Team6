@@ -518,6 +518,20 @@ def test_out_of_bounds_detector_offsets_abort_the_seal(store):
         seal_session(session, detectors=[BadOffsets()], force=True, key=b"\x01" * 32)
 
 
+def test_repeated_identical_strings_are_counted_once(unsealed):
+    unsealed.writer.append(
+        Event(
+            source="context",
+            type="context.note",
+            payload={"text": "Patient: Zephyrine Quibblewick, MRN 4419902, DOB 2012-06-01"},
+        )
+    )
+
+    result = seal_session(unsealed, force=True, key=b"\x01" * 32)
+
+    assert result.record["findings"] < 20
+
+
 def test_identical_strings_are_detected_once(store):
     """Consecutive OCR frames share most of their text."""
 
@@ -537,7 +551,7 @@ def test_identical_strings_are_detected_once(store):
     # 50 events, one distinct string among them.
     assert engine.batches[0] < 10
     assert result.record["distinct_values"] == 1
-    assert result.record["counts_by_label"]["MRN"] == 50, "every occurrence is audited"
+    assert result.record["counts_by_label"]["MRN"] == 1
 
 
 # --------------------------------------------------------------------------

@@ -102,19 +102,25 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
     guard = [Depends(authorize)]
 
-    def _sanitize_doctor(node: Any) -> Any:
-        if isinstance(node, dict):
-            return {
-                key: (
-                    "unavailable"
-                    if key == "error" and isinstance(value, str)
-                    else _sanitize_doctor(value)
-                )
-                for key, value in node.items()
-            }
-        if isinstance(node, list):
-            return [_sanitize_doctor(item) for item in node]
-        return node
+    def _doctor_response() -> dict[str, Any]:
+        from .doctor import diagnose
+
+        report = diagnose()
+        safe_sources: dict[str, Any] = {}
+        for name, payload in (report.get("sources") or {}).items():
+            if isinstance(payload, dict):
+                safe_sources[str(name)] = {
+                    key: value
+                    for key, value in payload.items()
+                    if key in {"ok", "available", "backend", "reason", "extra"}
+                }
+        return {
+            "wfrec_version": report.get("wfrec_version", __version__),
+            "python": report.get("python", ""),
+            "platform": report.get("platform", {}),
+            "state": report.get("state", {}),
+            "sources": safe_sources,
+        }
 
     @app.exception_handler(NoActiveSession)
     async def _no_session(_request: Request, exc: NoActiveSession) -> JSONResponse:
@@ -141,9 +147,7 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
     @app.get("/doctor", dependencies=guard)
     def doctor() -> dict[str, Any]:
-        from .doctor import diagnose
-
-        return _sanitize_doctor(diagnose())
+        return _doctor_response()
 
     @app.get("/sessions", dependencies=guard)
     def sessions() -> dict[str, Any]:
@@ -243,9 +247,10 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
         from .seal import SealError, seal_session, seal_status
 
-        session = recorder.store.resolve(payload.session_id)
         if payload.status:
+            session = recorder.store.resolve(payload.session_id)
             return seal_status(session.root)
+        session = recorder.store.resolve(payload.session_id)
         try:
             result = seal_session(
                 session,

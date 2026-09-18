@@ -255,6 +255,15 @@ def test_seal_endpoint_force_stops_via_the_live_recorder(client):
     assert response.json()["assurance"] == "regex-only"
 
 
+def test_seal_status_works_for_the_current_session_without_an_explicit_id(client):
+    client.post("/sessions/start", json={"title": "A", "analyst": "a"})
+    client.post("/sessions/stop", json={})
+    response = client.post("/sessions/seal", json={"status": True})
+
+    assert response.status_code == 200
+    assert response.json()["sealed"] is False
+
+
 def test_seal_endpoint_rejects_unknown_profiles(client):
     client.post("/sessions/start", json={"title": "A", "analyst": "a"})
     client.post("/sessions/stop", json={})
