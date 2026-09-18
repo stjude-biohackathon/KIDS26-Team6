@@ -92,10 +92,10 @@ def build_terminal_log(session) -> tuple[str, int]:
 
 
 def write_terminal_log(session, destination: Path | None = None) -> tuple[Path, int]:
-    """Write ``exports/autocab-terminal.log`` and return its path and count."""
+    """Write ``exports/terminal.log`` and return its path and command count."""
 
     body, count = build_terminal_log(session)
-    target = destination or (session.root / "exports" / "autocab-terminal.log")
+    target = destination or (session.root / "exports" / "terminal.log")
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(body, encoding="utf-8")
     return target, count

@@ -26,7 +26,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from . import SOURCES, __version__
-from .desktop import DirectoryOpenError, open_directory
+from .desktop import (
+    DirectoryOpenError,
+    DirectorySelectionError,
+    choose_directory,
+    open_directory,
+)
 from .events import Event, SessionSealed
 from .markdown import render_markdown
 from .recorder import NoActiveSession, Recorder
@@ -99,7 +104,10 @@ class WatchRequest(BaseModel):
 
 class ExportRequest(BaseModel):
     session_id: str | None = None
-    formats: list[str] = Field(default_factory=lambda: ["autocab"])
+    formats: list[str] = Field(
+        default_factory=lambda: ["events", "autocab", "trace"]
+    )
+    choose_destination: bool = False
 
 
 class SealRequest(BaseModel):
@@ -470,11 +478,51 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
     # ----------------------------------------------------------------- export
     @app.post("/export", dependencies=guard)
-    def export(payload: ExportRequest) -> dict[str, Any]:
-        from .exporters import export_session
+    def export(payload: ExportRequest, request: Request) -> dict[str, Any]:
+        from .exporters.snapshot import (
+            ExportStateError,
+            export_session_safely,
+            validate_export_state,
+        )
+        from .seal import SealError
 
         session = recorder.store.resolve(payload.session_id)
-        return export_session(session, formats=payload.formats)
+        status = _display_status(session, RecorderState.load())
+        destination = None
+        try:
+            validate_export_state(session, status)
+        except ExportStateError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        if payload.choose_destination:
+            if not _request_is_local(request):
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Export folders can only be chosen on the daemon host."
+                    ),
+                )
+            try:
+                destination = choose_directory()
+            except DirectorySelectionError as error:
+                raise HTTPException(status_code=503, detail=str(error)) from error
+            if destination is None:
+                return {
+                    "session": session.session_id,
+                    "cancelled": True,
+                    "written": [],
+                    "details": {},
+                }
+
+        try:
+            result = export_session_safely(
+                session,
+                formats=payload.formats,
+                destination=destination,
+                status=status,
+            )
+        except (ExportStateError, SealError) as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return {**result, "cancelled": False}
 
     # --------------------------------------------------------------------- UI
     @app.get("/", response_class=HTMLResponse)

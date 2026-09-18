@@ -207,11 +207,11 @@ def build_trace(session) -> tuple[dict, int]:
 
 
 def write_trace(session, destination: Path | None = None) -> tuple[Path, int]:
-    """Write ``exports/trace.json`` as a one-element array, matching
+    """Write ``exports/workflow-trace.json`` as a one-element array, matching
     ``autocab.demo_data.load_workflow_traces``."""
 
     trace, steps = build_trace(session)
-    target = destination or (session.root / "exports" / "trace.json")
+    target = destination or (session.root / "exports" / "workflow-trace.json")
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps([trace], indent=2) + "\n", encoding="utf-8")
     return target, steps

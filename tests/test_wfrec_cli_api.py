@@ -508,7 +508,97 @@ def test_export_endpoint_writes_files(client):
 
     result = client.post("/export", json={"formats": ["autocab"]}).json()
     assert len(result["written"]) == 2
+    assert {Path(path).name for path in result["written"]} == {
+        "terminal.log",
+        "screen-events.json",
+    }
     assert result["seal"]["generation"] == 1
+
+
+def test_export_endpoint_defaults_to_all_files(client):
+    client.post("/sessions/start", json={"title": "A", "analyst": "a"})
+    status = client.get("/status").json()
+    session_id = status["session"]["id"]
+    client.post("/sessions/stop", json={})
+
+    result = client.post("/export", json={}).json()
+
+    assert {Path(path).name for path in result["written"]} == {
+        "events.json",
+        "workflow-trace.json",
+        "terminal.log",
+        "screen-events.json",
+    }
+    assert result["privacy"]["method"] == "protected-snapshot"
+    assert Session.load(session_id).writer.sealed is False
+
+
+def test_export_endpoint_allows_a_paused_session_to_resume(client):
+    started = client.post(
+        "/sessions/start",
+        json={"title": "Paused export", "analyst": "a"},
+    ).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/pause", json={"session_id": session_id})
+
+    result = client.post("/export", json={"session_id": session_id}).json()
+    resumed = client.post(
+        "/sessions/resume",
+        json={"session_id": session_id},
+    )
+
+    assert result["privacy"]["method"] == "protected-snapshot"
+    assert result["privacy"]["source_status"] == "paused"
+    assert resumed.status_code == 200
+    assert resumed.json()["session"]["status"] == "active"
+
+
+def test_paused_export_writes_to_the_chosen_folder(
+    client,
+    monkeypatch,
+    tmp_path: Path,
+):
+    started = client.post(
+        "/sessions/start",
+        json={"title": "Chosen export", "analyst": "a"},
+    ).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/pause", json={"session_id": session_id})
+    destination = tmp_path / "chosen-export"
+    destination.mkdir()
+    monkeypatch.setattr("wfrec.api._request_is_local", lambda _request: True)
+    monkeypatch.setattr("wfrec.api.choose_directory", lambda: destination)
+
+    result = client.post(
+        "/export",
+        json={"session_id": session_id, "choose_destination": True},
+    ).json()
+
+    assert result["destination"] == str(destination.resolve())
+    assert {path.name for path in destination.iterdir()} == {
+        f"{session_id}-events.json",
+        f"{session_id}-workflow-trace.json",
+        f"{session_id}-terminal.log",
+        f"{session_id}-screen-events.json",
+    }
+    assert all(Path(path).is_absolute() for path in result["written"])
+
+
+def test_export_endpoint_rejects_an_active_session(client):
+    started = client.post(
+        "/sessions/start",
+        json={"title": "Still recording", "analyst": "a"},
+    ).json()
+
+    response = client.post(
+        "/export",
+        json={"session_id": started["session"]["id"]},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Pause or archive the selected session before exporting events."
+    )
 
 
 def test_seal_endpoint_refuses_a_live_session(client):

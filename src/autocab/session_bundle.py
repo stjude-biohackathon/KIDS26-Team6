@@ -41,7 +41,7 @@ def _traces_from_trace_json(path: Path) -> list[WorkflowTrace]:
 def _trace_from_session_dir(path: Path) -> WorkflowTrace:
     """Build a trace from a session folder, preferring a live rebuild.
 
-    A previously written ``exports/trace.json`` is only used as a fallback: the
+    A previously written workflow trace is only used as a fallback. The
     timeline may have grown since it was written, and silently ingesting a
     stale export is the kind of bug that shows up as "the demo didn't include
     the thing I just did".
@@ -80,13 +80,18 @@ def _trace_from_session_dir(path: Path) -> WorkflowTrace:
             f"Session {path} contains no convertible workflow steps."
         )
     except ImportError as exc:
-        exported = path / "exports" / "trace.json"
-        if exported.exists():
-            traces = _traces_from_trace_json(exported)
-            if traces:
-                return traces[0]
+        export_paths = (
+            path / "exports" / "workflow-trace.json",
+            path / "exports" / "trace.json",
+        )
+        for exported in export_paths:
+            if exported.exists():
+                traces = _traces_from_trace_json(exported)
+                if traces:
+                    return traces[0]
         raise SessionBundleError(
-            f"wfrec is not importable ({exc}) and {path} has no exports/trace.json. "
+            f"wfrec is not importable ({exc}) and {path} has no exported "
+            "workflow trace. "
             "Run `wfrec export --format trace` inside the session, or install wfrec."
         ) from exc
 
