@@ -266,7 +266,7 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
                 stop_session=(
                     None
                     if not payload.force
-                    else lambda: recorder.stop_session(payload.session_id)
+                    else lambda: recorder.stop_session(session.session_id)
                 ),
             )
         except SealError as exc:

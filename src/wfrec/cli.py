@@ -907,13 +907,12 @@ def _seal(args: argparse.Namespace, as_json: bool) -> int:
     from .seal import SealError, seal_session, seal_status
 
     store = SessionStore()
-    try:
-        session = store.resolve(args.session_id)
-    except Exception as exc:
-        error(str(exc))
-        return 1
-
     if args.status:
+        try:
+            session = store.resolve(args.session_id)
+        except Exception as exc:
+            error(str(exc))
+            return 1
         status = seal_status(session.root)
         if as_json:
             _emit(status, True)
@@ -930,6 +929,12 @@ def _seal(args: argparse.Namespace, as_json: bool) -> int:
                     rows.append((key.replace("_", " ").title(), record[key]))
             summary(f"Seal status for {session.session_id}", rows)
         return 0
+
+    try:
+        session = store.resolve(args.session_id)
+    except Exception as exc:
+        error(str(exc))
+        return 1
 
     detectors = []
     names = [name for name in args.engine.split("+") if name and name != "regex"]
