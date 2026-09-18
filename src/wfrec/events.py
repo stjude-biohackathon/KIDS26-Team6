@@ -76,12 +76,11 @@ so the timeline self-documents that it was sealed and the seal record's
 
 
 class SessionSealed(RuntimeError):
-    """An append was attempted on a sealed session.
+    """A mutation was attempted on a sealed session.
 
-    This is what closes the ``wfrec pull`` / ``attach-transcript`` / ``merge``
-    hole. Without it a *stopped* session can still be appended to after being
-    scrubbed -- the seal would be genuine and the timeline would have grown
-    unredacted text underneath it.
+    This closes both timeline-append and metadata-mutation holes. Without it a
+    *stopped* session could change after being scrubbed, while still carrying a
+    seal that described its earlier contents.
     """
 
 

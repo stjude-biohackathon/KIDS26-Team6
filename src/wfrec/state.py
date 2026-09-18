@@ -72,6 +72,7 @@ class RecorderState:
     shell_output: bool = False
     shell_backend: str = SHELL_BACKEND_SPOOL
     paused: list[str] = field(default_factory=list)
+    trashed_sessions: list[str] = field(default_factory=list)
     api_url: str | None = None
     api_token: str | None = None
     updated_at: float = field(default_factory=time.time)
@@ -104,12 +105,20 @@ class RecorderState:
         shell_backend = payload.get("shell_backend", SHELL_BACKEND_SPOOL)
         if shell_backend not in SHELL_BACKENDS:
             shell_backend = SHELL_BACKEND_SPOOL
+        trashed_sessions = payload.get("trashed_sessions")
+        if not isinstance(trashed_sessions, list):
+            trashed_sessions = []
         return cls(
             active_session=payload.get("active_session"),
             sources=sources,
             shell_output=bool(payload.get("shell_output", False)),
             shell_backend=shell_backend,
             paused=list(payload.get("paused") or []),
+            trashed_sessions=[
+                session_id
+                for session_id in trashed_sessions
+                if isinstance(session_id, str)
+            ],
             api_url=payload.get("api_url"),
             api_token=payload.get("api_token"),
             updated_at=float(payload.get("updated_at") or time.time()),
@@ -122,6 +131,7 @@ class RecorderState:
             "shell_output": self.shell_output,
             "shell_backend": self.shell_backend,
             "paused": list(self.paused),
+            "trashed_sessions": list(self.trashed_sessions),
             "api_url": self.api_url,
             "api_token": self.api_token,
             "updated_at": self.updated_at,

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import secrets
+from ipaddress import ip_address
 from itertools import islice
 from pathlib import Path
 from typing import Any, Literal
@@ -25,12 +26,32 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from . import SOURCES, __version__
-from .events import Event
+from .desktop import DirectoryOpenError, open_directory
+from .events import Event, SessionSealed
 from .markdown import render_markdown
 from .recorder import NoActiveSession, Recorder
-from .session import Session, SessionNotFound
+from .session import (
+    STATUS_ACTIVE,
+    STATUS_PAUSED,
+    STATUS_STOPPED,
+    Session,
+    SessionNotFound,
+)
+from .state import RecorderState, StateTransaction, shell_output_unavailable_reason
+
 
 MAX_EVENT_PAGE_SIZE = 2_000
+
+
+def _request_is_local(request: Request) -> bool:
+    """Return whether a desktop action came from the daemon host."""
+
+    if request.client is None:
+        return False
+    try:
+        return ip_address(request.client.host).is_loopback
+    except ValueError:
+        return False
 
 
 class StartRequest(BaseModel):
@@ -50,6 +71,10 @@ class PauseRequest(BaseModel):
 
 class SessionRef(BaseModel):
     session_id: str | None = None
+
+
+class RenameSessionRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
 
 
 class SourceRequest(BaseModel):
@@ -97,6 +122,76 @@ def _event_count(session: Session) -> int:
                 return sum(1 for line in handle if line.strip())
         except FileNotFoundError:
             return 0
+
+
+def _display_status(session: Session, state: RecorderState) -> str:
+    """Reconcile a stored manifest with the authoritative recorder state."""
+
+    if session.session_id == state.active_session:
+        return STATUS_ACTIVE
+    if session.manifest.status == STATUS_STOPPED:
+        return STATUS_STOPPED
+    if session.session_id in state.paused or session.manifest.status in {
+        STATUS_ACTIVE,
+        STATUS_PAUSED,
+    }:
+        # A crashed or competing daemon can leave an active manifest behind.
+        return STATUS_PAUSED
+    return session.manifest.status
+
+
+def _session_summary(session: Session, state: RecorderState) -> dict[str, Any]:
+    """Build the bounded metadata used by session navigation and selection."""
+
+    status = _display_status(session, state)
+    if status == session.manifest.status:
+        active_seconds, paused_seconds = session.manifest.duration_snapshot()
+    else:
+        active_seconds = session.manifest.active_seconds
+        paused_seconds = session.manifest.paused_seconds
+    return {
+        "id": session.session_id,
+        "title": session.manifest.title,
+        "analyst": session.manifest.analyst,
+        "workflow_family": session.manifest.workflow_family,
+        "status": status,
+        "created_at": session.manifest.created_at,
+        "active_seconds": round(active_seconds, 1),
+        "paused_seconds": round(paused_seconds, 1),
+        "events": _event_count(session),
+        "is_default": session.session_id == state.active_session,
+        "sealed": session.writer.sealed,
+    }
+
+
+def _selected_status(recorder: Recorder, session: Session) -> dict[str, Any]:
+    """Return UI state for one stored session without changing its lifecycle."""
+
+    state = RecorderState.load()
+    summary = _session_summary(session, state)
+    live = recorder.status()
+    is_active = summary["status"] == STATUS_ACTIVE
+    live["session"] = {
+        **summary,
+        "root": str(session.root),
+        "watch_roots": list(session.manifest.watch_roots),
+        "shell_backend": session.manifest.shell_backend,
+    }
+    live["sources"] = dict(session.manifest.sources)
+    live["shell_output"] = False
+    live["shell_output_requested"] = session.manifest.shell_output
+    live["shell_output_available"] = False
+    live["shell_output_reason"] = shell_output_unavailable_reason(
+        session.manifest.shell_backend
+    )
+    live["shell_backend"] = session.manifest.shell_backend
+    if not is_active:
+        # Collector state belongs to the live session, not the historical one
+        # selected for inspection.
+        live["collectors"] = {}
+        live["running"] = dict.fromkeys(SOURCES, False)
+        live.pop("pause_reason", None)
+    return live
 
 
 def _read_event_page(session: Session, *, offset: int, limit: int) -> list[Event]:
@@ -187,6 +282,10 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     async def _not_found(_request: Request, exc: SessionNotFound) -> JSONResponse:
         return JSONResponse(status_code=404, content={"detail": str(exc)})
 
+    @app.exception_handler(SessionSealed)
+    async def _sealed(_request: Request, exc: SessionSealed) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
     @app.exception_handler(ValueError)
     async def _bad_value(_request: Request, exc: ValueError) -> JSONResponse:
         return JSONResponse(status_code=400, content={"detail": str(exc)})
@@ -199,8 +298,10 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
         return {"ok": True, "version": __version__, "sources": list(SOURCES)}
 
     @app.get("/status", dependencies=guard)
-    def status() -> dict[str, Any]:
-        return recorder.status()
+    def status(session_id: str | None = None) -> dict[str, Any]:
+        if session_id is None:
+            return recorder.status()
+        return _selected_status(recorder, recorder.store.resolve(session_id))
 
     @app.get("/doctor", dependencies=guard)
     def doctor() -> dict[str, Any]:
@@ -208,18 +309,13 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
     @app.get("/sessions", dependencies=guard)
     def sessions() -> dict[str, Any]:
+        state = RecorderState.load()
+        trashed = set(state.trashed_sessions)
         return {
             "sessions": [
-                {
-                    "id": session.session_id,
-                    "title": session.manifest.title,
-                    "analyst": session.manifest.analyst,
-                    "status": session.manifest.status,
-                    "created_at": session.manifest.created_at,
-                    "active_seconds": round(session.manifest.active_seconds, 1),
-                    "paused_seconds": round(session.manifest.paused_seconds, 1),
-                }
+                _session_summary(session, state)
                 for session in recorder.store.list_sessions()
+                if session.session_id not in trashed
             ]
         }
 
@@ -239,6 +335,43 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
             "offset": page_offset,
             "events": [_event_response(event) for event in window],
         }
+
+    @app.patch("/sessions/{session_id}", dependencies=guard)
+    def rename_session(
+        session_id: str, payload: RenameSessionRequest
+    ) -> dict[str, str]:
+        return recorder.rename_session(session_id, payload.title)
+
+    @app.post("/sessions/{session_id}/trash", dependencies=guard)
+    def trash_session(session_id: str) -> dict[str, Any]:
+        """Hide one archived session without changing its recorded files."""
+
+        session = recorder.store.resolve(session_id)
+        if _display_status(session, RecorderState.load()) != STATUS_STOPPED:
+            raise HTTPException(
+                status_code=409,
+                detail="Only archived sessions can be removed from the dashboard.",
+            )
+        with StateTransaction() as state:
+            if session_id not in state.trashed_sessions:
+                state.trashed_sessions.append(session_id)
+        return {"id": session_id, "trashed": True}
+
+    @app.post("/sessions/{session_id}/open-folder", dependencies=guard)
+    def open_session_folder(session_id: str, request: Request) -> dict[str, Any]:
+        """Open a trusted session directory on the daemon's desktop host."""
+
+        if not _request_is_local(request):
+            raise HTTPException(
+                status_code=409,
+                detail="Session folders can only be opened from the daemon host.",
+            )
+        session = recorder.store.resolve(session_id)
+        try:
+            open_directory(session.root)
+        except DirectoryOpenError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        return {"id": session_id, "opened": True}
 
     # ------------------------------------------------------------- lifecycle
     @app.post("/sessions/start", dependencies=guard)

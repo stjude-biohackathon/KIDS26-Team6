@@ -90,6 +90,16 @@ def test_unknown_shell_backend_defaults_to_hook_spool() -> None:
     assert state.shell_backend == SHELL_BACKEND_SPOOL
 
 
+def test_trashed_sessions_round_trip_through_state(wfrec_home):
+    state = RecorderState.load()
+    state.trashed_sessions = ["archived-session"]
+    state.save()
+
+    restored = RecorderState.load()
+
+    assert restored.trashed_sessions == ["archived-session"]
+
+
 def test_sentinel_is_a_single_tab_separated_line(wfrec_home):
     """The hooks parse this with shell builtins, so the shape is a contract."""
 

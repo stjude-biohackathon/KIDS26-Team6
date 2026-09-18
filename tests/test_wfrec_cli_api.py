@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,8 +11,10 @@ from fastapi.testclient import TestClient
 from wfrec import paths
 from wfrec.api import create_app
 from wfrec.cli import main
+from wfrec.desktop import DirectoryOpenError
 from wfrec.recorder import Recorder
 from wfrec.session import Manifest, Session, SessionStore
+from wfrec.state import RecorderState
 
 
 @pytest.fixture()
@@ -227,6 +230,205 @@ def test_events_endpoint_rejects_unbounded_pages(client):
     response = client.get(f"/sessions/{session_id}/events?limit=2001")
 
     assert response.status_code == 422
+
+
+def test_rename_active_session_updates_live_and_persisted_titles(client):
+    started = client.post("/sessions/start", json={"title": "Original"}).json()
+    session_id = started["session"]["id"]
+
+    response = client.patch(
+        f"/sessions/{session_id}", json={"title": "  Updated title  "}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"id": session_id, "title": "Updated title"}
+    assert client.get("/status").json()["session"]["title"] == "Updated title"
+    assert Session.load(session_id).manifest.title == "Updated title"
+
+
+def test_rename_archived_unsealed_session(client):
+    started = client.post("/sessions/start", json={"title": "Original"}).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+
+    response = client.patch(
+        f"/sessions/{session_id}", json={"title": "Archived title"}
+    )
+    sessions = client.get("/sessions").json()["sessions"]
+
+    assert response.status_code == 200
+    assert next(item for item in sessions if item["id"] == session_id)["title"] == (
+        "Archived title"
+    )
+
+
+def test_rename_session_rejects_blank_title(client):
+    started = client.post("/sessions/start", json={"title": "Original"}).json()
+    session_id = started["session"]["id"]
+
+    response = client.patch(f"/sessions/{session_id}", json={"title": "   "})
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Session title cannot be empty."
+
+    too_long = client.patch(
+        f"/sessions/{session_id}", json={"title": "x" * 201}
+    )
+    assert too_long.status_code == 422
+
+
+def test_rename_session_rejects_sealed_session(client):
+    started = client.post("/sessions/start", json={"title": "Original"}).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+    client.post("/sessions/seal", json={"session_id": session_id})
+
+    response = client.patch(
+        f"/sessions/{session_id}", json={"title": "Changed after sealing"}
+    )
+
+    assert response.status_code == 409
+    assert "sealed and cannot be renamed" in response.json()["detail"]
+    assert Session.load(session_id).manifest.title == "Original"
+
+
+def test_trash_archived_session_hides_only_the_dashboard_entry(client):
+    started = client.post("/sessions/start", json={"title": "Archived"}).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+    session_root = Session.load(session_id).root
+    events_before = (session_root / "events.jsonl").read_bytes()
+
+    response = client.post(f"/sessions/{session_id}/trash")
+    visible_ids = {
+        session["id"] for session in client.get("/sessions").json()["sessions"]
+    }
+
+    assert response.status_code == 200
+    assert response.json() == {"id": session_id, "trashed": True}
+    assert session_id not in visible_ids
+    assert session_id in RecorderState.load().trashed_sessions
+    assert session_id in SessionStore().list_ids()
+    assert session_root.is_dir()
+    assert (session_root / "events.jsonl").read_bytes() == events_before
+    assert client.get(f"/status?session_id={session_id}").status_code == 200
+
+
+def test_open_folder_resolves_the_session_path_server_side(client, monkeypatch):
+    started = client.post("/sessions/start", json={"title": "Folder test"}).json()
+    session_id = started["session"]["id"]
+    opened: list[Path] = []
+
+    def is_local(_request: object) -> bool:
+        return True
+
+    monkeypatch.setattr("wfrec.api._request_is_local", is_local)
+    monkeypatch.setattr("wfrec.api.open_directory", opened.append)
+
+    response = client.post(f"/sessions/{session_id}/open-folder")
+
+    assert response.status_code == 200
+    assert response.json() == {"id": session_id, "opened": True}
+    assert opened == [Session.load(session_id).root]
+
+
+def test_open_folder_reports_an_unavailable_desktop(client, monkeypatch):
+    started = client.post("/sessions/start", json={"title": "Headless"}).json()
+    session_id = started["session"]["id"]
+
+    def unavailable(_path: Path) -> None:
+        raise DirectoryOpenError("No graphical desktop is available.")
+
+    def is_local(_request: object) -> bool:
+        return True
+
+    monkeypatch.setattr("wfrec.api._request_is_local", is_local)
+    monkeypatch.setattr("wfrec.api.open_directory", unavailable)
+
+    response = client.post(f"/sessions/{session_id}/open-folder")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "No graphical desktop is available."
+
+
+def test_open_folder_rejects_a_remote_request(client):
+    started = client.post("/sessions/start", json={"title": "Remote"}).json()
+    session_id = started["session"]["id"]
+
+    response = client.post(f"/sessions/{session_id}/open-folder")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Session folders can only be opened from the daemon host."
+    )
+
+
+@pytest.mark.parametrize("transition", [None, "pause"])
+def test_trash_requires_selected_session_to_be_archived(client, transition):
+    started = client.post("/sessions/start", json={"title": "In progress"}).json()
+    session_id = started["session"]["id"]
+    if transition == "pause":
+        client.post("/sessions/pause", json={"session_id": session_id})
+
+    response = client.post(f"/sessions/{session_id}/trash")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Only archived sessions can be removed from the dashboard."
+    )
+    assert session_id not in RecorderState.load().trashed_sessions
+
+
+def test_trash_sealed_archived_session_does_not_change_the_seal(client):
+    started = client.post("/sessions/start", json={"title": "Sealed"}).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+    client.post("/sessions/seal", json={"session_id": session_id})
+    seal_path = Session.load(session_id).root / "seal.json"
+    seal_before = seal_path.read_bytes()
+
+    response = client.post(f"/sessions/{session_id}/trash")
+
+    assert response.status_code == 200
+    assert seal_path.read_bytes() == seal_before
+
+
+def test_sessions_support_read_only_historical_selection(client):
+    first = client.post(
+        "/sessions/start",
+        json={
+            "title": "Variant review",
+            "analyst": "analyst-a",
+            "workflow_family": "variant-qc",
+        },
+    ).json()
+    first_id = first["session"]["id"]
+    client.post("/markers", json={"label": "reviewed"})
+    client.post("/sessions/pause", json={"session_id": first_id})
+    second = client.post(
+        "/sessions/start",
+        json={"title": "RNA-seq", "analyst": "analyst-b"},
+    ).json()
+    second_id = second["session"]["id"]
+
+    summaries = {
+        session["id"]: session
+        for session in client.get("/sessions").json()["sessions"]
+    }
+    selected = client.get(f"/status?session_id={first_id}").json()
+
+    assert summaries[first_id]["status"] == "paused"
+    assert summaries[first_id]["workflow_family"] == "variant-qc"
+    assert summaries[first_id]["events"] >= 4
+    assert summaries[first_id]["is_default"] is False
+    assert summaries[first_id]["sealed"] is False
+    assert summaries[second_id]["status"] == "active"
+    assert summaries[second_id]["is_default"] is True
+    assert selected["active_session"] == second_id
+    assert selected["session"]["id"] == first_id
+    assert selected["session"]["status"] == "paused"
+    assert selected["session"]["root"].endswith(first_id)
+    assert selected["collectors"] == {}
 
 
 def test_doctor_endpoint_reports_sources(client):
