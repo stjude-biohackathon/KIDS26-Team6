@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,8 +11,10 @@ from fastapi.testclient import TestClient
 from wfrec import paths
 from wfrec.api import create_app
 from wfrec.cli import main
-from wfrec.recorder import NoActiveSession, Recorder
+from wfrec.desktop import DirectoryOpenError
+from wfrec.recorder import Recorder
 from wfrec.session import Manifest, Session, SessionStore
+from wfrec.state import RecorderState
 
 
 @pytest.fixture()
@@ -74,6 +77,10 @@ def test_endpoints_require_the_token(wfrec_home):
 
     recorder = Recorder(supervise=False)
     with TestClient(create_app(recorder, token="test-token")) as anon:
+        assert anon.get("/styles.css").status_code == 200
+        assert anon.get("/dashboard.css").status_code == 200
+        assert anon.get("/app.js").status_code == 200
+        assert anon.get("/dashboard.js").status_code == 200
         assert anon.get("/status").status_code == 401
         assert anon.get("/status", headers={"Authorization": "Bearer wrong"}).status_code == 401
         assert anon.get("/status", headers={"Authorization": "Bearer test-token"}).status_code == 200
@@ -151,6 +158,281 @@ def test_events_endpoint_paginates(client):
     page = client.get(f"/sessions/{session_id}/events?limit=3&offset=0").json()
     assert len(page["events"]) == 3
     assert page["total"] >= 12
+    assert page["offset"] == 0
+
+    tail = client.get(
+        f"/sessions/{session_id}/events?limit=3&offset=0&tail=true"
+    ).json()
+    assert tail["offset"] == tail["total"] - 3
+    assert [event["payload"]["label"] for event in tail["events"]] == [
+        "m7",
+        "m8",
+        "m9",
+    ]
+
+
+def test_events_endpoint_adds_sanitized_markdown_presentation(client):
+    from wfrec.events import Event
+
+    started = client.post("/sessions/start", json={"title": "A"}).json()
+    session_id = started["session"]["id"]
+    note_text = "**Result** [unsafe](javascript:alert(1))"
+    client.post("/notes", json={"text": note_text, "label": "finding"})
+    Session.load(session_id).writer.append(
+        Event(
+            source="agents",
+            type="agent.message",
+            payload={"tool": "codex", "role": "assistant", "text": "- item"},
+        )
+    )
+
+    events = client.get(f"/sessions/{session_id}/events").json()["events"]
+    note = next(event for event in events if event["type"] == "context.note")
+    agent = next(event for event in events if event["type"] == "agent.message")
+
+    assert note["payload"]["text"] == note_text
+    assert note["payload"]["label"] == "finding"
+    assert note["presentation"]["detail_format"] == "markdown"
+    assert "<strong>Result</strong>" in note["presentation"]["detail_html"]
+    assert 'href="javascript:' not in note["presentation"]["detail_html"]
+    assert "<li>item</li>" in agent["presentation"]["detail_html"]
+
+
+def test_events_endpoint_makes_redacted_note_link_non_clickable(client):
+    started = client.post("/sessions/start", json={"title": "A"}).json()
+    session_id = started["session"]["id"]
+    client.post(
+        "/notes",
+        json={"text": "[Docs](https://example.org/private?subject=1)"},
+    )
+
+    events = client.get(f"/sessions/{session_id}/events").json()["events"]
+    note = next(event for event in events if event["type"] == "context.note")
+    presentation = note["presentation"]["detail_html"]
+
+    assert note["payload"]["text"] == "[Docs]([REDACTED_URL])"
+    assert "Docs [link redacted]" in presentation
+    assert "<a " not in presentation
+    assert "%5BREDACTED" not in presentation
+
+
+def test_events_endpoint_leaves_non_prose_events_plain(client):
+    started = client.post("/sessions/start", json={"title": "A"}).json()
+    session_id = started["session"]["id"]
+    client.post("/markers", json={"label": "**plain marker**"})
+
+    events = client.get(f"/sessions/{session_id}/events").json()["events"]
+    marker = next(event for event in events if event["type"] == "marker.user")
+
+    assert "presentation" not in marker
+
+
+def test_events_endpoint_rejects_unbounded_pages(client):
+    started = client.post("/sessions/start", json={"title": "A"}).json()
+    session_id = started["session"]["id"]
+
+    response = client.get(f"/sessions/{session_id}/events?limit=2001")
+
+    assert response.status_code == 422
+
+
+def test_rename_active_session_updates_live_and_persisted_titles(client):
+    started = client.post("/sessions/start", json={"title": "Original"}).json()
+    session_id = started["session"]["id"]
+
+    response = client.patch(
+        f"/sessions/{session_id}", json={"title": "  Updated title  "}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"id": session_id, "title": "Updated title"}
+    assert client.get("/status").json()["session"]["title"] == "Updated title"
+    assert Session.load(session_id).manifest.title == "Updated title"
+
+
+def test_rename_archived_unsealed_session(client):
+    started = client.post("/sessions/start", json={"title": "Original"}).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+
+    response = client.patch(
+        f"/sessions/{session_id}", json={"title": "Archived title"}
+    )
+    sessions = client.get("/sessions").json()["sessions"]
+
+    assert response.status_code == 200
+    assert next(item for item in sessions if item["id"] == session_id)["title"] == (
+        "Archived title"
+    )
+
+
+def test_rename_session_rejects_blank_title(client):
+    started = client.post("/sessions/start", json={"title": "Original"}).json()
+    session_id = started["session"]["id"]
+
+    response = client.patch(f"/sessions/{session_id}", json={"title": "   "})
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Session title cannot be empty."
+
+    too_long = client.patch(
+        f"/sessions/{session_id}", json={"title": "x" * 201}
+    )
+    assert too_long.status_code == 422
+
+
+def test_rename_session_rejects_sealed_session(client):
+    started = client.post("/sessions/start", json={"title": "Original"}).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+    client.post("/sessions/seal", json={"session_id": session_id})
+
+    response = client.patch(
+        f"/sessions/{session_id}", json={"title": "Changed after sealing"}
+    )
+
+    assert response.status_code == 409
+    assert "sealed and cannot be renamed" in response.json()["detail"]
+    assert Session.load(session_id).manifest.title == "Original"
+
+
+def test_trash_archived_session_hides_only_the_dashboard_entry(client):
+    started = client.post("/sessions/start", json={"title": "Archived"}).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+    session_root = Session.load(session_id).root
+    events_before = (session_root / "events.jsonl").read_bytes()
+
+    response = client.post(f"/sessions/{session_id}/trash")
+    visible_ids = {
+        session["id"] for session in client.get("/sessions").json()["sessions"]
+    }
+
+    assert response.status_code == 200
+    assert response.json() == {"id": session_id, "trashed": True}
+    assert session_id not in visible_ids
+    assert session_id in RecorderState.load().trashed_sessions
+    assert session_id in SessionStore().list_ids()
+    assert session_root.is_dir()
+    assert (session_root / "events.jsonl").read_bytes() == events_before
+    assert client.get(f"/status?session_id={session_id}").status_code == 200
+
+
+def test_open_folder_resolves_the_session_path_server_side(client, monkeypatch):
+    started = client.post("/sessions/start", json={"title": "Folder test"}).json()
+    session_id = started["session"]["id"]
+    opened: list[Path] = []
+
+    def is_local(_request: object) -> bool:
+        return True
+
+    monkeypatch.setattr("wfrec.api._request_is_local", is_local)
+    monkeypatch.setattr("wfrec.api.open_directory", opened.append)
+
+    response = client.post(f"/sessions/{session_id}/open-folder")
+
+    assert response.status_code == 200
+    assert response.json() == {"id": session_id, "opened": True}
+    assert opened == [Session.load(session_id).root]
+
+
+def test_open_folder_reports_an_unavailable_desktop(client, monkeypatch):
+    started = client.post("/sessions/start", json={"title": "Headless"}).json()
+    session_id = started["session"]["id"]
+
+    def unavailable(_path: Path) -> None:
+        raise DirectoryOpenError("No graphical desktop is available.")
+
+    def is_local(_request: object) -> bool:
+        return True
+
+    monkeypatch.setattr("wfrec.api._request_is_local", is_local)
+    monkeypatch.setattr("wfrec.api.open_directory", unavailable)
+
+    response = client.post(f"/sessions/{session_id}/open-folder")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "No graphical desktop is available."
+
+
+def test_open_folder_rejects_a_remote_request(client):
+    started = client.post("/sessions/start", json={"title": "Remote"}).json()
+    session_id = started["session"]["id"]
+
+    response = client.post(f"/sessions/{session_id}/open-folder")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Session folders can only be opened from the daemon host."
+    )
+
+
+@pytest.mark.parametrize("transition", [None, "pause"])
+def test_trash_requires_selected_session_to_be_archived(client, transition):
+    started = client.post("/sessions/start", json={"title": "In progress"}).json()
+    session_id = started["session"]["id"]
+    if transition == "pause":
+        client.post("/sessions/pause", json={"session_id": session_id})
+
+    response = client.post(f"/sessions/{session_id}/trash")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Only archived sessions can be removed from the dashboard."
+    )
+    assert session_id not in RecorderState.load().trashed_sessions
+
+
+def test_trash_sealed_archived_session_does_not_change_the_seal(client):
+    started = client.post("/sessions/start", json={"title": "Sealed"}).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+    client.post("/sessions/seal", json={"session_id": session_id})
+    seal_path = Session.load(session_id).root / "seal.json"
+    seal_before = seal_path.read_bytes()
+
+    response = client.post(f"/sessions/{session_id}/trash")
+
+    assert response.status_code == 200
+    assert seal_path.read_bytes() == seal_before
+
+
+def test_sessions_support_read_only_historical_selection(client):
+    first = client.post(
+        "/sessions/start",
+        json={
+            "title": "Variant review",
+            "analyst": "analyst-a",
+            "workflow_family": "variant-qc",
+        },
+    ).json()
+    first_id = first["session"]["id"]
+    client.post("/markers", json={"label": "reviewed"})
+    client.post("/sessions/pause", json={"session_id": first_id})
+    second = client.post(
+        "/sessions/start",
+        json={"title": "RNA-seq", "analyst": "analyst-b"},
+    ).json()
+    second_id = second["session"]["id"]
+
+    summaries = {
+        session["id"]: session
+        for session in client.get("/sessions").json()["sessions"]
+    }
+    selected = client.get(f"/status?session_id={first_id}").json()
+
+    assert summaries[first_id]["status"] == "paused"
+    assert summaries[first_id]["workflow_family"] == "variant-qc"
+    assert summaries[first_id]["events"] >= 4
+    assert summaries[first_id]["is_default"] is False
+    assert summaries[first_id]["sealed"] is False
+    assert summaries[second_id]["status"] == "active"
+    assert summaries[second_id]["is_default"] is True
+    assert selected["active_session"] == second_id
+    assert selected["session"]["id"] == first_id
+    assert selected["session"]["status"] == "paused"
+    assert selected["session"]["root"].endswith(first_id)
+    assert selected["collectors"] == {}
 
 
 def test_doctor_endpoint_reports_sources(client):
@@ -159,56 +441,246 @@ def test_doctor_endpoint_reports_sources(client):
     assert "wfrec_version" in report
 
 
-def test_ui_injects_the_token_not_a_placeholder(client):
+def test_ui_injects_token_and_loads_packaged_assets(client):
     body = client.get("/").text
+
     assert "@WFREC_TOKEN@" not in body
     assert "test-token" in body
-    assert "Codex, Claude Code" in body
-    assert "providers:" in body
+    assert '<meta name="wfrec-token" content="test-token">' in body
+    assert '<link rel="stylesheet" href="/styles.css">' in body
+    assert '<link rel="stylesheet" href="/dashboard.css">' in body
+    assert '<script src="/dashboard.js" defer></script>' in body
+    assert '<script src="/app.js" defer></script>' in body
+    assert "<style>" not in body
+    assert "<script>" not in body
     assert "Recent Events Log" in body
-    assert "Latest ${events.length} of ${total} events" in body
-    assert "'agent.message':'Agent message'" in body
-    assert "Start or resume a session to see activity." in body
-    assert "[...events].reverse()" in body
-    assert "event-source" not in body
-    assert "event-more" in body
-    assert "aria-expanded" in body
-    assert "EXPANDED_EVENTS" in body
-    assert "STATE.default_analyst" in body
-    assert "ANALYST_INITIALIZED" in body
-    assert "button.danger:not(:disabled)" in body
-    assert "startButton.disabled = Boolean(s)" in body
-    assert "'Session Active'" in body
-    assert "'Session Paused'" in body
+    assert "<title>AutoCAB Activity Dashboard</title>" in body
+    assert "<h1>AutoCAB</h1>" in body
+    assert "Commands appear after they finish." in body
     assert 'id="session-title"' in body
-    assert "sessionTitle || 'Untitled session'" in body
-    assert "getElementById('sid')" not in body
+    assert 'id="stats" aria-label="Session details"' in body
+    assert 'id="rename-session"' in body
+    assert 'aria-label="Rename session"' in body
+    assert 'viewBox="0 0 24 24"' in body
+    assert 'id="session-title-form"' in body
+    assert 'maxlength="200"' in body
     assert 'id="pause-dialog"' in body
     assert '<label for="pause-reason">Pause reason (optional)</label>' in body
     assert "Optionally record why the session is being paused." not in body
-    assert "dialog.showModal()" in body
-    assert "function closePauseDialog()" in body
-    assert "prompt(" not in body
-    assert "STATE_RECEIVED_AT = performance.now()" in body
-    assert "setInterval(renderSessionStats, 1000)" in body
-    assert "appendInlineCode(sourceDescription, why)" in body
-    assert "sourceName.textContent = displayName" in body
-    assert "details.push('reason: '+col.reason)" not in body
+    assert 'id="export-dialog"' in body
+    assert "Redact PHI and export?" in body
+    assert "Add notes, errors, or decisions." in body
+    assert "AutoCAB masks detected personal information before saving." in body
+    assert "AutoCAB will remove detected PHI from a copy." in body
+    assert "Your session will not change." in body
+    assert "Redaction can miss PHI." in body
+    assert 'class="dialog-warning" role="note"' in body
+    assert ">Select Folder</button>" in body
     assert '<label for="title">Session title</label>' in body
     assert '<label for="analyst">Analyst name or ID</label>' in body
-    assert '<textarea id="note" aria-label="Note"' in body
-    assert '<label for="note">Note</label>' not in body
+    assert '<label for="note">Session note</label>' in body
+    assert '<textarea id="note"' in body
     assert 'class="row note-actions"' in body
-    assert "btn.setAttribute('role', 'switch')" in body
-    assert "btn.setAttribute('aria-checked', String(on))" in body
     assert 'id="feedback" role="status"' in body
     assert 'id="log" aria-live=' not in body
-    assert "Recorder disconnected. Retrying" in body
-    assert "paths.join('\\n')" in body
+    assert 'id="log" tabindex="0" aria-labelledby="recent-events-heading"' in body
     assert "Load older events" in body
-    assert "EVENT_LIMIT += EVENT_PAGE_SIZE" in body
-    assert "restoreScroll(host, anchor, previousTop)" in body
-    assert "row.dataset.eventKey = eventKey(event)" in body
+    assert 'id="session-list" class="session-list"' in body
+    assert 'id="session-mobile" class="session-mobile"' in body
+    assert 'id="activity-dashboard-heading"' in body
+    assert 'id="activity-dashboard" class="activity-dashboard"' in body
+    assert 'id="dash-timeline-summary"' in body
+    assert 'class="activity-timeline-chart" id="dash-timeline"' in body
+    assert "Top windows / apps by events" in body
+    assert 'id="trash-session"' in body
+    assert 'aria-label="Remove archived session from dashboard"' in body
+    assert 'aria-label="Copy session path"' in body
+    assert 'aria-label="Open session folder"' in body
+    assert 'class="session-folder-control"' in body
+    assert 'id="live-updates"' in body
+    assert 'aria-pressed="true"' in body
+    assert 'id="theme-toggle"' in body
+    assert 'id="theme-icon-moon"' in body
+    assert 'id="theme-icon-sun"' in body
+    assert "All files" in body
+    assert "Events JSON" in body
+    assert "Workflow trace JSON" in body
+    assert "Terminal log" in body
+    assert "Screen events JSON" in body
+    assert "Export Session" in body
+    assert 'aria-label="Export session"' in body
+    assert "Export Events" not in body
+    assert "AutoCAB inputs" not in body
+    assert 'class="skip-link" href="#main-content"' in body
+    assert '<main id="main-content" tabindex="-1">' in body
+    assert "style=" not in body
+
+
+def test_ui_serves_packaged_stylesheet(client):
+    response = client.get("/styles.css")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/css")
+    assert response.headers["cache-control"] == "no-cache"
+    assert ":root {" in response.text
+    assert "--control-border: #687287" in response.text
+    assert "--danger: #ff7180" in response.text
+    assert ':root[data-theme="light"]' in response.text
+    assert "button.danger-quiet:not(:disabled)" in response.text
+    assert ".app-header-actions > button {" in response.text
+    assert ".session-folder-control {" in response.text
+    assert "grid-template-columns: auto minmax(0, 640px)" in response.text
+    assert "background: color-mix(in srgb, var(--dim) 9%, transparent)" in response.text
+    assert ".session-title-form {" in response.text
+    assert ".session-stat--phi-pending {" in response.text
+    assert ".session-stat--phi-applied {" in response.text
+    assert ".event-detail-content.formatted.collapsed {" in response.text
+    assert ".event-markdown {" in response.text
+    assert "@media (max-width: 720px)" in response.text
+    assert "@media (prefers-reduced-motion: reduce)" in response.text
+    assert "@media (forced-colors: active)" in response.text
+    assert ".dialog-warning" in response.text
+
+
+def test_ui_serves_packaged_javascript_without_credentials(client):
+    response = client.get("/app.js")
+    source = response.text
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/javascript")
+    assert response.headers["cache-control"] == "no-cache"
+    assert "test-token" not in source
+    assert "@WFREC_TOKEN@" not in source
+    assert "meta[name=\"wfrec-token\"]" in source
+    assert "Codex, Claude Code" in source
+    assert "providers:" in source
+    assert "Latest ${events.length} of ${total} events" in source
+    assert "'agent.message':'Agent message'" in source
+    assert "Start or resume a session to see activity." in source
+    assert "[...events].reverse()" in source
+    assert "event-source" not in source
+    assert "event-more" in source
+    assert "aria-expanded" in source
+    assert "aria-controls" in source
+    assert "EXPANDED_EVENTS" in source
+    assert "markdown.innerHTML = presentation.detailHtml" in source
+    assert "event.presentation?.detail_format === 'markdown'" in source
+    assert "content.classList.toggle('collapsed', !expanded)" in source
+    assert "expanded && presentation.detailHtml" not in source
+    assert "markdown.innerHTML = p.text" not in source
+    assert "STATE.default_analyst" in source
+    assert "ANALYST_INITIALIZED" in source
+    assert "active:'Recording'" in source
+    assert "paused:'Paused'" in source
+    assert "function showRenameSessionForm()" in source
+    assert "function cancelRenameSession()" in source
+    assert "function renameSession(event)" in source
+    assert "function trashSelectedSession()" in source
+    assert "session.status !== 'stopped'" in source
+    assert "SELECTED_SESSION = ''" in source
+    assert "SESSION_SIGNATURE = ''" in source
+    assert "function clearFeedback()" in source
+    assert "if(sessionId !== SELECTED_SESSION) clearFeedback()" in source
+    assert "'PATCH'" in source
+    assert "Sealed sessions cannot be renamed." in source
+    assert "sessionTitle || 'Untitled session'" in source
+    assert "getElementById('sid')" not in source
+    assert "dialog.showModal()" in source
+    assert "function closePauseDialog()" in source
+    assert "prompt(" not in source
+    assert "STATE_RECEIVED_AT = performance.now()" in source
+    assert "if(LIVE_UPDATES) renderSessionStats()" in source
+    assert "appendInlineCode(sourceDescription, why)" in source
+    assert "sourceName.textContent = displayName" in source
+    assert "details.push('reason: '+col.reason)" not in source
+    assert "btn.setAttribute('role', 'switch')" in source
+    assert "btn.setAttribute('aria-checked', String(on))" in source
+    assert "Recorder disconnected. Retrying" in source
+    assert "function exportSession(formats, label)" in source
+    assert "function confirmExport(event)" in source
+    assert "await writeSessionExport(request.formats, request.label)" in source
+    assert "choose_destination:true" in source
+    assert "if(r.cancelled)" in source
+    assert "const destinations = paths.join('\\n')" in source
+    assert "Exported ${label}: ${destinations}" in source
+    assert "Exported ${paths.length} session files:\\n${destinations}" in source
+    assert "to:\\n${r.destination}" not in source
+    assert "EVENT_LIMIT += EVENT_PAGE_SIZE" in source
+    assert "const EVENT_PAGE_SIZE = 25" in source
+    assert "tail=true" in source
+    assert "EVENT_REFRESH_IN_PROGRESS" in source
+    assert "EVENT_REFRESH_PENDING" in source
+    assert "if(LIVE_UPDATES) refreshLog(); }, 1000" in source
+    assert "restoreScroll(host, anchor, previousTop)" in source
+    assert "row.dataset.eventKey = eventKey(event)" in source
+    assert "function renderSessionNavigation()" in source
+    assert "function selectSession(sessionId)" in source
+    assert "function openSessionFolder()" in source
+    assert "function toggleLiveUpdates()" in source
+    assert "function restoreFocus(element)" in source
+    assert "element.focus({preventScroll:true})" in source
+    assert source.count("restoreFocus(replacement)") == 3
+    assert "restoreFocus(menu)" in source
+    assert "restoreFocus(host)" in source
+    assert "input.focus()" in source
+    assert "reason.focus()" in source
+    assert "function toggleTheme()" in source
+    assert "localStorage.setItem(THEME_STORAGE_KEY, next)" in source
+    assert "THEME_MEDIA.addEventListener('change'" in source
+    assert "function renderSources(active)" in source
+    assert "dataset.source" in source
+    assert "dataset.eventControl" in source
+    assert "window.WfrecActivityDashboard.create" in source
+    assert "ACTIVITY_DASHBOARD.render(events" in source
+    assert "function dashboardOverview(events)" not in source
+    assert "function dashboardTimeline(events)" not in source
+    assert "DASHBOARD_PAGE_SIZE = 2000" in source
+    assert "const DASHBOARD_CACHE = new Map()" in source
+    assert "function dashboardEvents(sessionId, expectedTotal)" in source
+    assert "function sessionStat(value, modifier='')" in source
+    assert "dateTimeLabel:eventDateTime" in source
+    assert "limit=100000" not in source
+    assert "session.sealed ? 'PHI redaction applied'" in source
+    assert "'PHI redaction pending'" in source
+    assert "Pause or archive the session before exporting events." in source
+    assert "Preparing a pattern-checked export." in source
+
+
+def test_ui_serves_component_scoped_dashboard_styles(client):
+    response = client.get("/dashboard.css")
+    source = response.text
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/css")
+    assert response.headers["cache-control"] == "no-cache"
+    assert ".activity-overview-chart__segment" in source
+    assert ".activity-overview-chart__tooltip" in source
+    assert ".activity-timeline-chart__bucket" in source
+    assert ".activity-timeline-chart__segment" in source
+    assert ".activity-timeline-chart__tooltip" in source
+    assert ".dash-pie" not in source
+    assert ".dash-timeline .bucket" not in source
+
+
+def test_ui_serves_interactive_dashboard_javascript_without_credentials(client):
+    response = client.get("/dashboard.js")
+    source = response.text
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/javascript")
+    assert response.headers["cache-control"] == "no-cache"
+    assert "test-token" not in source
+    assert "@WFREC_TOKEN@" not in source
+    assert "window.WfrecActivityDashboard" in source
+    assert "Object.freeze({create, timelineModel})" in source
+    assert "TIMELINE_BUCKET_COUNT = 24" in source
+    assert "activity-overview-chart__segment" in source
+    assert "activity-timeline-chart__segment" in source
+    assert "pointerenter" in source
+    assert "ArrowLeft" in source
+    assert "ArrowRight" in source
+    assert "focus({preventScroll:true})" in source
+    assert "segment.style.flexGrow = count" in source
 
 
 def test_export_endpoint_writes_files(client):
@@ -230,7 +702,97 @@ def test_export_endpoint_writes_files(client):
 
     result = client.post("/export", json={"formats": ["autocab"]}).json()
     assert len(result["written"]) == 2
+    assert {Path(path).name for path in result["written"]} == {
+        "terminal.log",
+        "screen-events.json",
+    }
     assert result["seal"]["generation"] == 1
+
+
+def test_export_endpoint_defaults_to_all_files(client):
+    client.post("/sessions/start", json={"title": "A", "analyst": "a"})
+    status = client.get("/status").json()
+    session_id = status["session"]["id"]
+    client.post("/sessions/stop", json={})
+
+    result = client.post("/export", json={}).json()
+
+    assert {Path(path).name for path in result["written"]} == {
+        "events.json",
+        "workflow-trace.json",
+        "terminal.log",
+        "screen-events.json",
+    }
+    assert result["privacy"]["method"] == "protected-snapshot"
+    assert Session.load(session_id).writer.sealed is False
+
+
+def test_export_endpoint_allows_a_paused_session_to_resume(client):
+    started = client.post(
+        "/sessions/start",
+        json={"title": "Paused export", "analyst": "a"},
+    ).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/pause", json={"session_id": session_id})
+
+    result = client.post("/export", json={"session_id": session_id}).json()
+    resumed = client.post(
+        "/sessions/resume",
+        json={"session_id": session_id},
+    )
+
+    assert result["privacy"]["method"] == "protected-snapshot"
+    assert result["privacy"]["source_status"] == "paused"
+    assert resumed.status_code == 200
+    assert resumed.json()["session"]["status"] == "active"
+
+
+def test_paused_export_writes_to_the_chosen_folder(
+    client,
+    monkeypatch,
+    tmp_path: Path,
+):
+    started = client.post(
+        "/sessions/start",
+        json={"title": "Chosen export", "analyst": "a"},
+    ).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/pause", json={"session_id": session_id})
+    destination = tmp_path / "chosen-export"
+    destination.mkdir()
+    monkeypatch.setattr("wfrec.api._request_is_local", lambda _request: True)
+    monkeypatch.setattr("wfrec.api.choose_directory", lambda: destination)
+
+    result = client.post(
+        "/export",
+        json={"session_id": session_id, "choose_destination": True},
+    ).json()
+
+    assert result["destination"] == str(destination.resolve())
+    assert {path.name for path in destination.iterdir()} == {
+        f"{session_id}-events.json",
+        f"{session_id}-workflow-trace.json",
+        f"{session_id}-terminal.log",
+        f"{session_id}-screen-events.json",
+    }
+    assert all(Path(path).is_absolute() for path in result["written"])
+
+
+def test_export_endpoint_rejects_an_active_session(client):
+    started = client.post(
+        "/sessions/start",
+        json={"title": "Still recording", "analyst": "a"},
+    ).json()
+
+    response = client.post(
+        "/export",
+        json={"session_id": started["session"]["id"]},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Pause or archive the selected session before exporting events."
+    )
 
 
 def test_seal_endpoint_refuses_a_live_session(client):

@@ -64,9 +64,7 @@ def node_browse_urls(port: int, listen_host: str) -> NodeBrowseUrls:
 
     public_ip, private_ip = hostname_interface_ips()
     hostname = socket.gethostname()
-    if is_loopback_host(listen_host):
-        local = f"http://127.0.0.1:{port}"
-    elif listen_host == "0.0.0.0":
+    if is_loopback_host(listen_host) or listen_host == "0.0.0.0":
         local = f"http://127.0.0.1:{port}"
     else:
         local = f"http://{listen_host}:{port}"

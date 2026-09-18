@@ -148,7 +148,7 @@ def test_the_walker_scrubs_every_string_it_has_not_been_told_to_skip():
 
 
 def test_structural_keys_are_left_alone():
-    payload = {key: "SENTINEL" for key in sorted(SKIP_KEYS)}
+    payload = dict.fromkeys(sorted(SKIP_KEYS), "SENTINEL")
     out = transform_strings(payload, lambda _p, _t, _i: "SCRUBBED")
 
     assert out == payload
@@ -172,7 +172,7 @@ def test_workforce_keys_are_kept_by_default_and_scrubbed_on_request():
 
 def test_path_fields_are_flagged_for_component_wise_scrubbing():
     flags: dict[str, bool] = {}
-    payload = {key: "/a/b" for key in sorted(PATH_KEYS)} | {"text": "/a/b"}
+    payload = dict.fromkeys(sorted(PATH_KEYS), "/a/b") | {"text": "/a/b"}
     transform_strings(
         payload, lambda path, text, is_path: flags.__setitem__(path, is_path) or text
     )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import threading
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -131,10 +132,8 @@ class Collector:
         thread, self._thread = self._thread, None
         if thread is not None and thread.is_alive():
             thread.join(timeout=timeout)
-        try:
+        with contextlib.suppress(Exception):  # pragma: no cover - defensive
             self.teardown()
-        except Exception:  # pragma: no cover - defensive
-            pass
 
     @property
     def running(self) -> bool:
@@ -159,10 +158,8 @@ class Collector:
             self._stop.wait(self.interval)
         # A final pass so anything produced between the last tick and the stop
         # signal still lands on the timeline.
-        try:
+        with contextlib.suppress(Exception):  # pragma: no cover - defensive
             self._run_once()
-        except Exception:  # pragma: no cover - defensive
-            pass
 
     def _run_once(self) -> None:
         """One unit of collection work. Override in polled subclasses."""

@@ -80,7 +80,7 @@ class Manifest:
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
     sources: dict[str, bool] = field(
-        default_factory=lambda: {name: True for name in SOURCES}
+        default_factory=lambda: dict.fromkeys(SOURCES, True)
     )
     shell_output: bool = False
     shell_backend: str = SHELL_BACKEND_SPOOL
@@ -132,7 +132,7 @@ class Manifest:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "Manifest":
-        sources = {name: True for name in SOURCES}
+        sources = dict.fromkeys(SOURCES, True)
         for name, enabled in (payload.get("sources") or {}).items():
             if name in sources:
                 sources[name] = bool(enabled)

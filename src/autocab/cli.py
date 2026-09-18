@@ -65,7 +65,7 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "wfrec session folder used when --input-mode session. May also be a "
             "directory containing several session folders, or an exported "
-            "trace.json. List recorded sessions with `wfrec sessions`."
+            "workflow-trace.json. List recorded sessions with `wfrec sessions`."
         ),
     )
 

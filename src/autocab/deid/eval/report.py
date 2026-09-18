@@ -32,7 +32,7 @@ from ..allowlist import Allowlist
 from ..labels import HIPAA_BY_LABEL, hipaa_rollup
 from ..engines.base import EngineUnavailable
 from ..engines.registry import load as load_engine
-from ..spans import Detector, Span
+from ..spans import Detector
 from .corpus import Corpus, load as load_corpus
 from .generate import GATED_DIFFICULTIES
 from .scorer import Prediction, Scorecard, score

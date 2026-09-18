@@ -11,6 +11,7 @@
     "packaging",
     "decision",
     "name",
+    "skillVersion",
     "title",
     "description",
     "purpose",
@@ -20,6 +21,7 @@
     "outputs",
     "steps",
     "dependencies",
+    "runtimeEnvironment",
     "evidence",
     "assumptions",
     "unresolvedQuestions",
@@ -32,7 +34,7 @@
   ],
   "properties": {
     "schemaVersion": {
-      "const": "1.0"
+      "const": "1.1"
     },
     "operation": {
       "enum": [
@@ -67,6 +69,10 @@
       "minLength": 1,
       "maxLength": 64,
       "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "skillVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"
     },
     "title": {
       "type": "string",
@@ -118,6 +124,9 @@
       "items": {
         "$ref": "#/$defs/dependency"
       }
+    },
+    "runtimeEnvironment": {
+      "$ref": "#/$defs/runtimeEnvironment"
     },
     "evidence": {
       "type": "array",
@@ -281,6 +290,7 @@
         "required",
         "evidenceIds",
         "install",
+        "environmentPackage",
         "versionConstraint",
         "sourcePath",
         "bundlePath",
@@ -299,7 +309,9 @@
             "custom_standalone",
             "custom_integrated",
             "missing",
-            "manual"
+            "manual",
+            "existing_skill",
+            "reference_data"
           ]
         },
         "required": {
@@ -309,6 +321,12 @@
           "$ref": "#/$defs/idList"
         },
         "install": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "environmentPackage": {
           "type": [
             "string",
             "null"
@@ -342,6 +360,113 @@
         },
         "notes": {
           "type": "string"
+        }
+      }
+    },
+    "runtimeEnvironment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manager",
+        "python",
+        "channels",
+        "condaDependencies",
+        "pipDependencies",
+        "systemDependencies",
+        "externalArtifacts",
+        "containerImage",
+        "codebaseEnvironmentFile",
+        "lockStrategy",
+        "verified",
+        "notes"
+      ],
+      "properties": {
+        "manager": {
+          "enum": [
+            "none",
+            "conda",
+            "venv",
+            "container",
+            "system",
+            "codebase"
+          ]
+        },
+        "python": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "condaDependencies": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "pipDependencies": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "systemDependencies": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "externalArtifacts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "containerImage": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "codebaseEnvironmentFile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lockStrategy": {
+          "enum": [
+            "none",
+            "direct-pins",
+            "container-digest",
+            "codebase-owned",
+            "unresolved"
+          ]
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },

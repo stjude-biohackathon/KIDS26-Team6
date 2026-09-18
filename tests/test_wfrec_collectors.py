@@ -12,7 +12,6 @@ import pytest
 from wfrec import spool
 from wfrec.collectors.base import Collector, CollectorStatus, Degraded
 from wfrec.collectors.files import (
-    DIFF_MAX_BYTES,
     METADATA_ONLY_BYTES,
     FileCollector,
     is_binary_path,

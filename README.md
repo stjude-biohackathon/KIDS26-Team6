@@ -264,9 +264,9 @@ enters through remote job-log collection.
 #### Session Data and Exports
 
 Each session stores an append-only `events.jsonl` timeline plus frames, diffs,
-notes, and job logs. By default, `wfrec export` writes three **lossy** AutoCAB
-adapter formats under `exports/`; the complete `events.jsonl` timeline remains
-the source of truth. Paused and archived sessions export through a temporary,
+notes, and job logs. `wfrec export` creates a complete `events.json` document
+plus three **lossy** AutoCAB adapter formats. The timeline remains the source
+of truth. Paused and archived sessions export through a temporary, local,
 pattern-checked snapshot.
 
 #### Remote and Team Workflows

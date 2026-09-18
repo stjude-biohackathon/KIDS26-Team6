@@ -8,6 +8,7 @@ mid-session rather than only at session start.
 
 from __future__ import annotations
 
+import contextlib
 import threading
 import time
 from pathlib import Path
@@ -24,6 +25,7 @@ from .collectors.shell import (
     ShellCollector,
     resolve_shell_backend,
 )
+from .events import SessionSealed
 from .session import STATUS_ACTIVE, Session, SessionStore
 from .state import (
     RecorderState,
@@ -225,6 +227,28 @@ class Recorder:
             )
             return status
 
+    def rename_session(self, session_id: str, title: str) -> dict[str, str]:
+        """Rename one unsealed session without replacing live recorder state."""
+
+        clean_title = title.strip()
+        if not clean_title:
+            raise ValueError("Session title cannot be empty.")
+        if len(clean_title) > 200:
+            raise ValueError("Session title cannot exceed 200 characters.")
+
+        with self._lock:
+            if self._session is not None and self._session.session_id == session_id:
+                session = self._session
+            else:
+                session = self.store.resolve(session_id)
+            if session.writer.sealed:
+                raise SessionSealed(
+                    f"Session {session_id} is sealed and cannot be renamed."
+                )
+            session.manifest.title = clean_title
+            session.save()
+            return {"id": session.session_id, "title": session.manifest.title}
+
     # ----------------------------------------------------------------- toggle
     def set_source(self, source: str, enabled: bool) -> dict[str, Any]:
         """Turn one capture source on or off, taking effect immediately."""
@@ -362,19 +386,15 @@ class Recorder:
 
     def _stop_collectors(self) -> None:
         for source, collector in list(self._collectors.items()):
-            try:
+            with contextlib.suppress(Exception):  # pragma: no cover - defensive
                 collector.stop()
-            except Exception:  # pragma: no cover - defensive
-                pass
             self._collectors.pop(source, None)
 
     def _snapshot_files(self, trigger: str) -> None:
         collector = self._collectors.get("files")
         if isinstance(collector, FileCollector):
-            try:
+            with contextlib.suppress(Exception):  # pragma: no cover - defensive
                 collector.snapshot_all(trigger)
-            except Exception:  # pragma: no cover - defensive
-                pass
 
     # ------------------------------------------------------------- heartbeat
     def _start_heartbeat(self, reason: str) -> None:

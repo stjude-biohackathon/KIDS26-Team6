@@ -153,7 +153,7 @@ def test_an_unsealed_session_cannot_be_ingested(store):
 
 
 def test_adapter_rebuilds_rather_than_trusting_a_stale_export(store):
-    """A stale exports/trace.json must not shadow the real timeline.
+    """A stale workflow-trace export must not shadow the real timeline.
 
     Originally this grew the timeline after exporting. A sealed session refuses
     appends now (``SessionSealed``), so the staleness is injected directly --

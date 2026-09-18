@@ -1,0 +1,338 @@
+.activity-dashboard {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.activity-dashboard > h2 {
+  margin: 0;
+}
+
+.activity-dashboard__card {
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+}
+
+.activity-dashboard__card h3 {
+  margin: 0 0 10px;
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.activity-dashboard__overview-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.2fr) minmax(350px, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+
+.activity-overview-chart {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+
+.activity-overview-chart__plot {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex: none;
+}
+
+.activity-overview-chart__pie {
+  display: block;
+  width: 120px;
+  height: 120px;
+  overflow: visible;
+}
+
+.activity-overview-chart__segment {
+  cursor: default;
+  opacity: 0.92;
+  transform-origin: 60px 60px;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.activity-overview-chart__pie.is-interacting
+  .activity-overview-chart__segment:not(.is-active) {
+  opacity: 0.35;
+}
+
+.activity-overview-chart__segment.is-active {
+  opacity: 1;
+  transform: scale(1.025);
+}
+
+.activity-overview-chart__segment:focus-visible {
+  outline: none;
+  stroke: var(--focus);
+  stroke-width: 3px;
+}
+
+.activity-overview-chart__tooltip,
+.activity-timeline-chart__tooltip {
+  z-index: 2;
+  padding: 5px 7px;
+  border: 1px solid var(--control-border);
+  border-radius: 6px;
+  background: var(--panel);
+  box-shadow: 0 4px 14px color-mix(in srgb, #000 22%, transparent);
+  color: var(--ink);
+  font: 11px/1.35 var(--font-sans);
+  pointer-events: none;
+}
+
+.activity-overview-chart__tooltip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max-content;
+  max-width: 112px;
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.activity-overview-chart__legend {
+  display: grid;
+  min-width: 180px;
+  flex: 1;
+  gap: 6px;
+}
+
+.activity-overview-chart__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dim);
+  font-size: 12px;
+  transition: color 120ms ease;
+}
+
+.activity-overview-chart__legend-item.is-active {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.activity-overview-chart__legend-swatch {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 2px;
+}
+
+.activity-overview-chart__caption {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.activity-overview-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.activity-overview-stats__item {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.activity-overview-stats__number {
+  font: 600 18px/1.2 var(--font-mono);
+}
+
+.activity-overview-stats__label {
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.activity-dashboard__grid {
+  display: grid;
+  grid-template-areas:
+    "timeline events"
+    "windows events"
+    "agents events";
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.activity-dashboard__card--timeline {
+  grid-area: timeline;
+}
+
+.activity-dashboard__card--event-types {
+  grid-area: events;
+}
+
+.activity-dashboard__card--top-windows {
+  grid-area: windows;
+}
+
+.activity-dashboard__card--agent-activity {
+  grid-area: agents;
+}
+
+.activity-ranking__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.activity-ranking__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-ranking__count {
+  color: var(--dim);
+  font: 12px var(--font-mono);
+  text-align: right;
+}
+
+.activity-ranking__track {
+  height: 6px;
+  margin: 4px 0 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.activity-ranking__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--chart-1);
+}
+
+.activity-timeline-chart {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 110px;
+  padding-top: 44px;
+}
+
+button.activity-timeline-chart__bucket {
+  display: flex;
+  min-width: 4px;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  align-items: flex-end;
+  padding: 0;
+  border: 0;
+  border-radius: 2px 2px 0 0;
+  background: transparent;
+}
+
+button.activity-timeline-chart__bucket:hover {
+  border-color: transparent;
+}
+
+button.activity-timeline-chart__bucket:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.activity-timeline-chart__stack {
+  display: flex;
+  width: 100%;
+  min-height: 3px;
+  overflow: hidden;
+  flex-direction: column-reverse;
+  border-radius: 2px 2px 0 0;
+  background: transparent;
+  opacity: 0.86;
+  transition: filter 120ms ease, opacity 120ms ease;
+}
+
+.activity-timeline-chart__stack.is-empty {
+  background: var(--line);
+}
+
+.activity-timeline-chart__bucket:hover .activity-timeline-chart__stack,
+.activity-timeline-chart__bucket.is-active .activity-timeline-chart__stack {
+  filter: brightness(1.12);
+  opacity: 1;
+}
+
+.activity-timeline-chart__segment {
+  display: block;
+  min-height: 1px;
+  flex-basis: 0;
+}
+
+.activity-timeline-chart__tooltip {
+  --activity-timeline-tooltip-left: 50%;
+  position: absolute;
+  top: 2px;
+  left: clamp(
+    120px,
+    var(--activity-timeline-tooltip-left),
+    calc(100% - 120px)
+  );
+  width: max-content;
+  max-width: min(260px, calc(100% - 8px));
+  transform: translateX(-50%);
+}
+
+.activity-timeline-chart__labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  color: var(--dim);
+  font: 11px var(--font-mono);
+}
+
+.activity-dashboard__empty {
+  margin: 0;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+@media (max-width: 980px) {
+  .activity-dashboard__overview-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .activity-dashboard__grid {
+    grid-template-areas: "timeline" "events" "windows" "agents";
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .activity-timeline-chart__tooltip {
+    left: 50%;
+  }
+}
+
+@media (forced-colors: active) {
+  .activity-overview-chart__segment,
+  .activity-overview-chart__legend-swatch,
+  .activity-ranking__fill,
+  .activity-timeline-chart__segment {
+    fill: Highlight !important;
+    border: 1px solid CanvasText;
+    background: Highlight !important;
+  }
+}

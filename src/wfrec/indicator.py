@@ -13,6 +13,7 @@ start, pause, or stop.
 
 from __future__ import annotations
 
+import contextlib
 import time
 
 from . import paths
@@ -110,10 +111,9 @@ def _act(path: str, payload: dict | None = None) -> None:
     client = Client.discover()
     if client is None:
         return
-    try:
+    # The tray menu is a best-effort shortcut, not the source of truth.
+    with contextlib.suppress(Exception):
         client.post(path, payload or {})
-    except Exception:
-        pass  # best-effort: the tray menu is a shortcut, not the source of truth
 
 
 def _open_dashboard(_icon=None, _item=None) -> None:
@@ -170,10 +170,8 @@ def _toggle_overlay(_icon=None, _item=None) -> None:
     """
 
     if not _overlay_alive():
-        try:
+        with contextlib.suppress(FileNotFoundError):
             paths.overlay_hidden_path().unlink()
-        except FileNotFoundError:
-            pass
         import subprocess
         import sys
 
@@ -182,14 +180,12 @@ def _toggle_overlay(_icon=None, _item=None) -> None:
             creation["creationflags"] = 0x00000008 | 0x00000200
         else:
             creation["start_new_session"] = True
-        try:
+        with contextlib.suppress(OSError):
             subprocess.Popen(
                 [sys.executable, "-m", "wfrec.overlay"],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL, **creation,
             )
-        except OSError:
-            pass
     else:
         try:
             pid = int(paths.overlay_pid_path().read_text(encoding="utf-8").strip())

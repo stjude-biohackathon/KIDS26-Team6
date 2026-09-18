@@ -13,10 +13,24 @@ def test_prefer_manual_browser_when_lynx(monkeypatch: pytest.MonkeyPatch) -> Non
     assert _prefer_manual_browser_open() is True
 
 
-def test_prefer_manual_browser_when_no_display(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_prefer_manual_browser_when_linux_has_no_display(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("wfrec.daemon.sys.platform", "linux")
     monkeypatch.delenv("BROWSER", raising=False)
     monkeypatch.delenv("DISPLAY", raising=False)
+
     assert _prefer_manual_browser_open() is True
+
+
+def test_allow_graphical_browser_on_macos_without_display(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("wfrec.daemon.sys.platform", "darwin")
+    monkeypatch.delenv("BROWSER", raising=False)
+    monkeypatch.delenv("DISPLAY", raising=False)
+
+    assert _prefer_manual_browser_open() is False
 
 
 def test_wait_for_server_success(monkeypatch: pytest.MonkeyPatch) -> None:

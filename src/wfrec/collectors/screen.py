@@ -16,11 +16,11 @@ kmsgrab nor pipewire.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 from ..events import (
     Event,
@@ -202,10 +202,8 @@ class ScreenCollector(Collector):
 
     def teardown(self) -> None:
         if self._mss is not None:
-            try:
+            with contextlib.suppress(Exception):  # pragma: no cover
                 self._mss.close()
-            except Exception:  # pragma: no cover
-                pass
             self._mss = None
         if self._frames:
             self.session.record(
@@ -269,10 +267,8 @@ class ScreenCollector(Collector):
             # Text-only retention: OCR then delete the pixels. This is the
             # right default anywhere PHI could be on screen -- it keeps the
             # signal the pipeline consumes and leaves no image on disk.
-            try:
+            with contextlib.suppress(OSError):
                 target.unlink()
-            except OSError:
-                pass
 
     def _track_window(self) -> None:
         info = active_window()

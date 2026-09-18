@@ -133,7 +133,7 @@ def build_screen_capture(session) -> tuple[dict, int]:
 
 def write_screen_capture(session, destination: Path | None = None) -> tuple[Path, int]:
     document, count = build_screen_capture(session)
-    target = destination or (session.root / "exports" / "autocab-screen-capture.json")
+    target = destination or (session.root / "exports" / "screen-events.json")
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
     return target, count
