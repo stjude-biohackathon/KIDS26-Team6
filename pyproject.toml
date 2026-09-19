@@ -128,6 +128,17 @@ where = ["src"]
 "wfrec.hooks" = ["*.bash", "*.zsh", "*.fish", "*.ps1", "*.sh"]
 "wfrec.ui" = ["*.html", "*.css", "*.js"]
 
+[tool.setuptools.data-files]
+"share/autocab/skill-forge" = [
+  "skills/skill-forge/assets/cbd-skill.template.md",
+  "skills/skill-forge/assets/evaluation-prompts.template.md",
+  "skills/skill-forge/assets/record_run.py",
+  "skills/skill-forge/assets/review.template.md",
+  "skills/skill-forge/assets/run-summary.template.json",
+  "skills/skill-forge/assets/runtime-reproducibility.template.md",
+  "skills/skill-forge/assets/std-skill.template.md",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
