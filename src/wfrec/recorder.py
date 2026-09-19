@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from . import SOURCES, paths
+from . import SOURCES
 from .collectors.agents import AgentCollector
 from .collectors.base import Collector, CollectorStatus
 from .collectors.files import FileCollector
@@ -30,6 +30,7 @@ from .session import STATUS_ACTIVE, Session, SessionStore
 from .state import (
     RecorderState,
     SHELL_BACKEND_SPOOL,
+    resolved_default_analyst,
     shell_output_unavailable_reason,
 )
 
@@ -96,7 +97,7 @@ class Recorder:
                 self._session = session
             payload: dict[str, Any] = {
                 "active_session": state.active_session,
-                "default_analyst": paths.default_analyst(),
+                "default_analyst": resolved_default_analyst(state),
                 "paused_sessions": list(state.paused),
                 "sources": dict(state.sources),
                 "shell_output": False,
@@ -145,7 +146,7 @@ class Recorder:
             self._stop_collectors()
             session, preempted = self.store.start(
                 title=title,
-                analyst=analyst.strip() or paths.default_analyst(),
+                analyst=analyst.strip() or resolved_default_analyst(),
                 workflow_family=workflow_family,
                 tags=tags,
                 shell_backend=shell_backend.name,
@@ -236,6 +237,35 @@ class Recorder:
             session.manifest.title = clean_title
             session.save()
             return {"id": session.session_id, "title": session.manifest.title}
+
+    def update_session_metadata(
+        self,
+        session_id: str,
+        *,
+        workflow_family: str | None = None,
+        tags: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Update workflow metadata while preserving sealed-session immutability."""
+
+        with self._lock:
+            if self._session is not None and self._session.session_id == session_id:
+                session = self._session
+            else:
+                session = self.store.resolve(session_id)
+            if session.writer.sealed:
+                raise SessionSealed(f"Session {session_id} is sealed and cannot be edited.")
+            if workflow_family is not None:
+                session.manifest.workflow_family = workflow_family.strip()
+            if tags is not None:
+                session.manifest.tags = list(
+                    dict.fromkeys(tag.strip() for tag in tags if tag.strip())
+                )
+            session.save()
+            return {
+                "id": session.session_id,
+                "workflow_family": session.manifest.workflow_family,
+                "tags": list(session.manifest.tags),
+            }
 
     # ----------------------------------------------------------------- toggle
     def set_source(self, source: str, enabled: bool) -> dict[str, Any]:

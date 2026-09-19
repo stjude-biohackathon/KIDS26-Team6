@@ -7,13 +7,19 @@
 <meta name="wfrec-token" content="@WFREC_TOKEN@">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/dashboard.css">
+<link rel="stylesheet" href="/provenance.css">
+<link rel="stylesheet" href="/session-metadata.css">
+<link rel="stylesheet" href="/settings.css">
 <script src="/dashboard.js" defer></script>
+<script src="/provenance.js" defer></script>
+<script src="/session-metadata.js" defer></script>
+<script src="/settings.js" defer></script>
 <script src="/app.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to session details</a>
 <header class="app-header">
-  <h1>AutoCAB</h1>
+  <h1>AutoCAB <span class="app-version ui-pill">v@AUTOCAB_VERSION@</span></h1>
   <div class="app-header-actions">
     <button id="theme-toggle" class="theme-toggle icon-action" type="button" aria-label="Switch color theme" title="Switch color theme" onclick="toggleTheme()">
       <svg id="theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -24,11 +30,22 @@
         <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
       </svg>
     </button>
+    <button id="settings-button" class="settings-button icon-action" type="button" aria-label="Open settings" title="Settings" onclick="openSettings()">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4A2 2 0 0 0 4 9.9l.2.1a2 2 0 0 1 1 1.7v.6a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.6a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    </button>
+    <button id="provenance-button" class="provenance-button icon-action" type="button" aria-label="View session provenance" title="View session provenance" onclick="openProvenance()" disabled>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 11v6M12 7.5v.01" />
+      </svg>
+    </button>
     <button id="live-updates" class="live-updates" type="button" aria-pressed="true" onclick="toggleLiveUpdates()" title="Pause dashboard updates. Recording will continue.">
       <span class="live-updates-dot" aria-hidden="true"></span>
       <span id="live-updates-label">Live updates</span>
     </button>
-    <span class="analyst-identity">Analyst · <strong id="navbar-analyst">Unknown</strong></span>
   </div>
 </header>
 
@@ -46,9 +63,10 @@
     <section>
       <div id="session-detail">
         <div class="detail-head">
-          <div>
+          <div class="session-title-row">
             <div id="session-title-display" class="session-title-display">
               <h2 id="session-title" class="detail-title">No session selected</h2>
+              <span id="badge" class="badge ui-pill">No session</span>
               <button id="rename-session" class="title-action" type="button" aria-label="Rename session" title="Rename session" onclick="showRenameSessionForm()" disabled>
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M12 20h9" />
@@ -56,68 +74,68 @@
                 </svg>
               </button>
             </div>
-            <form id="session-title-form" class="session-title-form" onsubmit="renameSession(event)" hidden>
-              <label class="sr-only" for="session-title-input">Session title</label>
-              <input id="session-title-input" maxlength="200" autocomplete="off" onkeydown="handleRenameKeydown(event)">
-              <button class="primary" type="submit">Save</button>
-              <button type="button" onclick="cancelRenameSession()">Cancel</button>
-            </form>
-            <div class="session-stats" id="stats" aria-label="Session details"></div>
-          </div>
-          <span id="badge" class="badge">No session</span>
-        </div>
-        <div class="session-folder">
-          <span class="session-folder-label">Session folder</span>
-          <div class="session-folder-control">
-            <code id="session-folder" title=""></code>
-            <div class="session-folder-actions">
-              <button class="icon-action" type="button" aria-label="Copy session path" title="Copy session path" onclick="copySessionPath()">
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <rect x="9" y="9" width="11" height="11" rx="2" />
-                  <path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3" />
-                </svg>
-              </button>
-              <button class="icon-action" type="button" aria-label="Open session folder" title="Open session folder" onclick="openSessionFolder()">
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
-                </svg>
-              </button>
+            <div class="row session-actions__recording">
+              <button id="pause-session" class="warning-quiet" onclick="pause()" disabled>Pause</button>
+              <button id="resume-session" onclick="act('resume')" disabled>Resume</button>
             </div>
           </div>
+          <form id="session-title-form" class="session-title-form" onsubmit="renameSession(event)" hidden>
+            <label class="sr-only" for="session-title-input">Session title</label>
+            <input id="session-title-input" maxlength="200" autocomplete="off" onkeydown="handleRenameKeydown(event)">
+            <button class="primary" type="submit">Save</button>
+            <button type="button" onclick="cancelRenameSession()">Cancel</button>
+          </form>
+          <div class="session-stats" id="stats" aria-label="Session details"></div>
         </div>
-        <div class="session-actions">
-          <div class="row">
-            <button id="pause-session" class="warning-quiet" onclick="pause()" disabled>Pause</button>
-            <button id="resume-session" onclick="act('resume')" disabled>Resume</button>
-            <div id="export-control" class="export-control">
-              <div class="export-split" role="group" aria-label="Export session">
-                <button id="export-events" class="export-primary" type="button" onclick="exportSession(['events', 'terminal-log', 'screen-capture', 'trace'], 'All files')">Export Session</button>
-                <button id="export-menu-toggle" class="export-menu-toggle" type="button" aria-label="Choose export format" aria-haspopup="menu" aria-expanded="false" aria-controls="export-format-menu" onclick="toggleExportMenu()" onkeydown="handleExportToggleKeydown(event)">
+        <div class="session-properties">
+          <div id="session-metadata" class="session-metadata" aria-label="Workflow and tags"></div>
+          <div class="session-folder">
+            <span class="session-folder-label">Session folder</span>
+            <div class="session-folder-control">
+              <code id="session-folder" title=""></code>
+              <div class="session-folder-actions">
+                <button class="icon-action" type="button" aria-label="Copy session path" title="Copy session path" onclick="copySessionPath()">
                   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="m7 9 5 5 5-5" />
+                    <rect x="9" y="9" width="11" height="11" rx="2" />
+                    <path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3" />
+                  </svg>
+                </button>
+                <button class="icon-action" type="button" aria-label="Open session folder" title="Open session folder" onclick="openSessionFolder()">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
                   </svg>
                 </button>
               </div>
-              <div id="export-format-menu" class="export-format-menu" role="menu" aria-label="Export format" onkeydown="handleExportMenuKeydown(event)" hidden>
-                <button type="button" role="menuitem" tabindex="-1" onclick="selectExportFormat(['events', 'terminal-log', 'screen-capture', 'trace'], 'All files')">All files</button>
-                <button type="button" role="menuitem" tabindex="-1" onclick="selectExportFormat(['events'], 'Events JSON')">Events JSON</button>
-                <button type="button" role="menuitem" tabindex="-1" onclick="selectExportFormat(['trace'], 'Workflow trace JSON')">Workflow trace JSON</button>
-                <button type="button" role="menuitem" tabindex="-1" onclick="selectExportFormat(['terminal-log'], 'Terminal log')">Terminal log</button>
-                <button type="button" role="menuitem" tabindex="-1" onclick="selectExportFormat(['screen-capture'], 'Screen events JSON')">Screen events JSON</button>
-              </div>
             </div>
           </div>
-          <div class="row">
-            <button id="archive-session" class="danger-quiet" onclick="act('stop')" disabled>Archive Session</button>
-            <button id="trash-session" class="danger-quiet icon-action" type="button" aria-label="Remove archived session from dashboard" title="Archive the selected session before removing it from the dashboard" onclick="trashSelectedSession()" disabled>
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M3 6h18" />
-                <path d="M8 6V4h8v2" />
-                <path d="m19 6-1 14H6L5 6" />
-                <path d="M10 11v5M14 11v5" />
-              </svg>
-            </button>
+        </div>
+        <div class="row session-actions__secondary">
+          <div id="export-control" class="export-control">
+            <div class="export-split" role="group" aria-label="Export session">
+              <button id="export-events" class="export-primary" type="button" onclick="exportSession(['events', 'terminal-log', 'screen-capture', 'trace'], 'All files')">Export Session</button>
+              <button id="export-menu-toggle" class="export-menu-toggle" type="button" aria-label="Choose export format" aria-haspopup="menu" aria-expanded="false" aria-controls="export-format-menu" onclick="toggleExportMenu()" onkeydown="handleExportToggleKeydown(event)">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="m7 9 5 5 5-5" />
+                </svg>
+              </button>
+            </div>
+            <div id="export-format-menu" class="export-format-menu" role="menu" aria-label="Export format" onkeydown="handleExportMenuKeydown(event)" hidden>
+              <button type="button" role="menuitem" tabindex="-1" onclick="selectExportFormat(['events', 'terminal-log', 'screen-capture', 'trace'], 'All files')">All files</button>
+              <button type="button" role="menuitem" tabindex="-1" onclick="selectExportFormat(['events'], 'Events JSON')">Events JSON</button>
+              <button type="button" role="menuitem" tabindex="-1" onclick="selectExportFormat(['trace'], 'Workflow trace JSON')">Workflow trace JSON</button>
+              <button type="button" role="menuitem" tabindex="-1" onclick="selectExportFormat(['terminal-log'], 'Terminal log')">Terminal log</button>
+              <button type="button" role="menuitem" tabindex="-1" onclick="selectExportFormat(['screen-capture'], 'Screen events JSON')">Screen events JSON</button>
+            </div>
           </div>
+          <button id="archive-session" onclick="act('stop')" disabled>Archive Session</button>
+          <button id="trash-session" class="danger-quiet icon-action" type="button" aria-label="Remove archived session from dashboard" title="Archive the selected session before removing it from the dashboard" onclick="trashSelectedSession()" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M3 6h18" />
+              <path d="M8 6V4h8v2" />
+              <path d="m19 6-1 14H6L5 6" />
+              <path d="M10 11v5M14 11v5" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -132,6 +150,15 @@
             <label for="analyst">Analyst name or ID</label>
             <input id="analyst">
           </div>
+          <div class="field">
+            <label for="workflow-family">Workflow name (optional)</label>
+            <input id="workflow-family" maxlength="100" placeholder="e.g. variant-qc">
+          </div>
+          <div class="field">
+            <label for="session-tags">Tags (optional)</label>
+            <input id="session-tags" maxlength="300" placeholder="e.g. hg38, review" aria-describedby="session-tags-help">
+            <span id="session-tags-help" class="field-help">Separate tags with commas.</span>
+          </div>
         </div>
         <div class="row">
           <button id="start-session" class="primary" type="submit">Start Session</button>
@@ -143,7 +170,7 @@
 
     <div id="session-content" class="session-content">
       <section id="activity-dashboard" class="activity-dashboard" aria-labelledby="activity-dashboard-heading">
-        <h2 id="activity-dashboard-heading">Activity dashboard</h2>
+        <h2 id="activity-dashboard-heading" class="sr-only">Activity dashboard</h2>
         <section class="activity-dashboard__card" aria-labelledby="activity-overview-heading">
           <h3 id="activity-overview-heading">Activity overview</h3>
           <div class="activity-dashboard__overview-layout">
@@ -243,6 +270,40 @@
     <div class="row dialog-actions">
       <button type="button" onclick="closeExportDialog()">Cancel</button>
       <button type="submit" class="primary">Select Folder</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="provenance-dialog" class="provenance-dialog" aria-labelledby="provenance-dialog-title" aria-describedby="provenance-dialog-description">
+  <div class="provenance-dialog__frame">
+    <div class="provenance-dialog__header">
+      <div>
+        <h2 id="provenance-dialog-title">Session provenance</h2>
+        <p id="provenance-dialog-description">How this session was recorded and protected.</p>
+      </div>
+      <button class="icon-action" type="button" aria-label="Close session provenance" title="Close" onclick="closeProvenance()">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="m6 6 12 12M18 6 6 18" />
+        </svg>
+      </button>
+    </div>
+    <div id="provenance-content" class="provenance-content" aria-live="polite"></div>
+  </div>
+</dialog>
+
+<dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-dialog-title" aria-describedby="settings-dialog-description">
+  <form id="settings-form">
+    <h2 id="settings-dialog-title">Settings</h2>
+    <p id="settings-dialog-description" class="settings-dialog__description">Defaults for new sessions.</p>
+    <div class="field">
+      <label for="default-analyst">Default analyst name or ID</label>
+      <input id="default-analyst" maxlength="200" autocomplete="name" aria-describedby="default-analyst-help">
+      <span id="default-analyst-help" class="field-help">Existing sessions will not change.</span>
+    </div>
+    <p id="settings-message" class="settings-dialog__message" role="alert"></p>
+    <div class="row dialog-actions">
+      <button type="button" onclick="closeSettings()">Cancel</button>
+      <button type="submit" class="primary">Save</button>
     </div>
   </form>
 </dialog>

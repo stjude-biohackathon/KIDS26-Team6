@@ -71,6 +71,7 @@ class RecorderState:
     shell_backend: str = SHELL_BACKEND_SPOOL
     paused: list[str] = field(default_factory=list)
     trashed_sessions: list[str] = field(default_factory=list)
+    default_analyst: str = ""
     api_url: str | None = None
     api_token: str | None = None
     updated_at: float = field(default_factory=time.time)
@@ -106,6 +107,9 @@ class RecorderState:
         trashed_sessions = payload.get("trashed_sessions")
         if not isinstance(trashed_sessions, list):
             trashed_sessions = []
+        default_analyst = payload.get("default_analyst", "")
+        if not isinstance(default_analyst, str):
+            default_analyst = ""
         return cls(
             active_session=payload.get("active_session"),
             sources=sources,
@@ -115,6 +119,7 @@ class RecorderState:
             trashed_sessions=[
                 session_id for session_id in trashed_sessions if isinstance(session_id, str)
             ],
+            default_analyst=default_analyst,
             api_url=payload.get("api_url"),
             api_token=payload.get("api_token"),
             updated_at=float(payload.get("updated_at") or time.time()),
@@ -128,6 +133,7 @@ class RecorderState:
             "shell_backend": self.shell_backend,
             "paused": list(self.paused),
             "trashed_sessions": list(self.trashed_sessions),
+            "default_analyst": self.default_analyst,
             "api_url": self.api_url,
             "api_token": self.api_token,
             "updated_at": self.updated_at,
@@ -170,6 +176,13 @@ class RecorderState:
         spool.mkdir(parents=True, exist_ok=True)
         line = f"{self.active_session}\t{self.flags()}\t{spool}\n"
         atomic_write_text(active, line)
+
+
+def resolved_default_analyst(state: RecorderState | None = None) -> str:
+    """Return the saved analyst preference or the operating-system username."""
+
+    preference = (state or RecorderState.load()).default_analyst.strip()
+    return preference or paths.default_analyst()
 
 
 def read_sentinel() -> tuple[str, str, Path] | None:

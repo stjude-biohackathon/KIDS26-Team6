@@ -43,7 +43,12 @@ from .session import (
     Session,
     SessionNotFound,
 )
-from .state import RecorderState, StateTransaction, shell_output_unavailable_reason
+from .state import (
+    RecorderState,
+    StateTransaction,
+    resolved_default_analyst,
+    shell_output_unavailable_reason,
+)
 
 
 MAX_EVENT_PAGE_SIZE = 2_000
@@ -81,6 +86,15 @@ class SessionRef(BaseModel):
 
 class RenameSessionRequest(BaseModel):
     title: str = Field(min_length=1, max_length=200)
+
+
+class SessionMetadataRequest(BaseModel):
+    workflow_family: str | None = Field(default=None, max_length=100)
+    tags: list[str] | None = None
+
+
+class SettingsRequest(BaseModel):
+    default_analyst: str = Field(default="", max_length=200)
 
 
 class SourceRequest(BaseModel):
@@ -161,6 +175,7 @@ def _session_summary(session: Session, state: RecorderState) -> dict[str, Any]:
         "title": session.manifest.title,
         "analyst": session.manifest.analyst,
         "workflow_family": session.manifest.workflow_family,
+        "tags": list(session.manifest.tags),
         "status": status,
         "created_at": session.manifest.created_at,
         "active_seconds": round(active_seconds, 1),
@@ -235,6 +250,130 @@ def _event_response(event: Event) -> dict[str, Any]:
         "detail_html": render_markdown(text),
     }
     return response
+
+
+def _safe_engine_provenance(engine: object) -> dict[str, Any] | None:
+    """Keep audit metadata while excluding host-specific model paths."""
+
+    if not isinstance(engine, dict):
+        return None
+    allowed = {
+        "name",
+        "kind",
+        "available",
+        "version",
+        "unavailable",
+        "model",
+        "repository",
+        "revision",
+        "source_repository",
+        "source_revision",
+        "license",
+        "variant",
+        "weights_sha256",
+        "patterns_sha256",
+        "deny_terms",
+    }
+    return {key: value for key, value in engine.items() if key in allowed}
+
+
+def _redaction_provenance(session: Session) -> dict[str, Any]:
+    """Return safe seal evidence and an independently checked integrity state."""
+
+    from .seal import SealError, seal_status, verify_seal_integrity
+
+    status = seal_status(session.root)
+    if not status["sealed"]:
+        return {
+            "status": "pending",
+            "engine": "regex",
+            "engine_source": "dashboard-default",
+            "integrity": {"status": "pending"},
+        }
+
+    record = status.get("seal")
+    if not isinstance(record, dict) or record.get("error"):
+        return {
+            "status": "unavailable",
+            "integrity": {
+                "status": "failed",
+                "detail": str((record or {}).get("error", "Seal metadata is unavailable.")),
+            },
+        }
+
+    try:
+        verify_seal_integrity(session.root)
+    except SealError as exc:
+        integrity = {"status": "failed", "detail": str(exc)}
+    else:
+        integrity = {"status": "verified"}
+
+    targets = record.get("targets")
+    target_names = sorted(str(name) for name in targets) if isinstance(targets, dict) else []
+    engines = [
+        safe
+        for engine in record.get("engines", [])
+        if (safe := _safe_engine_provenance(engine)) is not None
+    ]
+    return {
+        "status": "applied",
+        "sealed_at": record.get("sealed_at"),
+        "profile": record.get("profile"),
+        "assurance": record.get("assurance"),
+        "engine": record.get("engine"),
+        "engines": engines,
+        "generation": record.get("generation"),
+        "sealed_through_seq": record.get("sealed_through_seq"),
+        "findings": record.get("findings"),
+        "counts_by_label": record.get("counts_by_label", {}),
+        "masked_at_capture": record.get("masked_at_capture"),
+        "distinct_values": record.get("distinct_values"),
+        "render_mode": record.get("render_mode"),
+        "target_files": target_names,
+        "integrity": {**integrity, "targets": len(target_names)},
+    }
+
+
+def _session_provenance(session: Session, state: RecorderState) -> dict[str, Any]:
+    """Build the complete read-only provenance view for one recorded session."""
+
+    summary = _session_summary(session, state)
+    manifest = session.manifest
+    recorded_versions = list(
+        dict.fromkeys(
+            version
+            for version in [
+                manifest.wfrec_version,
+                *(entry.get("autocab_version", "") for entry in manifest.lifecycle),
+            ]
+            if version
+        )
+    )
+    return {
+        "session": {
+            **summary,
+            "updated_at": manifest.updated_at,
+            "tags": list(manifest.tags),
+            "root": str(session.root),
+        },
+        "capture": {
+            "sources": dict(manifest.sources),
+            "shell_backend": manifest.shell_backend,
+            "shell_output": manifest.shell_output,
+            "watch_roots": list(manifest.watch_roots),
+            "remote_hosts": list(manifest.remote_hosts),
+            "lifecycle_records": len(manifest.lifecycle),
+            "source_changes": len(manifest.toggles),
+        },
+        "environment": {
+            "host": manifest.host,
+            "platform": dict(manifest.platform),
+            "recorded_by_version": manifest.wfrec_version,
+            "recorded_versions": recorded_versions,
+            "dashboard_version": __version__,
+        },
+        "redaction": _redaction_provenance(session),
+    }
 
 
 def create_app(recorder: Recorder, token: str) -> FastAPI:
@@ -314,6 +453,24 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     def doctor() -> dict[str, Any]:
         return _doctor_response()
 
+    @app.get("/settings", dependencies=guard)
+    def settings() -> dict[str, Any]:
+        state = RecorderState.load()
+        return {
+            "default_analyst": resolved_default_analyst(state),
+            "uses_system_default": not bool(state.default_analyst.strip()),
+        }
+
+    @app.patch("/settings", dependencies=guard)
+    def update_settings(payload: SettingsRequest) -> dict[str, Any]:
+        with StateTransaction() as state:
+            state.default_analyst = payload.default_analyst.strip()
+        saved = RecorderState.load()
+        return {
+            "default_analyst": resolved_default_analyst(saved),
+            "uses_system_default": not bool(saved.default_analyst),
+        }
+
     @app.get("/sessions", dependencies=guard)
     def sessions() -> dict[str, Any]:
         state = RecorderState.load()
@@ -343,9 +500,26 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
             "events": [_event_response(event) for event in window],
         }
 
+    @app.get("/sessions/{session_id}/provenance", dependencies=guard)
+    def provenance(session_id: str) -> dict[str, Any]:
+        """Return safe, read-only provenance for the dashboard dialog."""
+
+        session = recorder.store.resolve(session_id)
+        return _session_provenance(session, RecorderState.load())
+
     @app.patch("/sessions/{session_id}", dependencies=guard)
     def rename_session(session_id: str, payload: RenameSessionRequest) -> dict[str, str]:
         return recorder.rename_session(session_id, payload.title)
+
+    @app.patch("/sessions/{session_id}/metadata", dependencies=guard)
+    def update_session_metadata(session_id: str, payload: SessionMetadataRequest) -> dict[str, Any]:
+        """Update editable workflow metadata without changing session contents."""
+
+        return recorder.update_session_metadata(
+            session_id,
+            workflow_family=payload.workflow_family,
+            tags=payload.tags,
+        )
 
     @app.post("/sessions/{session_id}/trash", dependencies=guard)
     def trash_session(session_id: str) -> dict[str, Any]:
@@ -534,6 +708,18 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     def dashboard_styles() -> Response:
         return ui_asset("dashboard.css", "text/css")
 
+    @app.get("/provenance.css", response_class=Response)
+    def provenance_styles() -> Response:
+        return ui_asset("provenance.css", "text/css")
+
+    @app.get("/session-metadata.css", response_class=Response)
+    def session_metadata_styles() -> Response:
+        return ui_asset("session-metadata.css", "text/css")
+
+    @app.get("/settings.css", response_class=Response)
+    def settings_styles() -> Response:
+        return ui_asset("settings.css", "text/css")
+
     @app.get("/app.js", response_class=Response)
     def javascript() -> Response:
         return ui_asset("app.js", "application/javascript")
@@ -542,12 +728,24 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     def dashboard_javascript() -> Response:
         return ui_asset("dashboard.js", "application/javascript")
 
+    @app.get("/provenance.js", response_class=Response)
+    def provenance_javascript() -> Response:
+        return ui_asset("provenance.js", "application/javascript")
+
+    @app.get("/session-metadata.js", response_class=Response)
+    def session_metadata_javascript() -> Response:
+        return ui_asset("session-metadata.js", "application/javascript")
+
+    @app.get("/settings.js", response_class=Response)
+    def settings_javascript() -> Response:
+        return ui_asset("settings.js", "application/javascript")
+
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
         html = resources.files("wfrec.ui").joinpath("index.html").read_text(encoding="utf-8")
         # The token is injected into the page rather than exposed as a URL
         # parameter, so it does not end up in shell history or a browser's
         # visible address bar after navigation.
-        return html.replace("@WFREC_TOKEN@", token)
+        return html.replace("@WFREC_TOKEN@", token).replace("@AUTOCAB_VERSION@", __version__)
 
     return app

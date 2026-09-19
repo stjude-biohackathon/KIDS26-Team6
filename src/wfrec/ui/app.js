@@ -120,6 +120,43 @@ const ACTIVITY_DASHBOARD = window.WfrecActivityDashboard.create({
   timeLabel:eventTime,
   dateTimeLabel:eventDateTime
 });
+const PROVENANCE = window.WfrecProvenance.create({
+  button:document.getElementById('provenance-button'),
+  dialog:document.getElementById('provenance-dialog'),
+  content:document.getElementById('provenance-content'),
+  load:sessionId => api(`/sessions/${encodeURIComponent(sessionId)}/provenance`)
+});
+const SETTINGS = window.WfrecSettings.create({
+  button:document.getElementById('settings-button'),
+  dialog:document.getElementById('settings-dialog'),
+  form:document.getElementById('settings-form'),
+  input:document.getElementById('default-analyst'),
+  message:document.getElementById('settings-message'),
+  load:() => api('/settings'),
+  save:settings => api('/settings', settings, 'PATCH'),
+  onSaved:settings => {
+    if(STATE) STATE.default_analyst = settings.default_analyst;
+    document.getElementById('analyst').value = settings.default_analyst;
+    flash('Settings saved.', 'success');
+  }
+});
+const SESSION_METADATA = window.WfrecSessionMetadata.create({
+  root:document.getElementById('session-metadata'),
+  save:async (sessionId, changes) => {
+    try{
+      await api(
+        `/sessions/${encodeURIComponent(sessionId)}/metadata`,
+        changes,
+        'PATCH'
+      );
+      await refresh();
+      flash('Session details updated.', 'success');
+    }catch(error){
+      flash(error.message, 'error');
+      throw error;
+    }
+  }
+});
 
 async function api(path, body, method){
   const requestMethod = method || (body ? 'POST' : 'GET');
@@ -146,11 +183,15 @@ async function act(kind){
     if(kind === 'start'){
       STATE = await api('/sessions/start', {
         title: document.getElementById('title').value,
-        analyst: document.getElementById('analyst').value
+        analyst: document.getElementById('analyst').value,
+        workflow_family: document.getElementById('workflow-family').value.trim(),
+        tags:sessionTags(document.getElementById('session-tags').value)
       });
       SELECTED_SESSION = STATE.session.id;
       CREATING_SESSION = false;
       document.getElementById('title').value = '';
+      document.getElementById('workflow-family').value = '';
+      document.getElementById('session-tags').value = '';
     } else if(kind === 'resume'){
       STATE = await api('/sessions/resume', {session_id:SELECTED_SESSION});
     } else if(kind === 'stop'){
@@ -168,6 +209,10 @@ async function act(kind){
 function startSession(event){
   event.preventDefault();
   act('start');
+}
+
+function sessionTags(value){
+  return [...new Set(String(value).split(',').map(tag => tag.trim()).filter(Boolean))];
 }
 
 function showNewSessionForm(){
@@ -463,6 +508,22 @@ function toggleLiveUpdates(){
   if(LIVE_UPDATES) refresh().then(refreshLog);
 }
 
+function openProvenance(){
+  PROVENANCE.open(SELECTED_SESSION);
+}
+
+function closeProvenance(){
+  PROVENANCE.close();
+}
+
+function openSettings(){
+  SETTINGS.open();
+}
+
+function closeSettings(){
+  SETTINGS.close();
+}
+
 function flash(message, kind=''){
   const feedback = document.getElementById('feedback');
   feedback.textContent = message;
@@ -539,6 +600,7 @@ function renderExportControls(){
   primary.textContent = EXPORT_IN_PROGRESS ? 'Preparing…' : 'Export Session';
   primary.title = help;
   toggle.title = help;
+  control.title = help;
   control.setAttribute('aria-busy', String(EXPORT_IN_PROGRESS));
   if(!canExport) closeExportMenu();
 }
@@ -552,6 +614,8 @@ function render(){
     ANALYST_INITIALIZED = true;
   }
   const s = STATE.session;
+  PROVENANCE.setSession(s && s.id);
+  SESSION_METADATA.render(s);
   const badge = document.getElementById('badge');
   const status = s ? s.status : 'idle';
   const active = status === 'active';
@@ -579,10 +643,8 @@ function render(){
   document.getElementById('label').disabled = noteDisabled;
   document.getElementById('add-note').disabled = noteDisabled;
   badge.textContent = SESSION_STATUS_LABELS[status] || titleCase(status);
-  badge.className = 'badge ' + (status==='active'?'active':status==='paused'?'paused':'');
-  document.getElementById('navbar-analyst').textContent = (
-    creating ? STATE.default_analyst : s && s.analyst
-  ) || STATE.default_analyst || 'Unknown';
+  badge.className = 'badge ui-pill '
+    + (status==='active'?'active':status==='paused'?'paused':'');
   const sessionTitle = s ? (s.title || '').trim() : '';
   document.getElementById('session-title').textContent = s
     ? (sessionTitle || 'Untitled session')
@@ -681,7 +743,7 @@ function renderSessionStats(){
   const activeNow = active + (session.status === 'active' ? elapsed : 0);
   const pausedNow = paused + (session.status === 'paused' ? elapsed : 0);
   const details = [
-    sessionStat(session.analyst, 'analyst'),
+    sessionStat(`Analyst · ${session.analyst}`, 'analyst'),
     sessionStat(`${session.events} events`),
     sessionStat(`${elapsedDuration(activeNow)} active`),
     sessionStat(
@@ -689,16 +751,31 @@ function renderSessionStats(){
       session.sealed ? 'phi-applied' : 'phi-pending'
     )
   ];
-  if(pausedNow >= 1) details.push(sessionStat(`${elapsedDuration(pausedNow)} paused`));
+  if(pausedNow >= 1){
+    details.push(sessionStat(`${elapsedDuration(pausedNow)} paused total`));
+  }
   stats.replaceChildren(...details.filter(Boolean));
+}
+
+function phiPendingIcon(){
+  const namespace = 'http://www.w3.org/2000/svg';
+  const icon = document.createElementNS(namespace, 'svg');
+  const path = document.createElementNS(namespace, 'path');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('aria-hidden', 'true');
+  icon.setAttribute('focusable', 'false');
+  path.setAttribute('d', 'M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6Zm0 5v4l2 1');
+  icon.appendChild(path);
+  return icon;
 }
 
 function sessionStat(value, modifier=''){
   const text = normalizeText(value);
   if(!text) return null;
   const chip = document.createElement('span');
-  chip.className = `session-stat${modifier ? ` session-stat--${modifier}` : ''}`;
-  chip.textContent = text;
+  chip.className = `ui-pill session-stat${modifier ? ` session-stat--${modifier}` : ''}`;
+  if(modifier === 'phi-pending') chip.appendChild(phiPendingIcon());
+  chip.appendChild(document.createTextNode(text));
   chip.title = text;
   return chip;
 }
@@ -847,8 +924,7 @@ function sessionButton(session){
 }
 
 function sessionMetaText(session){
-  return `${session.events} events · ${sessionDuration(session.active_seconds)} · `
-    + (session.sealed ? 'PHI redaction applied' : 'PHI redaction pending');
+  return `${session.events} events · ${sessionDuration(session.active_seconds)}`;
 }
 
 function renderMobileSessionMenu(recording, paused, archived){

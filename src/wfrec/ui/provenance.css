@@ -1,0 +1,152 @@
+.provenance-dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(780px, calc(100vh - 32px));
+}
+
+.provenance-dialog__frame {
+  display: grid;
+  max-height: inherit;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.provenance-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.provenance-dialog__header h2 {
+  margin: 0 0 3px;
+  color: var(--ink);
+  font-size: 16px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.provenance-dialog__header p {
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.provenance-content {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.provenance-message {
+  margin: 0;
+  color: var(--dim);
+}
+
+.provenance-message--error {
+  color: var(--danger);
+}
+
+.provenance-section {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.provenance-section h3 {
+  margin: 0 0 8px;
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.provenance-list {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.32fr) minmax(0, 1fr);
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.provenance-list dt,
+.provenance-list dd {
+  min-width: 0;
+  margin: 0;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.provenance-list dt {
+  background: color-mix(in srgb, var(--dim) 7%, transparent);
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.provenance-list dd {
+  overflow-wrap: anywhere;
+}
+
+.provenance-list :is(dt, dd):nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.provenance-list code {
+  font: 12px/1.5 var(--font-mono);
+}
+
+.provenance-status {
+  font-weight: 600;
+}
+
+.provenance-status--verified,
+.provenance-status--applied {
+  color: var(--on);
+}
+
+.provenance-status--pending {
+  color: var(--warn);
+}
+
+.provenance-status--failed,
+.provenance-status--unavailable {
+  color: var(--danger);
+}
+
+.provenance-engine + .provenance-engine {
+  margin-top: 10px;
+}
+
+.provenance-engine h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .provenance-list {
+    grid-template-columns: 1fr;
+  }
+
+  .provenance-list dt,
+  .provenance-list dd {
+    border-bottom: 0;
+  }
+
+  .provenance-list dd {
+    padding-top: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .provenance-list dd:last-child {
+    border-bottom: 0;
+  }
+}
+
+@media (forced-colors: active) {
+  .provenance-list {
+    border-color: CanvasText;
+  }
+}

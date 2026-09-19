@@ -72,6 +72,36 @@ def test_default_analyst_falls_back_when_username_is_unavailable(monkeypatch):
     assert paths.default_analyst() == "unknown-analyst"
 
 
+def test_settings_save_default_analyst_for_future_sessions(client):
+    existing = client.post(
+        "/sessions/start", json={"title": "Existing", "analyst": "original"}
+    ).json()["session"]
+
+    response = client.patch("/settings", json={"default_analyst": "  analyst-a  "})
+    created = client.post("/sessions/start", json={"title": "Future"}).json()["session"]
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "default_analyst": "analyst-a",
+        "uses_system_default": False,
+    }
+    assert client.get("/settings").json() == response.json()
+    assert created["analyst"] == "analyst-a"
+    assert Session.load(existing["id"]).manifest.analyst == "original"
+
+
+def test_settings_blank_analyst_restores_os_default(client, monkeypatch):
+    monkeypatch.setattr(paths.getpass, "getuser", lambda: "system-user")
+    client.patch("/settings", json={"default_analyst": "analyst-a"})
+
+    response = client.patch("/settings", json={"default_analyst": "  "})
+
+    assert response.json() == {
+        "default_analyst": "system-user",
+        "uses_system_default": True,
+    }
+
+
 def test_endpoints_require_the_token(wfrec_home):
     """A fresh client with no default header, since TestClient merges headers."""
 
@@ -79,8 +109,12 @@ def test_endpoints_require_the_token(wfrec_home):
     with TestClient(create_app(recorder, token="test-token")) as anon:
         assert anon.get("/styles.css").status_code == 200
         assert anon.get("/dashboard.css").status_code == 200
+        assert anon.get("/provenance.css").status_code == 200
+        assert anon.get("/settings.css").status_code == 200
         assert anon.get("/app.js").status_code == 200
         assert anon.get("/dashboard.js").status_code == 200
+        assert anon.get("/provenance.js").status_code == 200
+        assert anon.get("/settings.js").status_code == 200
         assert anon.get("/status").status_code == 401
         assert anon.get("/status", headers={"Authorization": "Bearer wrong"}).status_code == 401
         assert (
@@ -288,6 +322,57 @@ def test_rename_session_rejects_sealed_session(client):
     assert Session.load(session_id).manifest.title == "Original"
 
 
+def test_update_session_workflow_and_tags(client):
+    started = client.post("/sessions/start", json={"title": "Metadata"}).json()
+    session_id = started["session"]["id"]
+
+    response = client.patch(
+        f"/sessions/{session_id}/metadata",
+        json={
+            "workflow_family": "  variant-qc  ",
+            "tags": ["hg38", " review ", "hg38", ""],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": session_id,
+        "workflow_family": "variant-qc",
+        "tags": ["hg38", "review"],
+    }
+    selected = client.get(f"/status?session_id={session_id}").json()["session"]
+    assert selected["workflow_family"] == "variant-qc"
+    assert selected["tags"] == ["hg38", "review"]
+    manifest = Session.load(session_id).manifest
+    assert manifest.workflow_family == "variant-qc"
+    assert manifest.tags == ["hg38", "review"]
+
+    client.post("/sessions/stop", json={"session_id": session_id})
+    cleared = client.patch(
+        f"/sessions/{session_id}/metadata",
+        json={"workflow_family": "", "tags": []},
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["workflow_family"] == ""
+    assert cleared.json()["tags"] == []
+
+
+def test_update_session_metadata_rejects_sealed_session(client):
+    started = client.post("/sessions/start", json={"title": "Sealed"}).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+    client.post("/sessions/seal", json={"session_id": session_id})
+
+    response = client.patch(
+        f"/sessions/{session_id}/metadata",
+        json={"tags": ["changed"]},
+    )
+
+    assert response.status_code == 409
+    assert "sealed and cannot be edited" in response.json()["detail"]
+    assert Session.load(session_id).manifest.tags == []
+
+
 def test_trash_archived_session_hides_only_the_dashboard_entry(client):
     started = client.post("/sessions/start", json={"title": "Archived"}).json()
     session_id = started["session"]["id"]
@@ -420,6 +505,82 @@ def test_sessions_support_read_only_historical_selection(client):
     assert selected["collectors"] == {}
 
 
+def test_session_provenance_reports_capture_and_pending_redaction(client):
+    started = client.post(
+        "/sessions/start",
+        json={
+            "title": "Variant review",
+            "analyst": "analyst-a",
+            "workflow_family": "variant-qc",
+            "tags": ["hg38"],
+        },
+    ).json()
+    session_id = started["session"]["id"]
+
+    response = client.get(f"/sessions/{session_id}/provenance")
+    provenance = response.json()
+
+    assert response.status_code == 200
+    assert provenance["session"]["id"] == session_id
+    assert provenance["session"]["workflow_family"] == "variant-qc"
+    assert provenance["session"]["tags"] == ["hg38"]
+    assert provenance["capture"]["sources"]["shell"] is True
+    assert provenance["environment"]["host"]
+    assert provenance["environment"]["recorded_by_version"] == "0.1.0"
+    assert provenance["environment"]["recorded_versions"] == ["0.1.0"]
+    assert provenance["environment"]["dashboard_version"] == "0.1.0"
+    assert provenance["redaction"] == {
+        "status": "pending",
+        "engine": "regex",
+        "engine_source": "dashboard-default",
+        "integrity": {"status": "pending"},
+    }
+
+
+def test_session_provenance_verifies_seal_and_hides_model_path(client):
+    started = client.post("/sessions/start", json={"title": "Sealed"}).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+    client.post("/sessions/seal", json={"session_id": session_id})
+    seal_path = Session.load(session_id).root / "seal.json"
+    record = json.loads(seal_path.read_text(encoding="utf-8"))
+    record["engines"][0].update(
+        {
+            "model": "example-model",
+            "revision": "a" * 40,
+            "weights_sha256": "b" * 64,
+            "weights_path": "/private/model/cache",
+        }
+    )
+    record["engine"] = "gliner"
+    seal_path.write_text(json.dumps(record), encoding="utf-8")
+
+    provenance = client.get(f"/sessions/{session_id}/provenance").json()
+    redaction = provenance["redaction"]
+
+    assert redaction["status"] == "applied"
+    assert redaction["engine"] == "gliner"
+    assert redaction["integrity"]["status"] == "verified"
+    assert redaction["integrity"]["targets"] == len(redaction["target_files"])
+    assert redaction["engines"][0]["revision"] == "a" * 40
+    assert redaction["engines"][0]["weights_sha256"] == "b" * 64
+    assert "weights_path" not in json.dumps(provenance)
+
+
+def test_session_provenance_reports_integrity_failure(client):
+    started = client.post("/sessions/start", json={"title": "Changed"}).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+    client.post("/sessions/seal", json={"session_id": session_id})
+    manifest_path = Session.load(session_id).root / "manifest.json"
+    manifest_path.write_text(manifest_path.read_text(encoding="utf-8") + "\n")
+
+    redaction = client.get(f"/sessions/{session_id}/provenance").json()["redaction"]
+
+    assert redaction["integrity"]["status"] == "failed"
+    assert "no longer matches its sealed digest" in redaction["integrity"]["detail"]
+
+
 def test_doctor_endpoint_reports_sources(client):
     report = client.get("/doctor").json()
     assert "sources" in report and "shell" in report["sources"]
@@ -434,13 +595,21 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert '<meta name="wfrec-token" content="test-token">' in body
     assert '<link rel="stylesheet" href="/styles.css">' in body
     assert '<link rel="stylesheet" href="/dashboard.css">' in body
+    assert '<link rel="stylesheet" href="/provenance.css">' in body
+    assert '<link rel="stylesheet" href="/session-metadata.css">' in body
+    assert '<link rel="stylesheet" href="/settings.css">' in body
     assert '<script src="/dashboard.js" defer></script>' in body
+    assert '<script src="/provenance.js" defer></script>' in body
+    assert '<script src="/session-metadata.js" defer></script>' in body
+    assert '<script src="/settings.js" defer></script>' in body
     assert '<script src="/app.js" defer></script>' in body
     assert "<style>" not in body
     assert "<script>" not in body
     assert "Recent Events Log" in body
     assert "<title>AutoCAB Activity Dashboard</title>" in body
-    assert "<h1>AutoCAB</h1>" in body
+    assert '<h1>AutoCAB <span class="app-version ui-pill">v0.1.0</span></h1>' in body
+    assert '<span id="badge" class="badge ui-pill">' in body
+    assert "@AUTOCAB_VERSION@" not in body
     assert "Commands appear after they finish." in body
     assert 'id="session-title"' in body
     assert 'id="stats" aria-label="Session details"' in body
@@ -463,6 +632,11 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert ">Select Folder</button>" in body
     assert '<label for="title">Session title</label>' in body
     assert '<label for="analyst">Analyst name or ID</label>' in body
+    assert "<summary>More details</summary>" not in body
+    assert '<label for="workflow-family">Workflow name (optional)</label>' in body
+    assert '<label for="session-tags">Tags (optional)</label>' in body
+    assert "Separate tags with commas." in body
+    assert 'id="session-metadata" class="session-metadata"' in body
     assert '<label for="note">Session note</label>' in body
     assert '<textarea id="note"' in body
     assert 'class="row note-actions"' in body
@@ -472,7 +646,7 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert "Load older events" in body
     assert 'id="session-list" class="session-list"' in body
     assert 'id="session-mobile" class="session-mobile"' in body
-    assert 'id="activity-dashboard-heading"' in body
+    assert 'id="activity-dashboard-heading" class="sr-only"' in body
     assert 'id="activity-dashboard" class="activity-dashboard"' in body
     assert 'id="dash-timeline-summary"' in body
     assert 'class="activity-timeline-chart" id="dash-timeline"' in body
@@ -483,6 +657,16 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert 'aria-label="Open session folder"' in body
     assert 'class="session-folder-control"' in body
     assert 'id="live-updates"' in body
+    assert 'id="navbar-analyst"' not in body
+    assert 'id="provenance-button"' in body
+    assert 'aria-label="View session provenance"' in body
+    assert 'id="provenance-dialog"' in body
+    assert ">Session provenance</h2>" in body
+    assert 'id="settings-button"' in body
+    assert 'aria-label="Open settings"' in body
+    assert 'id="settings-dialog"' in body
+    assert 'for="default-analyst"' in body
+    assert "Existing sessions will not change." in body
     assert 'aria-pressed="true"' in body
     assert 'id="theme-toggle"' in body
     assert 'id="theme-icon-moon"' in body
@@ -494,6 +678,9 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert "Screen events JSON" in body
     assert "Export Session" in body
     assert 'aria-label="Export session"' in body
+    assert 'id="export-help"' not in body
+    assert 'id="archive-session" onclick="act(\'stop\')"' in body
+    assert 'id="archive-session" class="danger-quiet"' not in body
     assert "Export Events" not in body
     assert "AutoCAB inputs" not in body
     assert 'class="skip-link" href="#main-content"' in body
@@ -514,9 +701,15 @@ def test_ui_serves_packaged_stylesheet(client):
     assert "button.danger-quiet:not(:disabled)" in response.text
     assert ".app-header-actions > button {" in response.text
     assert ".session-folder-control {" in response.text
-    assert "grid-template-columns: auto minmax(0, 640px)" in response.text
+    assert '"summary actions"' in response.text
+    assert '"properties properties"' in response.text
+    assert ".session-properties {" in response.text
     assert "background: color-mix(in srgb, var(--dim) 9%, transparent)" in response.text
     assert ".session-title-form {" in response.text
+    assert ".ui-pill {" in response.text
+    assert ".app-version {" in response.text
+    assert ".export-block {" not in response.text
+    assert ".action-help {" not in response.text
     assert ".session-stat--phi-pending {" in response.text
     assert ".session-stat--phi-applied {" in response.text
     assert ".event-detail-content.formatted.collapsed {" in response.text
@@ -558,6 +751,9 @@ def test_ui_serves_packaged_javascript_without_credentials(client):
     assert "active:'Recording'" in source
     assert "paused:'Paused'" in source
     assert "function showRenameSessionForm()" in source
+    assert "function sessionTags(value)" in source
+    assert "workflow_family: document.getElementById('workflow-family').value.trim()" in source
+    assert "tags:sessionTags(document.getElementById('session-tags').value)" in source
     assert "function cancelRenameSession()" in source
     assert "function renameSession(event)" in source
     assert "function trashSelectedSession()" in source
@@ -623,12 +819,24 @@ def test_ui_serves_packaged_javascript_without_credentials(client):
     assert "const DASHBOARD_CACHE = new Map()" in source
     assert "function dashboardEvents(sessionId, expectedTotal)" in source
     assert "function sessionStat(value, modifier='')" in source
+    assert "chip.className = `ui-pill session-stat" in source
+    assert "badge.className = 'badge ui-pill '" in source
+    assert "function phiPendingIcon()" in source
+    assert "icon.setAttribute('aria-hidden', 'true')" in source
     assert "dateTimeLabel:eventDateTime" in source
     assert "limit=100000" not in source
     assert "session.sealed ? 'PHI redaction applied'" in source
     assert "'PHI redaction pending'" in source
     assert "Pause or archive the session before exporting events." in source
+    assert "control.title = help" in source
+    assert "Pause or archive to export." not in source
     assert "Preparing a pattern-checked export." in source
+    assert "Analyst · ${session.analyst}" in source
+    assert "paused total" in source
+    assert "navbar-analyst" not in source
+    assert (
+        "return `${session.events} events · ${sessionDuration(session.active_seconds)}`;" in source
+    )
 
 
 def test_ui_serves_component_scoped_dashboard_styles(client):
@@ -645,6 +853,59 @@ def test_ui_serves_component_scoped_dashboard_styles(client):
     assert ".activity-timeline-chart__tooltip" in source
     assert ".dash-pie" not in source
     assert ".dash-timeline .bucket" not in source
+
+
+def test_ui_serves_component_scoped_provenance_assets(client):
+    stylesheet = client.get("/provenance.css")
+    javascript = client.get("/provenance.js")
+
+    assert stylesheet.status_code == 200
+    assert stylesheet.headers["content-type"].startswith("text/css")
+    assert ".provenance-dialog" in stylesheet.text
+    assert ".provenance-list" in stylesheet.text
+    assert "@media (max-width: 560px)" in stylesheet.text
+    assert javascript.status_code == 200
+    assert javascript.headers["content-type"].startswith("application/javascript")
+    assert "function provenanceModule(global)" in javascript.text
+    assert "function render(data, host)" in javascript.text
+    assert "function versionSummary(environment)" in javascript.text
+    assert "(started)" in javascript.text
+    assert "(current)" in javascript.text
+    assert "weights_path" not in javascript.text
+
+
+def test_ui_serves_component_scoped_session_metadata_assets(client):
+    stylesheet = client.get("/session-metadata.css")
+    javascript = client.get("/session-metadata.js")
+
+    assert stylesheet.status_code == 200
+    assert javascript.status_code == 200
+    assert ".session-metadata__field" in stylesheet.text
+    assert "display: flex" in stylesheet.text
+    assert ".session-metadata__editor" in stylesheet.text
+    assert "flex: 0 0 100%" in stylesheet.text
+    assert "function sessionMetadataModule(global)" in javascript.text
+    assert "function metadataEditor()" in javascript.text
+    assert "'ui-pill session-metadata__value'" in javascript.text
+    assert "'ui-pill session-metadata__chip'" in javascript.text
+    assert "Remove tag" in javascript.text
+    assert "'Not set'" in javascript.text
+
+
+def test_ui_serves_component_scoped_settings_assets(client):
+    stylesheet = client.get("/settings.css")
+    javascript = client.get("/settings.js")
+
+    assert stylesheet.status_code == 200
+    assert javascript.status_code == 200
+    assert ".settings-dialog" in stylesheet.text
+    assert ".settings-dialog__message" in stylesheet.text
+    assert "function settingsModule(global)" in javascript.text
+    assert "function create({button, dialog, form, input, message, load, save, onSaved})" in (
+        javascript.text
+    )
+    assert "input.focus({preventScroll:true})" in javascript.text
+    assert "button.focus({preventScroll:true})" in javascript.text
 
 
 def test_ui_serves_interactive_dashboard_javascript_without_credentials(client):
@@ -666,6 +927,10 @@ def test_ui_serves_interactive_dashboard_javascript_without_credentials(client):
     assert "ArrowRight" in source
     assert "focus({preventScroll:true})" in source
     assert "segment.style.flexGrow = count" in source
+    assert "['Shell commands'" not in source
+    assert "['Agent messages'" not in source
+    assert "Mostly ${CATEGORIES[topIndex].label.toLowerCase()} activity" in source
+    assert "in this session, mostly" not in source
 
 
 def test_export_endpoint_writes_files(client):
@@ -830,6 +1095,17 @@ def test_cli_start_status_stop(wfrec_home, capsys):
 
     assert main(["stop"]) == 0
     assert "Stopped" in capsys.readouterr().out
+
+
+def test_cli_start_uses_saved_default_analyst(wfrec_home, capsys):
+    state = RecorderState.load()
+    state.default_analyst = "saved-analyst"
+    state.save()
+
+    assert main(["start", "--title", "Saved default", "--no-daemon"]) == 0
+    capsys.readouterr()
+
+    assert SessionStore().resolve(None).manifest.analyst == "saved-analyst"
 
 
 def test_cli_json_flag_works_on_either_side_of_the_subcommand(wfrec_home, capsys):

@@ -1,0 +1,105 @@
+.session-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px 18px;
+  margin: 8px 0 12px;
+}
+
+.session-metadata__field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.session-metadata__label {
+  color: var(--dim);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.session-metadata__content,
+.session-metadata__tags,
+.session-metadata__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.session-metadata__value {
+  min-width: 0;
+}
+
+.session-metadata__empty {
+  color: var(--dim);
+}
+
+.session-metadata__chip {
+  gap: 3px;
+  padding-right: 3px;
+}
+
+button.session-metadata__action {
+  display: inline-grid;
+  place-items: center;
+  width: var(--control-compact);
+  min-width: var(--control-compact);
+  height: var(--control-compact);
+  min-height: var(--control-compact);
+  padding: 0;
+  border-color: transparent;
+  color: var(--dim);
+}
+
+button.session-metadata__action:hover {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--dim) 10%, transparent);
+  color: var(--ink);
+}
+
+button.session-metadata__remove {
+  width: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  border: 0;
+  padding: 0;
+}
+
+.session-metadata__action svg,
+.session-metadata__remove svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.session-metadata__editor {
+  flex: 0 0 100%;
+}
+
+.session-metadata__form {
+  max-width: 560px;
+}
+
+.session-metadata__form input {
+  flex: 1 1 220px;
+}
+
+.session-metadata__form button {
+  min-height: 34px;
+  padding: 6px 10px;
+}
+
+@media (max-width: 560px) {
+  .session-metadata__field {
+    flex: 0 0 100%;
+  }
+}

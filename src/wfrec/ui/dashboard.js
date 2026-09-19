@@ -209,8 +209,7 @@
       const topCount = Math.max(...latestCounts);
       const topIndex = latestCounts.indexOf(topCount);
       defaultCaption = topCount
-        ? `${eventCountLabel(latestTotal)} in this session, mostly `
-          + `${CATEGORIES[topIndex].label.toLowerCase()} activity `
+        ? `Mostly ${CATEGORIES[topIndex].label.toLowerCase()} activity `
           + `(${percentage(topCount, latestTotal)}%).`
         : 'No activity yet.';
       plot.hidden = !latestTotal;
@@ -234,13 +233,11 @@
 
   function createActivityStats(host){
     const definitions = [
-      ['Shell commands', events => countType(events, 'shell.command.completed')],
       ['Jobs submitted', events => countType(events, 'job.submitted')],
       ['Jobs completed', events => countType(events, 'job.completed')],
       ['Git snapshots', events => countType(events, 'git.snapshot')],
       ['File changes', events => countType(events, 'file.changed')
-        + countType(events, 'file.diff')],
-      ['Agent messages', events => countType(events, 'agent.message')]
+        + countType(events, 'file.diff')]
     ];
     const numberNodes = definitions.map(([label]) => {
       const tile = document.createElement('div');

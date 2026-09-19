@@ -510,7 +510,7 @@ def _via_daemon(client: Client, args: argparse.Namespace, as_json: bool) -> int:
             "/sessions/start",
             {
                 "title": args.title,
-                "analyst": args.analyst or paths.default_analyst(),
+                "analyst": args.analyst,
                 "workflow_family": args.workflow_family,
                 "tags": args.tag,
                 "watch": [str(p) for p in args.watch],
@@ -556,7 +556,7 @@ def _direct(args: argparse.Namespace, as_json: bool) -> int:
     if command == "start":
         result = recorder.start_session(
             title=args.title,
-            analyst=args.analyst or paths.default_analyst(),
+            analyst=args.analyst,
             workflow_family=args.workflow_family,
             tags=args.tag,
             watch=args.watch,
