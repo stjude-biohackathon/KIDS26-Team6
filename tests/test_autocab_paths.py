@@ -7,7 +7,7 @@ from pathlib import Path
 
 from autocab import paths as autocab_paths
 from autocab.migration import migrate_wfrec_sessions
-from wfrec.session import Manifest, Session, SessionStore
+from autocab.recording.session import Manifest, Session, SessionStore
 
 
 def _write_session(root: Path, session_id: str, title: str) -> Path:

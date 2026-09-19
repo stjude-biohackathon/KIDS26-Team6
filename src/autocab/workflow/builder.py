@@ -9,8 +9,8 @@ import shlex
 from typing import Any
 
 from autocab.forge.skill_spec import SCHEMA_VERSION, validateSpec
-from wfrec.events import DEID_SEALED, SHELL_COMMAND, Event
-from wfrec.session import Session
+from autocab.recording.events import DEID_SEALED, SHELL_COMMAND, Event
+from autocab.recording.session import Session
 
 from .models import WorkflowError
 

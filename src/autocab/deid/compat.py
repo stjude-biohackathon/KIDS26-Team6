@@ -1,7 +1,7 @@
 """Backward compatibility with the two return types already in the tree.
 
 ``autocab.models.RedactionReport`` (``redacted_text`` + ``findings``) and
-``wfrec.redaction.Redacted`` (``text`` + ``findings`` + ``available``) are both
+``autocab.recording.redaction.Redacted`` (``text`` + ``findings`` + ``available``) are both
 consumed by code and by assertions that must keep passing unmodified. This
 module is the only place that knows about them, so the detector never has to.
 
@@ -73,7 +73,7 @@ def findings_from_spans(spans: Sequence[Span]) -> list[str]:
     sequentially, so ``https://x/SJ001234`` reported both ``url`` and ``sj_id``;
     the resolved form is a single ``URL`` hull, and without the absorbed labels
     the session would look like it never contained a subject identifier.
-    ``test_wfrec_collectors.py`` asserts exactly this.
+    ``test_recording_collectors.py`` asserts exactly this.
     """
 
     names: set[str] = set()
@@ -103,9 +103,9 @@ def to_redaction_report(redacted_text: str, spans: Sequence[Span]) -> Any:
 
 
 def to_redacted(redacted_text: str, spans: Sequence[Span], *, available: bool = True) -> Any:
-    """Build a ``wfrec.redaction.Redacted``."""
+    """Build a ``autocab.recording.redaction.Redacted``."""
 
-    from wfrec.redaction import Redacted
+    from autocab.recording.redaction import Redacted
 
     return Redacted(
         text=redacted_text,

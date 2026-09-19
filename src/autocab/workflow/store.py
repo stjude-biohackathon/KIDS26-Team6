@@ -10,7 +10,7 @@ import shutil
 from typing import Any, Iterator
 
 from autocab import paths
-from wfrec.locking import atomic_write_text, file_lock
+from autocab.recording.locking import atomic_write_text, file_lock
 
 from .models import ForgeRun, WorkflowError
 

@@ -184,7 +184,7 @@ def _model_spec(model: str) -> ModelSpec:
 def model_root(model: str = "gliner") -> Path:
     """Return the application-owned model directory under ``WFREC_HOME``."""
 
-    from wfrec import paths
+    from autocab.recording import paths
 
     spec = _model_spec(model)
     return paths.home() / "models" / spec.name / spec.revision

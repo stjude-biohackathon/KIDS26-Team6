@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
-from wfrec.events import utc_now
+from autocab.recording.events import utc_now
 
 
 class WorkflowError(RuntimeError):

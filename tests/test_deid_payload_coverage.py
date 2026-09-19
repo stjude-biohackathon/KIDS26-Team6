@@ -17,9 +17,9 @@ import json
 
 import pytest
 
-from wfrec import events as events_mod
-from wfrec.events import Event
-from wfrec.seal import PATH_KEYS, SKIP_KEYS, seal_session
+from autocab.recording import events as events_mod
+from autocab.recording.events import Event
+from autocab.recording.seal import PATH_KEYS, SKIP_KEYS, seal_session
 
 
 def all_event_types() -> list[str]:

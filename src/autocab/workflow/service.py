@@ -19,10 +19,10 @@ from autocab.forge.skill_spec import (
     loadSpec,
     validateSpec,
 )
-from wfrec.events import read_events_sorted, utc_now
-from wfrec.locking import atomic_write_text
-from wfrec.seal import require_sealed
-from wfrec.session import Session
+from autocab.recording.events import read_events_sorted, utc_now
+from autocab.recording.locking import atomic_write_text
+from autocab.recording.seal import require_sealed
+from autocab.recording.session import Session
 
 from .builder import build_blocked_spec, build_evidence_snapshot
 from .models import ForgeRun, ForgeState, WorkflowError

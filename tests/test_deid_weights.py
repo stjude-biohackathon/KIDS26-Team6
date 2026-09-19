@@ -23,7 +23,7 @@ def _model_file(remote_path: str, local_name: str, content: bytes) -> models.Mod
     )
 
 
-def test_missing_weights_never_trigger_a_download(wfrec_home: Path) -> None:
+def test_missing_weights_never_trigger_a_download(autocab_home: Path) -> None:
     status = models.verify_weights()
 
     assert status.present is False
@@ -33,7 +33,7 @@ def test_missing_weights_never_trigger_a_download(wfrec_home: Path) -> None:
 
 
 def test_fetch_bundle_load_and_verify_are_hash_checked(
-    wfrec_home: Path,
+    autocab_home: Path,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -68,7 +68,7 @@ def test_fetch_bundle_load_and_verify_are_hash_checked(
 
     installed = models.load_bundle(bundle)
     assert installed.valid is True
-    assert installed.path.parent.parent.parent == wfrec_home
+    assert installed.path.parent.parent.parent == autocab_home
     assert models.verify_weights().valid is True
 
     installed.path.joinpath(pinned[0].local_name).write_bytes(b"corrupt")
@@ -78,7 +78,7 @@ def test_fetch_bundle_load_and_verify_are_hash_checked(
 
 
 def test_bundle_must_match_the_pinned_manifest(
-    wfrec_home: Path,
+    autocab_home: Path,
     tmp_path: Path,
 ) -> None:
     invalid = tmp_path / "invalid.zip"

@@ -25,7 +25,7 @@ class _Extractor:
         ]
 
 
-def test_missing_gliner2_weights_name_the_explicit_setup_command(wfrec_home: Path) -> None:
+def test_missing_gliner2_weights_name_the_explicit_setup_command(autocab_home: Path) -> None:
     with pytest.raises(EngineUnavailable, match="fetch --model gliner2-pii"):
         Gliner2Pii(extractor=_Extractor())
 

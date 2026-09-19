@@ -24,10 +24,10 @@ from autocab.migration import migrate_wfrec_sessions
 from autocab.orchestrator import run_pipeline
 from autocab.terminal_logs import convert_terminal_log, write_trace_json
 from autocab.workflow import ForgeWorkflow, RunStore, WorkflowError
-from wfrec.recorder import Recorder
-from wfrec.seal import SealError
-from wfrec.session import SessionNotFound, SessionStore
-from wfrec.state import resolved_default_analyst
+from autocab.recording.recorder import Recorder
+from autocab.recording.seal import SealError
+from autocab.recording.session import SessionNotFound, SessionStore
+from autocab.recording.state import resolved_default_analyst
 
 
 def _emit(payload: Any, *, as_json: bool = False) -> None:
@@ -43,7 +43,7 @@ def _emit(payload: Any, *, as_json: bool = False) -> None:
 def _run_wfrec(arguments: list[str]) -> None:
     """Use the recorder's established daemon-aware command implementation."""
 
-    from wfrec.cli import main as wfrec_main
+    from autocab.recording.cli import main as wfrec_main
 
     result = wfrec_main(arguments)
     if result:

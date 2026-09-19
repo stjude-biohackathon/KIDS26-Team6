@@ -12,7 +12,7 @@ from autocab.deid.models import WeightStatus
 from autocab.orchestrator import run_demo
 import autocab.unified_cli as unified_cli
 from autocab.unified_cli import cli
-from wfrec.session import SessionStore
+from autocab.recording.session import SessionStore
 
 
 def test_help_lists_the_integrated_workflow_commands() -> None:
@@ -235,11 +235,11 @@ def test_init_runs_explicit_setup_actions(
 
 
 def test_record_finish_uses_the_configured_redaction_engine(
-    wfrec_home: Path,
+    autocab_home: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     session, _created = SessionStore().start(title="Configured seal", analyst="analyst")
-    (wfrec_home / "config.toml").write_text(
+    (autocab_home / "config.toml").write_text(
         '[deid]\nengine = "gliner2-pii"\n',
         encoding="utf-8",
     )
@@ -260,7 +260,7 @@ def test_demo_does_not_approve_by_default(tmp_path: Path) -> None:
     assert all(proposal.export_path is None for proposal in proposals)
 
 
-def test_record_start_uses_the_existing_recorder_service(wfrec_home: Path) -> None:
+def test_record_start_uses_the_existing_recorder_service(autocab_home: Path) -> None:
     result = CliRunner().invoke(
         cli,
         ["record", "start", "--title", "Unified CLI", "--no-daemon"],

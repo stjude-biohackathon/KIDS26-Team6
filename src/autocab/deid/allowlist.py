@@ -511,7 +511,7 @@ class Allowlist:
 
 
 def _default_user_file() -> Path | None:
-    """``~/.wfrec/deid-allowlist.txt``, resolved through ``wfrec.paths``.
+    """``~/.wfrec/deid-allowlist.txt``, resolved through ``autocab.recording.paths``.
 
     Imported lazily and defensively: ``autocab.deid`` must stay importable with
     stdlib alone so ``SensitiveDataRedactor`` can delegate to it without making
@@ -519,7 +519,7 @@ def _default_user_file() -> Path | None:
     """
 
     try:
-        from wfrec import paths
+        from autocab.recording import paths
     except Exception:  # pragma: no cover - autocab-only installs
         return None
     try:
@@ -532,7 +532,7 @@ _SHARED: Allowlist | None = None
 
 
 def shared() -> Allowlist:
-    """Process-wide allowlist. Mirrors ``wfrec.redaction.shared()``; reset it in
+    """Process-wide allowlist. Mirrors ``autocab.recording.redaction.shared()``; reset it in
     tests the same way (``allowlist._SHARED = None``)."""
 
     global _SHARED

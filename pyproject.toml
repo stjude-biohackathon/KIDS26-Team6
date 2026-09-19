@@ -42,12 +42,12 @@ dependencies = [
   "tomli>=2; python_version < '3.11'",  # config.toml support on minimum Python
   # Markdown event details are rendered server-side and sanitized before the
   # browser receives them. markdown-it-py is already pulled in by Rich, but it
-  # remains direct here because wfrec imports and relies on its public API.
+  # remains direct here because AutoCAB recording relies on its public API.
   "markdown-it-py>=4.2",
   "nh3>=0.3.7",
   # --- local model PHI detection ---
   # GLiNER runs through its published ONNX graph. Using the graph directly
-  # avoids pulling PyTorch and Transformers into every wfrec installation.
+  # avoids pulling PyTorch and Transformers into every AutoCAB installation.
   "onnxruntime>=1.17",
   "tokenizers>=0.20",
   "huggingface-hub>=0.24",
@@ -113,7 +113,7 @@ dev = ["pytest>=8.0", "ruff>=0.16.8"]
 
 [project.scripts]
 autocab = "autocab.cli:main"
-wfrec = "wfrec.cli:main"
+wfrec = "autocab.recording.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -122,13 +122,10 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-# Ship the usage guide with the package: an installed copy should carry its own
-# documentation rather than requiring the repo to be at hand.
-"wfrec" = ["README.md"]
 # The shell hooks and the control UI are data files, not importable modules,
 # and both must survive installation into a wheel.
-"wfrec.hooks" = ["*.bash", "*.zsh", "*.fish", "*.ps1", "*.sh"]
-"wfrec.ui" = ["*.html", "*.css", "*.js"]
+"autocab.recording.hooks" = ["*.bash", "*.zsh", "*.fish", "*.ps1", "*.sh"]
+"autocab.ui" = ["*.html", "*.css", "*.js"]
 
 [tool.setuptools.data-files]
 "share/autocab/skill-forge" = [

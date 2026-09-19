@@ -214,7 +214,7 @@ def load(path: Path | None = None) -> DeidConfig:
 
 def _default_path() -> Path | None:
     try:
-        from wfrec import paths
+        from autocab.recording import paths
     except Exception:  # pragma: no cover - autocab-only installs
         return None
     try:

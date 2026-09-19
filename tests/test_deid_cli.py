@@ -5,15 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 
 from autocab.deid.config import load as load_config
-from wfrec.cli import main
+from autocab.recording.cli import main
 
 
-def test_regex_is_the_default_without_user_configuration(wfrec_home: Path) -> None:
+def test_regex_is_the_default_without_user_configuration(autocab_home: Path) -> None:
     assert load_config().engine == "regex"
 
 
 def test_verify_missing_model_is_offline_and_names_the_setup_command(
-    wfrec_home: Path,
+    autocab_home: Path,
     capfd,
 ) -> None:
     assert main(["deid", "verify"]) == 1
@@ -24,7 +24,7 @@ def test_verify_missing_model_is_offline_and_names_the_setup_command(
     assert "wfrec deid fetch" in output
 
 
-def test_verify_selects_the_gliner2_model(wfrec_home: Path, capfd) -> None:
+def test_verify_selects_the_gliner2_model(autocab_home: Path, capfd) -> None:
     assert main(["deid", "verify", "--model", "gliner2-pii"]) == 1
 
     captured = capfd.readouterr()

@@ -22,7 +22,7 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - run: python -m ruff check src tests
       - run: python -m pytest
-      - run: node --test tests/test_wfrec_dashboard.js
+      - run: node --test tests/test_recording_dashboard.js
 
   enterprise-linux-hooks:
     name: Enterprise Linux bash hook
@@ -38,7 +38,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/src
         run: |
-          python3.12 -c "from wfrec import hookinstall; hookinstall.install(['bash'])"
+          python3.12 -c "from autocab.recording import hookinstall; hookinstall.install(['bash'])"
           bash --noprofile --rcfile "$HOME/.bashrc" -ic \
             'test "$__WFREC_LOADED" = "1" && test -n "$WFREC_RUN"'
 
@@ -58,7 +58,7 @@ jobs:
       - name: Install both PowerShell profiles
         shell: pwsh
         run: |
-          python -c "from wfrec import hookinstall; hookinstall.install(['powershell'])"
+          python -c "from autocab.recording import hookinstall; hookinstall.install(['powershell'])"
           $profiles = @(
             "$HOME\Documents\PowerShell\profile.ps1"
             "$HOME\Documents\WindowsPowerShell\profile.ps1"

@@ -9,8 +9,8 @@ import pytest
 
 from autocab.forge.skill_spec import validateSpec
 from autocab.workflow import ForgeState, ForgeWorkflow, InvalidTransition, WorkflowError
-from wfrec.events import Event
-from wfrec.seal import NotSealed
+from autocab.recording.events import Event
+from autocab.recording.seal import NotSealed
 
 
 def _record_command(session, command: str = "python workflow.py input.txt") -> None:

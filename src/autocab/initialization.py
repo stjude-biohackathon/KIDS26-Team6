@@ -12,8 +12,8 @@ from autocab import paths
 from autocab.deid.config import load as load_deid_config
 from autocab.deid.models import ModelWeightsError, WeightStatus, fetch_weights, verify_weights
 from autocab.migration import migrate_wfrec_sessions
-from wfrec.locking import atomic_write_text, file_lock
-from wfrec.state import RecorderState, resolved_default_analyst
+from autocab.recording.locking import atomic_write_text, file_lock
+from autocab.recording.state import RecorderState, resolved_default_analyst
 
 REDACTION_ENGINES = ("regex", "gliner", "gliner2-pii")
 _TABLE_PATTERN = re.compile(r"^\s*\[([^]]+)]\s*(?:#.*)?$")
@@ -185,7 +185,7 @@ def prepare_model(engine: str, *, fetch: bool) -> WeightStatus | None:
 def install_shell_hooks() -> list[dict[str, str]]:
     """Install auto-detected shell hooks after the caller obtains consent."""
 
-    from wfrec.hookinstall import install
+    from autocab.recording.hookinstall import install
 
     return install()
 
@@ -200,7 +200,7 @@ def migrate_legacy_sessions() -> dict[str, Any]:
 def readiness_summary() -> dict[str, Any]:
     """Return a compact, read-only summary of recorder readiness."""
 
-    from wfrec.doctor import diagnose
+    from autocab.recording.doctor import diagnose
 
     report = diagnose()
     sources = {
