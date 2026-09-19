@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -150,6 +151,67 @@ def test_forge_api_requires_a_sealed_session(client):
 
     assert response.status_code == 409
     assert "unsealed session" in response.json()["detail"]
+
+
+def test_seal_endpoint_uses_the_configured_engine(
+    client,
+    autocab_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    (autocab_home / "config.toml").write_text(
+        '[deid]\nengine = "gliner2-pii"\nprofile = "balanced"\n',
+        encoding="utf-8",
+    )
+    started = client.post(
+        "/sessions/start", json={"title": "Configured redaction", "analyst": "analyst"}
+    ).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+    calls: list[tuple[str, str, str]] = []
+
+    def apply(current_session, *, engine: str, profile: str, **_options):
+        calls.append((current_session.session_id, engine, profile))
+        return SimpleNamespace(
+            dry_run=False,
+            record={"engine": engine, "assurance": "verified", "findings": 3},
+        )
+
+    monkeypatch.setattr("autocab.recording.seal_service.apply_phi_redaction", apply)
+
+    response = client.post("/sessions/seal", json={"session_id": session_id})
+
+    assert response.status_code == 200
+    assert response.json()["engine"] == "gliner2-pii"
+    assert calls == [(session_id, "gliner2-pii", "balanced")]
+
+
+def test_seal_endpoint_does_not_fall_back_when_configured_engine_is_unavailable(
+    client,
+    autocab_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from autocab.deid.engines.base import EngineUnavailable
+
+    (autocab_home / "config.toml").write_text(
+        '[deid]\nengine = "gliner2-pii"\nprofile = "balanced"\n',
+        encoding="utf-8",
+    )
+    started = client.post(
+        "/sessions/start", json={"title": "Missing model", "analyst": "analyst"}
+    ).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+
+    def unavailable(*_args, **_kwargs):
+        raise EngineUnavailable("gliner2-pii", "model weights are not installed")
+
+    monkeypatch.setattr("autocab.recording.seal_service.apply_phi_redaction", unavailable)
+
+    response = client.post("/sessions/seal", json={"session_id": session_id})
+
+    assert response.status_code == 409
+    assert "model weights are not installed" in response.json()["detail"]
+    assert not (autocab_home / "sessions" / session_id / "seal.json").exists()
 
 
 def test_forge_api_exposes_blocked_review_state(client):
@@ -728,6 +790,11 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert "Optionally record why the session is being paused." not in body
     assert 'id="export-dialog"' in body
     assert "Redact PHI and export?" in body
+    assert 'id="redaction-dialog"' in body
+    assert "Apply PHI redaction?" in body
+    assert "seal it for skill creation" in body
+    assert ">Apply redaction</button>" in body
+    assert '<li data-stage="redacted">Redacted</li>' in body
     assert "Add notes, errors, or decisions." in body
     assert "AutoCAB masks detected personal information before saving." in body
     assert "AutoCAB will remove detected PHI from a copy." in body
@@ -1013,6 +1080,20 @@ def test_ui_serves_component_scoped_settings_assets(client):
     assert "button.focus({preventScroll:true})" in javascript.text
 
 
+def test_ui_serves_phi_redaction_skill_workflow(client):
+    stylesheet = client.get("/forge-workflow.css")
+    javascript = client.get("/forge-workflow.js")
+
+    assert stylesheet.status_code == 200
+    assert javascript.status_code == 200
+    assert "repeat(6, minmax(0, 1fr))" in stylesheet.text
+    assert "action:'redact'" in javascript.text
+    assert "Apply PHI redaction" in javascript.text
+    assert "Applying redaction…" in javascript.text
+    assert "await sealSession(sessionId)" in javascript.text
+    assert "await refreshSession()" in javascript.text
+
+
 def test_ui_serves_interactive_dashboard_javascript_without_credentials(client):
     response = client.get("/dashboard.js")
     source = response.text
@@ -1184,7 +1265,7 @@ def test_seal_status_works_for_the_current_session_without_an_explicit_id(client
 def test_seal_endpoint_rejects_unknown_profiles(client):
     client.post("/sessions/start", json={"title": "A", "analyst": "a"})
     client.post("/sessions/stop", json={})
-    response = client.post("/sessions/seal", json={"profile": "balanced"})
+    response = client.post("/sessions/seal", json={"profile": "unknown"})
 
     assert response.status_code == 422
 

@@ -170,7 +170,12 @@ const FORGE_WORKFLOW = window.WfrecForgeWorkflow.create({
   dialogAction:document.getElementById('forge-dialog-action'),
   dialogClose:document.getElementById('forge-dialog-close'),
   dialogCancel:document.getElementById('forge-dialog-cancel'),
+  redactionDialog:document.getElementById('redaction-dialog'),
+  redactionForm:document.getElementById('redaction-form'),
+  redactionConfirm:document.getElementById('redaction-confirm'),
+  redactionCancel:document.getElementById('redaction-cancel'),
   listRuns:sessionId => api(`/sessions/${encodeURIComponent(sessionId)}/forge-runs`),
+  sealSession:sessionId => api('/sessions/seal', {session_id:sessionId}, 'POST'),
   createRun:sessionId => api(
     `/sessions/${encodeURIComponent(sessionId)}/forge-runs`, {}, 'POST'
   ),
@@ -180,7 +185,8 @@ const FORGE_WORKFLOW = window.WfrecForgeWorkflow.create({
   ),
   packageRun:runId => api(`/forge-runs/${encodeURIComponent(runId)}/package`, {}, 'POST'),
   reviewer:() => STATE && STATE.default_analyst || 'unknown-analyst',
-  notify:(message, kind) => flash(message, kind)
+  notify:(message, kind) => flash(message, kind),
+  refreshSession:() => refresh()
 });
 
 async function api(path, body, method){

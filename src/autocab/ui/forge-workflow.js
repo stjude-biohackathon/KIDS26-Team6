@@ -15,12 +15,21 @@
     }
     if(!run){
       const ready = Boolean(session.sealed);
+      if(!ready){
+        const archived = session.status === 'stopped';
+        return {
+          summary:archived
+            ? 'PHI redaction is required before skill creation.'
+            : 'Archive the session before applying PHI redaction.',
+          action:'redact',
+          label:busy ? 'Applying redaction…' : 'Apply PHI redaction',
+          disabled:!archived || busy, current:1, complete:0
+        };
+      }
       return {
-        summary:ready
-          ? 'Ready to create a draft from sealed session evidence.'
-          : 'Apply PHI redaction before creating a skill draft.',
-        action:'forge', label:'Create skill draft', disabled:!ready || busy,
-        current:ready ? 1 : 0, complete:ready ? 0 : -1
+        summary:'Ready to create a draft from sealed session evidence.',
+        action:'forge', label:'Create skill draft', disabled:busy,
+        current:2, complete:1
       };
     }
     const state = run.state;
@@ -28,23 +37,23 @@
     const models = {
       draft:{
         summary:'Draft is being prepared.', action:'view', label:'View draft',
-        current:1, complete:0
+        current:2, complete:1
       },
       blocked:{
         summary:`Draft blocked by ${unresolved} review question${unresolved === 1 ? '' : 's'}.`,
-        action:'view', label:'Review draft', current:2, complete:1
+        action:'view', label:'Review draft', current:3, complete:2
       },
       needs_review:{
         summary:'Draft is ready for explicit approval.', action:'view',
-        label:'Review draft', current:2, complete:1
+        label:'Review draft', current:3, complete:2
       },
       approved:{
         summary:'Approved and ready to package.', action:'package',
-        label:'Package skill', current:4, complete:3
+        label:'Package skill', current:5, complete:4
       },
       packaged:{
         summary:'Skill package is ready.', action:'view', label:'View package',
-        current:4, complete:4
+        current:5, complete:5
       }
     };
     return {...(models[state] || models.draft), disabled:busy};
@@ -69,7 +78,9 @@
     const {
       root, summary, stages, action, dialog, dialogTitle, dialogStatus,
       dialogContent, dialogMessage, dialogAction, dialogClose, dialogCancel,
-      listRuns, createRun, loadRun, approveRun, packageRun, reviewer, notify
+      redactionDialog, redactionForm, redactionConfirm, redactionCancel,
+      listRuns, sealSession, createRun, loadRun, approveRun, packageRun,
+      reviewer, notify, refreshSession
     } = options;
     let session = null;
     let run = null;
@@ -196,6 +207,29 @@
       }
     }
 
+    function confirmRedaction(){
+      if(!session || session.sealed || session.status !== 'stopped') return;
+      redactionDialog.showModal();
+      redactionConfirm.focus();
+    }
+
+    async function applyRedaction(){
+      if(!session || session.sealed || session.status !== 'stopped') return;
+      const sessionId = session.id;
+      busy = true;
+      render();
+      try{
+        await sealSession(sessionId);
+        notify('PHI redaction applied.', 'success');
+        await refreshSession();
+      }catch(error){
+        notify(error.message || 'Could not apply PHI redaction.', 'error');
+      }finally{
+        busy = false;
+        render();
+      }
+    }
+
     async function packageSkill(){
       if(!run) return;
       busy = true;
@@ -235,10 +269,18 @@
 
     action.addEventListener('click', () => {
       const next = model().action;
-      if(next === 'forge') createDraft();
+      if(next === 'redact') confirmRedaction();
+      else if(next === 'forge') createDraft();
       else if(next === 'package') packageSkill();
       else if(next === 'view') open();
     });
+    redactionForm.addEventListener('submit', event => {
+      event.preventDefault();
+      redactionDialog.close();
+      applyRedaction();
+    });
+    redactionCancel.addEventListener('click', () => redactionDialog.close());
+    redactionDialog.addEventListener('close', () => action.focus({preventScroll:true}));
     dialogAction.addEventListener('click', () => {
       if(dialogAction.dataset.action === 'approve') approveSkill();
       else if(dialogAction.dataset.action === 'package') packageSkill();
@@ -248,7 +290,7 @@
     }
     dialog.addEventListener('close', () => action.focus({preventScroll:true}));
     render();
-    return {setSession, refresh, open};
+    return {setSession, refresh, open, applyRedaction};
   }
 
   global.WfrecForgeWorkflow = {create, stateModel};

@@ -181,6 +181,7 @@
         </div>
         <ol id="forge-workflow-stages" class="forge-workflow__stages" aria-label="Skill workflow progress">
           <li data-stage="recorded">Recorded</li>
+          <li data-stage="redacted">Redacted</li>
           <li data-stage="draft">Draft</li>
           <li data-stage="review">Review</li>
           <li data-stage="approved">Approved</li>
@@ -289,6 +290,24 @@
     <div class="row dialog-actions">
       <button type="button" onclick="closeExportDialog()">Cancel</button>
       <button type="submit" class="primary">Select Folder</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="redaction-dialog" aria-labelledby="redaction-dialog-title">
+  <form id="redaction-form">
+    <h2 id="redaction-dialog-title">Apply PHI redaction?</h2>
+    <p>AutoCAB will replace detected identifiers in this archived session and seal it for skill creation. This cannot be undone.</p>
+    <div class="dialog-warning" role="note">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 3 2.5 20h19Z"></path>
+        <path d="M12 9v5M12 17.5v.01"></path>
+      </svg>
+      <span>Redaction can miss PHI. Review the session before packaging or sharing.</span>
+    </div>
+    <div class="row dialog-actions">
+      <button id="redaction-cancel" type="button">Cancel</button>
+      <button id="redaction-confirm" type="submit" class="primary">Apply redaction</button>
     </div>
   </form>
 </dialog>

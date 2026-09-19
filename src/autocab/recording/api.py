@@ -6,7 +6,7 @@ The single place recorder operations are implemented. The CLI, the GUI and the
 clicked in the window, or asked for in natural language.
 
 Binds to loopback by default (``127.0.0.1``). Optional non-loopback bind is
-available via ``wfrec daemon --bind-all`` / ``--host`` with ``--allow-remote``
+available through an explicitly enabled remote dashboard bind
 and requires a bearer token read from a file that is mode 0600 in the runtime
 directory. The recorder makes no outbound network requests at all; that property
 is worth keeping easy to verify.
@@ -128,7 +128,7 @@ class ExportRequest(BaseModel):
 
 class SealRequest(BaseModel):
     session_id: str | None = None
-    profile: Literal["regex-only"] = "regex-only"
+    profile: Literal["regex-only", "balanced", "strict"] | None = None
     reseal: bool = False
     force: bool = False
     dry_run: bool = False
@@ -686,18 +686,13 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     # ------------------------------------------------------------------- seal
     @app.post("/sessions/seal", dependencies=guard)
     def seal(payload: SealRequest) -> dict[str, Any]:
-        """Mirror of ``/export`` for the GUI and the recorder skill.
+        """Apply configured PHI redaction and seal a stopped session."""
 
-        Runs in the API process, which is the daemon -- so this route is
-        deliberately limited to the **regex** tier. A model fetch or an
-        interactive confirmation has no tty here, and the build spec's rule is
-        that the seal and any weight fetch run in the foreground CLI. For a
-        model or LLM tier, the GUI points the operator at `wfrec seal`.
-        """
+        from autocab.deid.config import ConfigRejected, load as load_deid_config
+        from autocab.deid.engines.base import EngineUnavailable
 
-        from autocab.deid.policy import Policy, RenderMode
-
-        from .seal import SealError, seal_session, seal_status
+        from .seal import SealError, seal_status
+        from .seal_service import apply_phi_redaction
 
         if payload.status:
             session = (
@@ -708,10 +703,11 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
             return seal_status(session.root)
         session = recorder.store.resolve(payload.session_id)
         try:
-            result = seal_session(
+            config = load_deid_config()
+            result = apply_phi_redaction(
                 session,
-                policy=Policy(profile=payload.profile, render=RenderMode.PSEUDONYMIZE),
-                engine_label="regex",
+                engine=config.engine,
+                profile=payload.profile or config.profile,
                 reseal=payload.reseal,
                 force=payload.force,
                 dry_run=payload.dry_run,
@@ -719,7 +715,7 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
                     None if not payload.force else lambda: recorder.stop_session(session.session_id)
                 ),
             )
-        except SealError as exc:
+        except (ConfigRejected, EngineUnavailable, SealError) as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         return {"session": session.session_id, "dry_run": result.dry_run, **result.record}
 

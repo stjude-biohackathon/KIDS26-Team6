@@ -5,8 +5,10 @@ const test = require('node:test');
 
 global.window = {};
 require('../src/autocab/ui/dashboard.js');
+require('../src/autocab/ui/forge-workflow.js');
 
 const {timelineModel} = window.WfrecActivityDashboard;
+const {stateModel} = window.WfrecForgeWorkflow;
 
 function event(ts, seq, type='context.note'){
   return {ts, seq, type, payload:{}};
@@ -69,4 +71,39 @@ test('timeline reports when its local date range crosses midnight', () => {
   ], false, Date.parse('2026-09-20T00:00:00.000Z'));
 
   assert.equal(model.spansMultipleDays, true);
+});
+
+test('skill workflow requires archiving before PHI redaction', () => {
+  const model = stateModel({id:'session-1', status:'active', sealed:false}, null);
+
+  assert.equal(model.action, 'redact');
+  assert.equal(model.label, 'Apply PHI redaction');
+  assert.equal(model.disabled, true);
+  assert.match(model.summary, /Archive the session/);
+});
+
+test('skill workflow offers PHI redaction for an archived session', () => {
+  const model = stateModel({id:'session-1', status:'stopped', sealed:false}, null);
+
+  assert.equal(model.action, 'redact');
+  assert.equal(model.disabled, false);
+  assert.equal(model.current, 1);
+  assert.equal(model.complete, 0);
+});
+
+test('skill workflow shows progress while applying PHI redaction', () => {
+  const model = stateModel({id:'session-1', status:'stopped', sealed:false}, null, true);
+
+  assert.equal(model.label, 'Applying redaction…');
+  assert.equal(model.disabled, true);
+});
+
+test('skill workflow enables draft creation only after sealing', () => {
+  const model = stateModel({id:'session-1', status:'stopped', sealed:true}, null);
+
+  assert.equal(model.action, 'forge');
+  assert.equal(model.label, 'Create skill draft');
+  assert.equal(model.disabled, false);
+  assert.equal(model.current, 2);
+  assert.equal(model.complete, 1);
 });
