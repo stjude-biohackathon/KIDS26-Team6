@@ -890,11 +890,15 @@ def _events(args: argparse.Namespace, as_json: bool) -> int:
 def _event_type_label(event: Event) -> str:
     """Add useful agent context without changing the canonical event type."""
 
-    if event.type != "agent.message":
-        return event.type
-    tool = str(event.payload.get("tool") or "unknown")
-    role = str(event.payload.get("role") or "unknown")
-    return f"{event.type} [{tool}/{role}]"
+    if event.type == "agent.message":
+        tool = str(event.payload.get("tool") or "unknown")
+        role = str(event.payload.get("role") or "unknown")
+        return f"{event.type} [{tool}/{role}]"
+    if event.type == "agent.tool.completed":
+        agent = str(event.payload.get("agent") or "unknown")
+        tool_name = str(event.payload.get("tool_name") or "unknown")
+        return f"{event.type} [{agent}/{tool_name}]"
+    return event.type
 
 
 def _summarize(event: Event) -> str:

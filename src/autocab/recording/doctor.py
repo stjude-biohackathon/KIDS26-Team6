@@ -357,12 +357,20 @@ def _agents_status(
         CopilotChatAdapter,
         CursorAdapter,
         DevSQLCodexAdapter,
+        DevSQLCodexToolAdapter,
     )
 
-    detected: dict[str, bool] = {DevSQLCodexAdapter.name: False}
+    detected: dict[str, bool] = {
+        DevSQLCodexAdapter.name: False,
+        DevSQLCodexToolAdapter.name: False,
+    }
     try:
         client = devsql_client or DevSQLClient.discover()
         detected[DevSQLCodexAdapter.name] = DevSQLCodexAdapter(
+            client,
+            since="1970-01-01T00:00:00Z",
+        ).available()
+        detected[DevSQLCodexToolAdapter.name] = DevSQLCodexToolAdapter(
             client,
             since="1970-01-01T00:00:00Z",
         ).available()
