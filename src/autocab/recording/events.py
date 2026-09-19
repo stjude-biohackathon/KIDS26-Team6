@@ -1,25 +1,8 @@
-"""The unified event timeline.
+"""Store the append-only event timeline for each session.
 
-``events.jsonl`` is the source of truth for a session: one JSON object per
-line, append-only, never summarized. Downstream skills do the interpreting, so
-the recorder's only job is to miss nothing and to stay parseable.
-
-Sequencing, and why the file is not strictly chronological
-----------------------------------------------------------
-``seq`` is a per-session monotonic counter allocated under a lock from a small
-counter file rather than by counting lines, so appending stays O(1) as a
-session grows to hundreds of thousands of events. It is the stable anchor a
-downstream skill can cite.
-
-``seq`` orders events by **when they were recorded**; ``ts`` records **when
-they happened**. These differ, and deliberately so: a shell hook writes its
-spool record the instant a command finishes, but the daemon ingests it up to a
-second later, so a shell event can carry an earlier ``ts`` than a screen frame
-with a lower ``seq``. Buffering to fix that would mean delaying every event by
-the worst-case ingest lag and losing data on a crash.
-
-**Consumers that care about chronology must sort by ``(ts, seq)``.** Use
-``read_events_sorted``; the exporters all do.
+``seq`` records write order and ``ts`` records event time. Delayed ingestion
+can place an older timestamp after a newer event. Consumers use
+``read_events_sorted``, which sorts by ``(ts, seq)``.
 """
 
 from __future__ import annotations

@@ -1,44 +1,8 @@
-"""The five-layer gate. Pure logic -- no SDK, no network, no I/O beyond the ack.
+"""Evaluate the controls required before a model receives session text.
 
-Sending a recorded clinical session's text to a model is a disclosure. Five
-independent layers have to agree, and they are independent on purpose: each one
-is owned by a different person, lives in a different file, or is satisfied at a
-different time.
-
-===  ====================================  ===========================================
- #   Layer                                 Where
-===  ====================================  ===========================================
- 1   Install opt-in                        the ``deid-<provider>`` extra -- an ImportError
- 2   Org-policy acknowledgement            ``~/.wfrec/policy/deid-llm-<provider>.json``
- 3   Config flag ``[deid.llm] enabled``    ``~/.wfrec/config.toml``
- 4   Per-invocation flags                  ``--llm --i-am-sending-text-offbox``
- 5   Consent event, **pre-flight**         ``session.deid.llm.consent`` in events.jsonl
-===  ====================================  ===========================================
-
-Scoping by egress class, because the layers answer different questions:
-
-``external``  all five.
-``internal``  1, 3, 4, 5, plus an ack carrying ``internal_endpoints_approved``.
-              The BAA and zero-data-retention clauses are not required: nothing
-              reached a third party.
-``none``      1 and 5 only. A consent event is still written for a loopback
-              call -- "which model saw this session" is an audit question
-              independent of whether anything left the machine.
-
-**Non-short-circuiting.** :func:`evaluate` checks every layer and reports every
-failure at once. A gate that stops at the first failure turns one
-fix-and-rerun cycle into five, and the person running it never gets to see the
-shape of what they are being asked for.
-
-**One ack per provider.** A BAA is a contract with a named counterparty. An
-attestation naming Anthropic must not authorize egress to OpenAI or Google, so
-the ack file is per-provider and a provider mismatch is a hard refusal.
-
-**Credential presence is deliberately not a layer, for any provider.** An unset
-``ANTHROPIC_API_KEY`` does not mean there are no credentials: the SDK also
-resolves ``ANTHROPIC_AUTH_TOKEN``, a login profile under
-``~/.config/anthropic/``, and workload-identity variables. Gating on key
-availability would let ambient credentials silently arm network egress.
+The gate combines installed support, organization policy, user configuration,
+command consent, and a recorded event. Requirements vary by egress class. The
+evaluation reports all missing controls in one result.
 """
 
 from __future__ import annotations

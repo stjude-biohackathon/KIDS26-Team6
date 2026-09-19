@@ -1,30 +1,8 @@
-"""Surrogate minting. Deterministic within a run, unrecoverable after it.
+"""Create stable surrogate values during one seal run.
 
-::
-
-    surrogate = f"{PREFIX[label]}_{hmac_sha256(key, label + b'\\0' + norm)[:6].hex()}"
-
-Three properties, each load-bearing:
-
-**48 bits of output.** Six bytes, twelve hex characters. Enough that a
-collision inside one session is a curiosity rather than an expectation, short
-enough that a human can read ``MRN_a7f3c14b9e02`` in a diff.
-
-**The label is inside the HMAC.** A value that is simultaneously a plausible MRN
-and a plausible account number must not collapse to one surrogate across labels;
-with the label in the input, it cannot.
-
-**The key is ephemeral and never leaves the process.** ``secrets.token_bytes(32)``
-into a ``bytearray``, zeroed in place in a ``finally``. There is **no reverse
-map, ever** -- no ``pseudonyms.json``, and no ``sha256(surface)`` in the audit
-either: a six-digit MRN brute-forces against a bare digest in milliseconds, so a
-"hash" would itself be the disclosure. Linkage inside a run comes from
-``value_id``, a monotonic integer that carries no content and dies with the run.
-
-The zeroing is documented as **best effort** -- CPython may have copied the bytes
-during construction and we cannot reach those copies. The real guarantee is
-narrower and stronger: the key is never written to disk, never passed across a
-process boundary, and never serialized.
+The HMAC includes the label and normalized source text. A 48-bit suffix keeps
+values readable with low collision risk for one session. The key stays in
+memory, and the audit stores a content-free value ID.
 """
 
 from __future__ import annotations

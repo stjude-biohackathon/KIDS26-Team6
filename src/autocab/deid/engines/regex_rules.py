@@ -1,25 +1,7 @@
-"""The regex tier: the floor, and the only tier that runs inline at capture.
+"""Provide pattern-based PHI detection during capture and evaluation.
 
-**This table is the single source of truth for pattern-based detection.**
-``SensitiveDataRedactor`` is reimplemented on top of ``find_spans`` rather than
-carrying its own four patterns; two pattern tables in one repo is how a term
-ends up scrubbed on the pipeline path and leaked on the recorder path.
-
-It is also the tier whose recall is *measured*: ``thresholds.json`` carries a
-per-label floor derived from this table's behaviour on ``data/deid-eval``, and
-the floors that look absurd -- ``NAME 0.10``, ``LOCATION 0.05`` -- are the most
-useful lines in that file. They encode "the regex tier does not detect names" as
-a tested, blame-able fact rather than an assumption, and they are the baseline
-the model tier has to beat.
-
-Two rejection mechanisms, deliberately distinct:
-
-``Rule.require``
-    a **shape** refinement: an octet over 255 means the string was never an IP
-    address, so there is nothing to redact. Rejecting is correct.
-``Rule.validator``
-    a **plausibility** check (Luhn, SSN issuance ranges). Only ever adjusts
-    ``Span.score``. A mistyped SSN is still PHI -- see ``validators.py``.
+This module is the single source of regex rules. ``Rule.require`` checks the
+shape of a match. ``Rule.validator`` adjusts confidence for plausible values.
 """
 
 from __future__ import annotations

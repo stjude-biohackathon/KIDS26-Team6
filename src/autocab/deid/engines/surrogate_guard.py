@@ -1,40 +1,8 @@
-"""Idempotency by grammar: mark already-sealed text as untouchable.
+"""Protect text that already uses an AutoCAB redaction format.
 
-Always runs **first**, and no flag substitutes for it. It emits ``protect=True``
-spans over every replacement vocabulary the system can produce -- a surrogate, a
-capture-time ``[REDACTED_*]`` mask, a ``[DATE:yyyy]`` generalization -- and
-``spans.resolve`` *drops* any candidate intersecting one.
-
-The consequence is the property a reseal depends on: **sealed text is a
-fixpoint.** Run the seal twice and the second pass changes nothing, because
-``MRN_a7f3c1`` is protected rather than being re-detected as a nine-character
-identifier and pseudonymized into ``ID_44b201``.
-
-Note that this is idempotency by *grammar*, not by *key*. The seal key is
-ephemeral and gone by the time a reseal runs, so a key-based check is
-impossible; recognizing the shape is what remains, and it works across
-generations and across engines.
-
-**The limit that follows from that, stated plainly.** A real value that happens
-to *look* like a surrogate is protected and passes through unredacted. A path
-component ``MRN_4492000`` is indistinguishable from a legitimate surrogate --
-``MRN_`` plus seven hex characters -- so the guard keeps it, and any candidate
-overlapping it is dropped.
-
-This is accepted, not overlooked, and the alternatives are worse:
-
-* keying idempotency on the seal key is impossible, as above;
-* narrowing the pattern to exactly 12 hex characters would break every seal
-  written with a different surrogate width, including any future widening;
-* dropping the guard entirely would make a reseal pseudonymize its own
-  pseudonyms, so ``MRN_a7f3c1...`` becomes ``ID_44b201...`` and the linkage a
-  reader depends on silently changes on every pass.
-
-The exposure is small because the collision has to be exact: the prefix must be
-one of ``PSEUDONYM_PREFIXES``, the separator an underscore, and every remaining
-character a lowercase hex digit with at least six of them. ``MRN 4492000`` --
-the way a human writes it -- is not affected. It is called out here, and in
-``tests/test_deid_payload_coverage.py``, so nobody rediscovers it as a surprise.
+This engine runs first and protects masks, generalized values, and pseudonyms.
+Grammar-based protection keeps repeated sealing stable. A real value that
+matches a protected format also passes through, and tests track this limit.
 """
 
 from __future__ import annotations

@@ -1,35 +1,8 @@
-"""Scoring. Every metric is defined on the **original** text.
+"""Measure PHI coverage on the original text.
 
-Notation, used consistently below and in ``docs/deid-evaluation.md``:
-
-``G``
-    the set of character indices one gold span covers.
-``P``
-    the union of *all* predicted spans' indices for that record, **regardless of
-    predicted label**.
-
-``P`` ignores labels on purpose. For safety, a region is either rewritten or it
-is not; a detector that covers an MRN but calls it an account number has not
-leaked anything. The label still matters -- it picks the pseudonym class -- so it
-is scored separately as ``label_accuracy`` over strictly-recalled spans, where a
-mislabel costs utility rather than safety.
-
-Two recall numbers, and only one of them is a gate:
-
-``recall_strict``   counts iff ``G ⊆ P``. **This is the gate.**
-``recall_partial``  counts iff ``|G ∩ P| > 0``. Diagnostic, **never gated**.
-
-The gap between them is the interesting signal. High partial with low strict
-means the detector *clips* -- it emits ``[NAME] Smith`` and leaves the surname
-on disk. That is a leak, and a metric that awarded it partial credit would hide
-exactly the failure this control exists to prevent.
-
-**There is no F1 here, and there will not be one.** A single blended number lets
-precision buy back recall, and that is the one trade a destructive rewrite must
-never make silently: a false positive over-redacts a gene symbol and somebody
-notices; a false negative writes PHI to disk and nobody does. Precision is
-therefore constrained by a **ceiling** -- ``max_over_redaction_rate`` -- which is
-also what stops a ``.*`` patch from gaming recall to 1.00.
+Strict recall requires predictions to cover each full gold span and controls
+the gate. Partial recall shows clipped matches. Label accuracy and the
+over-redaction ceiling measure utility while keeping missed PHI visible.
 """
 
 from __future__ import annotations

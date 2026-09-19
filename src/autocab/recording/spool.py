@@ -1,31 +1,8 @@
-"""The shell-to-daemon spool format.
+"""Define the record format between shell hooks and the recording service.
 
-Shell hooks never talk to the daemon. They append one record per command to
-their own per-writer file under ``<session>/spool/``, and the daemon converts
-those records into timeline events on ingest.
-
-Why not JSON
-------------
-Emitting valid JSON from a shell hook means escaping quotes, backslashes,
-newlines and control bytes in the command line. In bash/zsh that is four
-``${var//x/y}`` expansions; in POSIX ``sh`` -- which is what an HPC login node
-gives you, and what the remote hook must be -- that syntax does not exist at
-all, so it would cost a fork per prompt. Instead each record is delimited with
-the ASCII control characters reserved for exactly this purpose::
-
-    <RS> kind <US> field <US> field ... <LF>
-
-The only byte a field may not contain is the delimiter itself, and neither
-0x1e nor 0x1f occurs in a realistic command line, cwd or hostname. This removes
-an entire class of escaping bugs and lets the local and remote hooks be
-byte-identical.
-
-Why one file per writer
------------------------
-Each shell process writes to ``<host>-<pid>.rec`` and nothing else does. With a
-single writer there is no interleaving and no lock required -- which also makes
-appends safe on the NFS-mounted ``$HOME`` of a load-balanced HPC login node,
-where multi-writer ``O_APPEND`` is not.
+Hooks append records with ASCII record and unit separators. Each shell process
+writes its own spool file, which avoids shared writer locks and works on
+network-mounted home directories.
 """
 
 from __future__ import annotations

@@ -1,35 +1,8 @@
-"""Where do the bytes actually go?
+"""Classify where model requests send session text.
 
-**Egress class comes from the resolved address, not the provider name.** A
-provider label carries no information about where text travels: ``openai`` with
-a ``base_url`` of ``http://localhost:8000/v1`` is a vLLM server on the same
-machine, and ``ollama`` behind ``ALL_PROXY`` egresses every byte to a corporate
-proxy. Only the address can tell you which.
-
-Six rules, in rough order of how easy they are to get wrong:
-
-1. **Classify the proxy, not the endpoint.** If ``HTTP_PROXY`` / ``HTTPS_PROXY``
-   / ``ALL_PROXY`` is set and the endpoint is not matched by ``NO_PROXY``, the
-   text goes to the **proxy**. Without this rule
-   ``--llm-base-url http://localhost:11434`` under ``ALL_PROXY`` classifies as
-   ``none`` while egressing every byte. This is the easiest bypass in the design
-   to miss and the single most important function in this module.
-2. **Escalate on ambiguity.** Mixed A records, DNS failure, or any non-loopback
-   in the resolved set yields the most restrictive class present. Classifying
-   off record zero is the natural implementation and it is unsafe.
-3. **Pin the resolution.** :func:`classify` returns the addresses it resolved so
-   the caller can hand them to the HTTP client, and :func:`reverify` re-resolves
-   immediately before the request and aborts on change. Honest limit: this
-   closes the accidental case -- a short TTL flipping between check and call --
-   not an attacker who controls both DNS and the box.
-4. **``::ffff:127.0.0.1`` is loopback; ``0.0.0.0`` and ``[::]`` are not.** Both
-   directions are routinely gotten wrong. The mapped form really is the loopback
-   interface. The unspecified addresses mean "every interface", which is the
-   opposite of containment.
-5. **Plaintext to non-loopback is refused** unless explicitly allowed. Loopback
-   over ``http`` is completely fine and must never be nagged about.
-6. **The resolver is injected.** No network anywhere in this module, so the
-   whole matrix is testable offline -- which is why there *is* a whole matrix.
+The classifier uses resolved endpoint and proxy addresses. It chooses the
+stricter class for mixed or uncertain results and handles loopback address
+forms. It returns the addresses for a final comparison before each request.
 """
 
 from __future__ import annotations

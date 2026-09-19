@@ -1,22 +1,8 @@
-"""Run an engine over the corpus, compare to the floors, render the doc.
+"""Run a detector against the corpus and write its reports.
 
-Three artifacts, deliberately different in kind:
-
-``thresholds.json``
-    per-label **floors**, keyed on a ``corpus_fingerprint``. Floors live in data,
-    not in test source, so changing one is a reviewable diff in a file whose
-    whole purpose is to be argued about.
-``scorecard.<engine>.json``
-    a committed **snapshot**. Floors catch a catastrophic regression; they do not
-    catch a slide from 0.98 to 0.91. CI asserts computed == snapshot, so any
-    pattern change fails with a diff naming the label that moved, and the author
-    reruns ``--write-scorecard`` and puts the delta in the PR.
-``docs/deid-evaluation.md``
-    generated and committed, headed "do not hand-edit".
-
-Latency is measured but **never** enters the snapshot: a wall-clock number in a
-committed file churns on every run, and a file that always has a diff is a file
-nobody reads.
+Thresholds set per-label floors. Scorecards detect smaller changes. The
+generated evaluation document summarizes committed results. Latency stays
+outside snapshots because it varies by host.
 """
 
 from __future__ import annotations

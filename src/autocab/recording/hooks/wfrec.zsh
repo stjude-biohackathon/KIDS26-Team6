@@ -1,8 +1,5 @@
-# wfrec zsh hook -- sourced from ~/.zshrc. See wfrec.bash for the design notes.
-#
-# zsh is the cleanest of the shells here: preexec/precmd are native hook
-# functions rather than a DEBUG trap, so there is no per-pipeline-element
-# double-fire to guard against, and $1 in preexec is the line as typed.
+# AutoCAB Zsh hook. The installer sources this file from ~/.zshrc.
+# Native preexec and precmd functions provide the command and exit state.
 
 [[ -n ${__WFREC_LOADED:-} ]] && return 0
 __WFREC_LOADED=1

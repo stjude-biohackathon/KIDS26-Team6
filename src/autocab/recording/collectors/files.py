@@ -1,20 +1,8 @@
-"""File-change collector: watchdog as the trigger, git as the source of truth.
+"""Record file changes with watchdog triggers and Git content checks.
 
-The ordering here is the whole design. ``watchdog`` tells us *when* something
-changed; ``git`` tells us *what* changed. Relying on watchdog for correctness
-would be a mistake on every platform -- Windows silently drops events when its
-64 KB completion buffer overflows, macOS reports atomic saves as
-create-plus-delete, and Linux inotify does not fire at all on NFS or Lustre,
-which is exactly where HPC scratch lives.
-
-Genomics safety
----------------
-A single BAM or FASTQ can be 100 GB. Every path runs a gate chain before
-anything opens it: extension denylist, then a size gate, then a binary sniff,
-then a diff-size cap. Critically, ``git status`` is always invoked with
-``--no-optional-locks``: without it git refreshes the index, which rehashes any
-modified tracked file, so one touched 100 GB BAM would make git read all
-100 GB and hang the machine for twenty minutes.
+Watchdog signals when to inspect a path. Git reports the change across local,
+network, and platform-specific file systems. Size, extension, binary, and diff
+limits protect the recorder from large genomics files.
 """
 
 from __future__ import annotations
