@@ -31,9 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Reviewer name used for the approval event.",
     )
     demo.add_argument(
-        "--no-approve",
+        "--approve",
         action="store_true",
-        help="Leave proposals in the pending review state.",
+        help="Explicitly approve and export demo proposals.",
     )
     demo.add_argument(
         "--input-mode",
@@ -93,9 +93,11 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> int:
+def legacy_main(argv: list[str] | None = None) -> int:
+    """Run the original demo and de-identification command surface."""
+
     parser = build_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.command == "demo":
         try:
@@ -107,7 +109,7 @@ def main() -> int:
                 log_path=args.log_file,
                 session_path=args.session_dir,
                 reviewer=args.reviewer,
-                approve=not args.no_approve,
+                approve=args.approve,
             )
         except (NotImplementedError, ValueError) as exc:
             print(f"autocab: {exc}", file=sys.stderr)
@@ -134,3 +136,11 @@ def main() -> int:
 
     parser.error(f"Unsupported command: {args.command}")
     return 2
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the unified AutoCAB command surface."""
+
+    from .unified_cli import run
+
+    return run(argv)

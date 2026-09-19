@@ -82,6 +82,7 @@ name = "autocab"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "huggingface-hub" },
@@ -145,6 +146,7 @@ macos = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", marker = "extra == 'deid-anthropic'", specifier = ">=1.0" },
+    { name = "click", specifier = ">=8.1" },
     { name = "fastapi", specifier = ">=0.110" },
     { name = "gliner2", extras = ["local"], marker = "extra == 'deid-gliner2'", specifier = ">=2.0,<3" },
     { name = "google-genai", marker = "extra == 'deid-google'", specifier = ">=1.0" },

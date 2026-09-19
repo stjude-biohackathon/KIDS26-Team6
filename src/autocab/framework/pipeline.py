@@ -74,7 +74,7 @@ class AutoCABPipeline:
         log_path: Path | None = None,
         session_path: Path | None = None,
         reviewer: str = "CAB Maintainer",
-        approve: bool = True,
+        approve: bool = False,
     ) -> PipelineResult:
         if input_mode not in self._config.allowed_input_modes:
             raise ValueError(f"Unsupported input mode: {input_mode}")
