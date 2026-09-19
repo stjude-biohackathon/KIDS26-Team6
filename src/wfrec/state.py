@@ -172,7 +172,7 @@ class RecorderState:
                 active.unlink()
             return
 
-        spool = paths.session_dir(self.active_session) / "spool"
+        spool = paths.find_session_dir(self.active_session) / "spool"
         spool.mkdir(parents=True, exist_ok=True)
         line = f"{self.active_session}\t{self.flags()}\t{spool}\n"
         atomic_write_text(active, line)

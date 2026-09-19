@@ -2,9 +2,9 @@
 
 Two distinct roots, and the split matters:
 
-* The **session root** (``~/.wfrec`` by default, overridable with ``WFREC_HOME``)
-  holds durable data. Sessions live here so a folder is self-contained and
-  movable -- a teammate can zip one and hand it to the matching lane.
+* The **session root** (``~/.autocab`` by default) holds durable data. Existing
+  ``WFREC_HOME`` overrides remain supported and legacy ``~/.wfrec/sessions``
+  folders remain discoverable.
 * The **runtime root** (``$XDG_RUNTIME_DIR``/``$TMPDIR``/``%LOCALAPPDATA%``)
   holds the tiny sentinel that shell hooks poll on *every* prompt.
 
@@ -22,7 +22,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-ENV_HOME = "WFREC_HOME"
+from autocab import paths as autocab_paths
+
+ENV_HOME = autocab_paths.LEGACY_ENV_HOME
+ENV_AUTOCAB_HOME = autocab_paths.ENV_HOME
 ENV_RUN = "WFREC_RUN"
 ENV_SESSION = "WFREC_SESSION"
 ENV_BIND_HOST = "WFREC_BIND_HOST"
@@ -55,12 +58,15 @@ def default_analyst() -> str:
 
 
 def home() -> Path:
-    """Return the durable wfrec root, honouring ``WFREC_HOME``."""
+    """Return the canonical AutoCAB durable root."""
 
-    override = os.environ.get(ENV_HOME)
-    if override:
-        return Path(override).expanduser()
-    return Path.home() / ".wfrec"
+    return autocab_paths.home()
+
+
+def legacy_home() -> Path | None:
+    """Return a distinct legacy wfrec root when one should be discovered."""
+
+    return autocab_paths.legacy_home()
 
 
 def runtime_dir() -> Path:
@@ -159,13 +165,25 @@ def state_lock_path() -> Path:
 def sessions_dir() -> Path:
     """Directory holding one folder per recorded session."""
 
-    return home() / "sessions"
+    return autocab_paths.sessions_dir()
+
+
+def session_roots() -> tuple[Path, ...]:
+    """Return canonical and legacy session roots in precedence order."""
+
+    return autocab_paths.session_roots()
 
 
 def session_dir(session_id: str) -> Path:
     """Folder for a single session."""
 
-    return sessions_dir() / session_id
+    return autocab_paths.session_dir(session_id)
+
+
+def find_session_dir(session_id: str) -> Path:
+    """Resolve a session from canonical or legacy storage."""
+
+    return autocab_paths.find_session_dir(session_id)
 
 
 def hooks_dir() -> Path:
@@ -177,9 +195,7 @@ def hooks_dir() -> Path:
 def ensure_home() -> Path:
     """Create the durable and runtime roots, and return the durable one."""
 
-    root = home()
-    root.mkdir(parents=True, exist_ok=True)
-    sessions_dir().mkdir(parents=True, exist_ok=True)
+    root = autocab_paths.ensure_home()
     run = runtime_dir()
     run.mkdir(parents=True, exist_ok=True)
     if os.name == "posix":

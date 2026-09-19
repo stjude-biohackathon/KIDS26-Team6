@@ -169,9 +169,9 @@ class Manifest:
 class Session:
     """One recorded session: its folder, manifest and timeline."""
 
-    def __init__(self, manifest: Manifest) -> None:
+    def __init__(self, manifest: Manifest, *, root: Path | None = None) -> None:
         self.manifest = manifest
-        self.root = paths.session_dir(manifest.session_id)
+        self.root = root or paths.session_dir(manifest.session_id)
         self.writer = EventWriter(
             self.root,
             session_id=manifest.session_id,
@@ -197,11 +197,12 @@ class Session:
 
     @classmethod
     def load(cls, session_id: str) -> "Session":
-        path = paths.session_dir(session_id) / "manifest.json"
+        root = paths.find_session_dir(session_id)
+        path = root / "manifest.json"
         if not path.exists():
             raise SessionNotFound(session_id)
         manifest = Manifest.from_dict(json.loads(path.read_text(encoding="utf-8")))
-        return cls(manifest)
+        return cls(manifest, root=root)
 
     @classmethod
     def create(
@@ -482,14 +483,16 @@ class SessionStore:
     """Discovery and the active/paused invariant across sessions."""
 
     def list_ids(self) -> list[str]:
-        root = paths.sessions_dir()
-        if not root.is_dir():
-            return []
-        return sorted(
-            path.name
-            for path in root.iterdir()
-            if path.is_dir() and (path / "manifest.json").exists()
-        )
+        session_ids: set[str] = set()
+        for root in paths.session_roots():
+            if not root.is_dir():
+                continue
+            session_ids.update(
+                path.name
+                for path in root.iterdir()
+                if path.is_dir() and (path / "manifest.json").exists()
+            )
+        return sorted(session_ids)
 
     def list_sessions(self) -> list[Session]:
         sessions = []
