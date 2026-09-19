@@ -7,6 +7,7 @@ from uuid import UUID
 
 import pytest
 
+import wfrec.session as session_module
 from wfrec.session import (
     STATUS_ACTIVE,
     STATUS_PAUSED,
@@ -115,6 +116,20 @@ def test_resume_from_paused_and_records_gap(store):
         e for e in Session.load(session.session_id).writer.read() if e.type == "session.resumed"
     ]
     assert events and "gap_ms" in events[0].payload
+    assert events[0].payload["autocab_version"] == "0.1.0"
+
+
+def test_resume_records_version_change_without_rewriting_start_version(store, monkeypatch):
+    session, _ = store.start(title="A")
+    store.pause(session.session_id, reason="upgrade")
+    monkeypatch.setattr(session_module, "__version__", "0.2.0")
+
+    store.resume(session.session_id)
+    loaded = Session.load(session.session_id)
+    resumed = [entry for entry in loaded.manifest.lifecycle if entry["action"] == "resumed"]
+
+    assert loaded.manifest.wfrec_version == "0.1.0"
+    assert resumed[-1]["autocab_version"] == "0.2.0"
 
 
 def test_resume_while_another_is_active_preempts_it(store):

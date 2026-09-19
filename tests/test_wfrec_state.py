@@ -9,6 +9,7 @@ from wfrec.state import (
     SHELL_BACKEND_SPOOL,
     StateTransaction,
     read_sentinel,
+    resolved_default_analyst,
     sentinel_enables,
 )
 
@@ -96,6 +97,23 @@ def test_trashed_sessions_round_trip_through_state(wfrec_home):
     restored = RecorderState.load()
 
     assert restored.trashed_sessions == ["archived-session"]
+
+
+def test_default_analyst_round_trips_through_state(wfrec_home):
+    state = RecorderState.load()
+    state.default_analyst = "analyst-a"
+    state.save()
+
+    restored = RecorderState.load()
+
+    assert restored.default_analyst == "analyst-a"
+    assert resolved_default_analyst(restored) == "analyst-a"
+
+
+def test_default_analyst_falls_back_to_os_username(wfrec_home, monkeypatch):
+    monkeypatch.setattr(paths.getpass, "getuser", lambda: "system-user")
+
+    assert resolved_default_analyst(RecorderState()) == "system-user"
 
 
 def test_sentinel_is_a_single_tab_separated_line(wfrec_home):
