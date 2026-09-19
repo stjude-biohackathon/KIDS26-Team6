@@ -160,6 +160,31 @@ background and open the web UI from your **laptop browser** (do not use
 See [`src/wfrec/README.md`](src/wfrec/README.md) for capture sources, security
 notes, and troubleshooting.
 
+### Set Up PHI Redaction
+
+Pattern-based PHI redaction works by default and requires no setup.
+
+For additional name and location detection, download and verify the local
+GLiNER model:
+
+```bash
+wfrec deid fetch
+wfrec deid verify
+```
+
+The model is stored in `~/.wfrec/models/` or `$WFREC_HOME/models/`. AutoCAB
+does not download it during installation.
+
+Select GLiNER when sealing a session:
+
+```bash
+wfrec seal <session-id> --engine gliner
+```
+
+Pattern matching still runs before GLiNER. See
+[`docs/deid-evaluation.md`](docs/deid-evaluation.md) for benchmark results and
+limitations.
+
 ### Set Up Activity Tracking with Codex or Claude
 
 The maintained skill in `skills/setup-activity-tracking/` helps Codex or Claude

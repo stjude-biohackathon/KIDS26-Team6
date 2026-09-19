@@ -448,6 +448,21 @@ RULES: tuple[Rule, ...] = (
         group=1,
         notes="`sacct` / `squeue` column output: `JobName  wgs_smith_07`.",
     ),
+    Rule(
+        "slurm_job_name_table",
+        DeidLabel.SLURM_JOB_NAME,
+        re.compile(
+            r"(?im)^\s*\d+\s+(?P<span>[A-Za-z][A-Za-z0-9._-]{1,40})\s+"
+            r"[A-Za-z][A-Za-z0-9._-]*\s*$"
+        ),
+        group=1,
+        require=_alnum_mixed,
+        notes=(
+            "A conservative `squeue`/`sacct` data row. The numeric job id, "
+            "mixed job name, and user column are all required so an ordinary "
+            "three-column table does not become a job-name detector."
+        ),
+    ),
     # -------------------------------------------------------- dates and ages
     Rule(
         "dob_labelled",

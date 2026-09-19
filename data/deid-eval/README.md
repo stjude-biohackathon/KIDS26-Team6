@@ -5,6 +5,12 @@ Generated, committed, and reproducible:
 ```bash
 autocab deid gen-corpus --seed 1337 --check    # must report no differences
 autocab deid eval --engine regex --write-scorecard
+autocab deid eval --engine gliner --write-scorecard
+# Diagnostic only; this is not a production sealing mode.
+autocab deid eval --engine gliner-only --write-scorecard
+# Experimental PII model. Install and fetch it explicitly first.
+autocab deid eval --engine gliner2-pii-only --write-scorecard
+autocab deid eval --engine gliner2-pii --write-scorecard
 ```
 
 The corpus exists **before** the detector, on purpose. A corpus written after
@@ -17,7 +23,36 @@ the patterns measures the author's memory of the patterns.
 | `corpus/{shell,ocr,notes,agents,diffs,jobs,prescrubbed,negatives}.jsonl` | the fixtures, one JSON object per line |
 | `lexicons/{surnames,given-names,cities,gene-symbols}.txt` | public-domain draw pools |
 | `thresholds.json` | recall floors and the precision ceiling, keyed on `corpus_fingerprint` |
-| `scorecard.regex.json` | committed snapshot; CI asserts computed == this |
+| `scorecard.regex.json` | committed regex snapshot; CI asserts computed == this |
+| `scorecard.gliner.json` | committed Regex + GLiNER snapshot from the same corpus |
+| `scorecard.gliner2-pii-only.json` | experimental GLiNER2 PII-only snapshot |
+| `scorecard.gliner2-pii.json` | experimental Regex + GLiNER2 PII snapshot |
+
+## Comparing accuracy and runtime
+
+Each `eval --write-scorecard` run rebuilds the comparison report and accessible
+accuracy plot from every available scorecard. The last engine run cannot replace
+the other engine's results.
+
+Runtime is machine-specific, so it is measured separately and is not committed
+to a scorecard:
+
+```bash
+autocab deid benchmark --engine regex --engine gliner-only --engine gliner \
+  --output benchmark.json --plot benchmark-performance.svg
+
+# Compare the optional PII-tuned model after fetching its pinned weights.
+autocab deid benchmark --engine gliner2-pii-only --engine gliner2-pii
+```
+
+The benchmark reports model load plus first inference as cold start. It then
+warms the loaded engine once and measures seven inference runs by default. The
+JSON records median and p95 ms/KB, records per second, peak process memory,
+corpus fingerprint, model revision, threshold, CPU, Python, ONNX Runtime, and
+measurement time. Exact typed span metrics are secondary diagnostics. The CI
+gate remains full character coverage because partial masking still leaks PHI.
+The `gliner-only` engine bypasses the regex floor only inside this evaluation
+harness. Production capture, export, and sealing continue to require regex.
 
 Record shape:
 

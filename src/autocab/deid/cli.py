@@ -16,8 +16,11 @@ from pathlib import Path
 from .engines.base import EngineUnavailable
 from .engines.registry import ENGINE_CHOICES
 from .eval import corpus as corpus_mod
-from .eval import generate, report
+from .eval import benchmark, comparison, generate, report
 from .eval.generate import DEFAULT_SEED, DIFFICULTIES
+
+EXPERIMENTAL_ENGINE_CHOICES = ("gliner2-pii-only", "gliner2-pii")
+EVAL_ENGINE_CHOICES = (*ENGINE_CHOICES, "gliner-only", *EXPERIMENTAL_ENGINE_CHOICES)
 
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
@@ -51,7 +54,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
     )
 
     ev = verbs.add_parser("eval", help="Score an engine against the corpus.")
-    ev.add_argument("--engine", choices=ENGINE_CHOICES, default="regex")
+    ev.add_argument("--engine", choices=EVAL_ENGINE_CHOICES, default="regex")
     ev.add_argument("--root", type=Path, default=None)
     ev.add_argument(
         "--difficulty",
@@ -63,7 +66,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
     ev.add_argument(
         "--write-scorecard",
         action="store_true",
-        help="Overwrite the committed snapshot and regenerate docs/deid-evaluation.md.",
+        help="Overwrite this engine's snapshot and regenerate the comparison report and plot.",
     )
     ev.add_argument(
         "--report-latency",
@@ -76,6 +79,22 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
         action="store_true",
         help="Exit non-zero if any floor in thresholds.json is violated.",
     )
+
+    bench = verbs.add_parser(
+        "benchmark",
+        help="Measure cold start, warmed inference, memory, and exact-span diagnostics.",
+    )
+    bench.add_argument(
+        "--engine",
+        choices=("regex", "gliner-only", "gliner", *EXPERIMENTAL_ENGINE_CHOICES),
+        action="append",
+        dest="engines",
+        help="Engine to measure. Repeatable. Default: regex, gliner-only, and gliner.",
+    )
+    bench.add_argument("--root", type=Path, default=None)
+    bench.add_argument("--repeats", type=int, default=benchmark.DEFAULT_REPEATS)
+    bench.add_argument("--output", type=Path, help="Optional JSON output path.")
+    bench.add_argument("--plot", type=Path, help="Optional SVG performance plot path.")
 
     verbs.add_parser("labels", help="Print the taxonomy and its HIPAA rollup.")
     return deid
@@ -90,6 +109,8 @@ def run(args: argparse.Namespace) -> int:
         return _gen_corpus(args)
     if args.deid_command == "eval":
         return _eval(args)
+    if args.deid_command == "benchmark":
+        return _benchmark(args)
     if args.deid_command == "labels":
         return _labels()
     print(f"autocab deid: unknown command {args.deid_command!r}", file=sys.stderr)
@@ -182,17 +203,40 @@ def _eval(args: argparse.Namespace) -> int:
     if args.write_scorecard:
         path = report.write_scorecard(card, root)
         print(f"\nwrote {path}")
-        doc = Path(__file__).resolve().parents[3] / "docs" / "deid-evaluation.md"
-        doc.parent.mkdir(parents=True, exist_ok=True)
-        doc.write_text(
-            report.render_markdown(
-                card, thresholds, latency=(latency,) if args.report_latency else ()
-            ),
-            encoding="utf-8",
-        )
-        print(f"wrote {doc}")
+        docs = Path(__file__).resolve().parents[3] / "docs"
+        report_path, plot_path = comparison.write_accuracy_artifacts(root, docs)
+        print(f"wrote {report_path}")
+        print(f"wrote {plot_path}")
 
     return exit_code
+
+
+def _benchmark(args: argparse.Namespace) -> int:
+    root = _resolve_root(args.root)
+    corpus = corpus_mod.load(root)
+    engines = args.engines or ["regex", "gliner-only", "gliner"]
+    results = []
+    try:
+        for engine in engines:
+            results.append(benchmark.run_engine(corpus, engine, repeats=args.repeats))
+    except (EngineUnavailable, ValueError) as exc:
+        message = (
+            report.unavailable_message(exc) if isinstance(exc, EngineUnavailable) else str(exc)
+        )
+        print(f"autocab deid benchmark: {message}", file=sys.stderr)
+        return 1
+
+    payload = json.dumps([result.to_dict() for result in results], indent=2, sort_keys=True)
+    if args.output:
+        benchmark.write_json(results, args.output)
+        print(f"wrote {args.output}")
+    else:
+        print(payload)
+    if args.plot:
+        args.plot.parent.mkdir(parents=True, exist_ok=True)
+        args.plot.write_text(comparison.render_performance_svg(results), encoding="utf-8")
+        print(f"wrote {args.plot}")
+    return 0
 
 
 def _labels() -> int:

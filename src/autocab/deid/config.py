@@ -99,7 +99,7 @@ class LlmConfig:
 @dataclass(frozen=True, slots=True)
 class DeidConfig:
     profile: str = "balanced"
-    engine: str = "gliner"
+    engine: str = "regex"
     llm: LlmConfig = field(default_factory=LlmConfig)
     allowlist_extra: tuple[str, ...] = ()
     source: str = ""
@@ -203,7 +203,7 @@ def load(path: Path | None = None) -> DeidConfig:
     extra = deid.get("allowlist_extra", ())
     return DeidConfig(
         profile=str(deid.get("profile", "balanced")),
-        engine=str(deid.get("engine", "gliner")),
+        engine=str(deid.get("engine", "regex")),
         llm=llm,
         allowlist_extra=tuple(str(item) for item in extra)
         if isinstance(extra, (list, tuple))

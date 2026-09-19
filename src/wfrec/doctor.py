@@ -79,6 +79,17 @@ def _deid_status() -> dict[str, Any]:
     }
 
     try:
+        from autocab.deid.models import verify_weights
+
+        weights = verify_weights()
+        status["model_weights"] = weights.to_dict()
+    except Exception as exc:  # pragma: no cover - only on a broken install
+        status["model_weights"] = {
+            "valid": False,
+            "error": f"{type(exc).__name__}: {exc}"[:160],
+        }
+
+    try:
         from autocab.deid.config import load as load_config
 
         config = load_config()
@@ -442,6 +453,27 @@ def render(report: dict[str, Any]) -> Group:
             _plain_text(location) if location else Text("Not installed", style="dim"),
         )
 
+    deid = _status_table("PHI check", "Details")
+    deid_report = report.get("deid") or {}
+    regex = deid_report.get("regex") or {}
+    deid.add_row(
+        _status_text(bool(regex.get("available"))),
+        _plain_text("Patterns"),
+        _plain_text("ready; default"),
+    )
+    weights = deid_report.get("model_weights") or {}
+    weights_valid = bool(weights.get("valid"))
+    model_detail = (
+        f"verified; {weights.get('path')}"
+        if weights_valid
+        else f"not installed; run `wfrec deid fetch`; {weights.get('path', '')}"
+    )
+    deid.add_row(
+        _status_text(weights_valid),
+        _plain_text("GLiNER"),
+        _plain_text(model_detail),
+    )
+
     sections: list[Any] = [
         heading,
         Text(""),
@@ -453,6 +485,9 @@ def render(report: dict[str, Any]) -> Group:
         Text(""),
         Text("Shell hooks", style="bold"),
         hooks,
+        Text(""),
+        Text("PHI redaction", style="bold"),
+        deid,
     ]
     if report["warnings"]:
         warnings = Table.grid(padding=(0, 1))

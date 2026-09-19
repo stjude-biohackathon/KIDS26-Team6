@@ -6,10 +6,10 @@
       "hipaa": null,
       "label": "agents",
       "label_accuracy": 1.0,
-      "partial": 48,
-      "recall_partial": 0.8571,
-      "recall_strict": 0.8571,
-      "strict": 48
+      "partial": 52,
+      "recall_partial": 0.9286,
+      "recall_strict": 0.9286,
+      "strict": 52
     },
     {
       "clip_gap": 0.0,
@@ -17,10 +17,10 @@
       "hipaa": null,
       "label": "diffs",
       "label_accuracy": 1.0,
-      "partial": 52,
-      "recall_partial": 0.8667,
-      "recall_strict": 0.8667,
-      "strict": 52
+      "partial": 59,
+      "recall_partial": 0.9833,
+      "recall_strict": 0.9833,
+      "strict": 59
     },
     {
       "clip_gap": 0.0,
@@ -28,10 +28,10 @@
       "hipaa": null,
       "label": "jobs",
       "label_accuracy": 1.0,
-      "partial": 80,
-      "recall_partial": 0.8333,
-      "recall_strict": 0.8333,
-      "strict": 80
+      "partial": 88,
+      "recall_partial": 0.9167,
+      "recall_strict": 0.9167,
+      "strict": 88
     },
     {
       "clip_gap": 0.0,
@@ -39,10 +39,10 @@
       "hipaa": null,
       "label": "notes",
       "label_accuracy": 1.0,
-      "partial": 132,
-      "recall_partial": 0.8462,
-      "recall_strict": 0.8462,
-      "strict": 132
+      "partial": 155,
+      "recall_partial": 0.9936,
+      "recall_strict": 0.9936,
+      "strict": 155
     },
     {
       "clip_gap": 0.0,
@@ -50,10 +50,10 @@
       "hipaa": null,
       "label": "ocr",
       "label_accuracy": 1.0,
-      "partial": 96,
-      "recall_partial": 0.8276,
-      "recall_strict": 0.8276,
-      "strict": 96
+      "partial": 116,
+      "recall_partial": 1.0,
+      "recall_strict": 1.0,
+      "strict": 116
     },
     {
       "clip_gap": 0.0,
@@ -85,10 +85,10 @@
       "hipaa": null,
       "label": "easy",
       "label_accuracy": 1.0,
-      "partial": 236,
-      "recall_partial": 0.9077,
-      "recall_strict": 0.9077,
-      "strict": 236
+      "partial": 260,
+      "recall_partial": 1.0,
+      "recall_strict": 1.0,
+      "strict": 260
     },
     {
       "clip_gap": 0.0,
@@ -96,10 +96,10 @@
       "hipaa": null,
       "label": "hard",
       "label_accuracy": 1.0,
-      "partial": 80,
-      "recall_partial": 0.7692,
-      "recall_strict": 0.7692,
-      "strict": 80
+      "partial": 102,
+      "recall_partial": 0.9808,
+      "recall_strict": 0.9808,
+      "strict": 102
     },
     {
       "clip_gap": 0.0,
@@ -107,10 +107,10 @@
       "hipaa": null,
       "label": "medium",
       "label_accuracy": 1.0,
-      "partial": 180,
-      "recall_partial": 0.8654,
-      "recall_strict": 0.8654,
-      "strict": 180
+      "partial": 196,
+      "recall_partial": 0.9423,
+      "recall_strict": 0.9423,
+      "strict": 196
     }
   ],
   "by_hipaa": [
@@ -120,10 +120,10 @@
       "hipaa": null,
       "label": "hipaa-01",
       "label_accuracy": 1.0,
-      "partial": 36,
-      "recall_partial": 0.3462,
-      "recall_strict": 0.3462,
-      "strict": 36
+      "partial": 98,
+      "recall_partial": 0.9423,
+      "recall_strict": 0.9423,
+      "strict": 98
     },
     {
       "clip_gap": 0.0,
@@ -430,10 +430,10 @@
       "hipaa": 1,
       "label": "NAME",
       "label_accuracy": 1.0,
-      "partial": 36,
-      "recall_partial": 0.3462,
-      "recall_strict": 0.3462,
-      "strict": 36
+      "partial": 98,
+      "recall_partial": 0.9423,
+      "recall_strict": 0.9423,
+      "strict": 98
     },
     {
       "clip_gap": 0.0,
@@ -641,10 +641,10 @@
       "hipaa": 1,
       "label": "NAME",
       "label_accuracy": 1.0,
-      "partial": 36,
-      "recall_partial": 0.45,
-      "recall_strict": 0.45,
-      "strict": 36
+      "partial": 76,
+      "recall_partial": 0.95,
+      "recall_strict": 0.95,
+      "strict": 76
     },
     {
       "clip_gap": 0.0,
@@ -715,61 +715,21 @@
   ],
   "headline": {
     "corpus_fingerprint": "ccfbf64eb85ed3027e7a038a7d052100c914b55411d37f599e1d4245a2547b91",
-    "engine": "regex",
+    "engine": "gliner",
     "false_positive_spans_per_negative_record": 0.0,
     "gold_spans": 572,
-    "leaks_per_1000_records": 240.51,
+    "leaks_per_1000_records": 44.3,
     "must_survive_total": 380,
     "must_survive_violations": 0,
-    "over_redaction_rate": 0.0043,
-    "over_redaction_share_of_predicted": 0.0128,
-    "predicted_spans": 504,
-    "recall_strict_gated": 0.8889,
-    "recall_strict_overall": 0.8671,
+    "over_redaction_rate": 0.0055,
+    "over_redaction_share_of_predicted": 0.0148,
+    "predicted_spans": 570,
+    "recall_strict_gated": 0.9744,
+    "recall_strict_overall": 0.9755,
     "records": 316,
-    "safe_record_rate": 0.7595
+    "safe_record_rate": 0.9557
   },
   "leaks": [
-    {
-      "channel": "agents",
-      "difficulty": "medium",
-      "end": 37,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "agents-ag03-00",
-      "start": 23,
-      "text": "Donald K Jones"
-    },
-    {
-      "channel": "agents",
-      "difficulty": "medium",
-      "end": 37,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "agents-ag03-01",
-      "start": 23,
-      "text": "Gary W Roberts"
-    },
-    {
-      "channel": "agents",
-      "difficulty": "medium",
-      "end": 35,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "agents-ag03-02",
-      "start": 23,
-      "text": "Emily Brooks"
-    },
-    {
-      "channel": "agents",
-      "difficulty": "medium",
-      "end": 36,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "agents-ag03-03",
-      "start": 23,
-      "text": "Rebecca James"
-    },
     {
       "channel": "agents",
       "difficulty": "medium",
@@ -812,46 +772,6 @@
     },
     {
       "channel": "diffs",
-      "difficulty": "medium",
-      "end": 61,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "diffs-df03-00",
-      "start": 47,
-      "text": "Jonathan Brown"
-    },
-    {
-      "channel": "diffs",
-      "difficulty": "medium",
-      "end": 65,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "diffs-df03-01",
-      "start": 47,
-      "text": "Kimberly W Roberts"
-    },
-    {
-      "channel": "diffs",
-      "difficulty": "medium",
-      "end": 66,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "diffs-df03-02",
-      "start": 50,
-      "text": "Kathleen S Clark"
-    },
-    {
-      "channel": "diffs",
-      "difficulty": "medium",
-      "end": 61,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "diffs-df03-03",
-      "start": 47,
-      "text": "Jason E Chavez"
-    },
-    {
-      "channel": "diffs",
       "difficulty": "hard",
       "end": 48,
       "label": "NAME",
@@ -859,36 +779,6 @@
       "record_id": "diffs-df06-00",
       "start": 36,
       "text": "Sharon Green"
-    },
-    {
-      "channel": "diffs",
-      "difficulty": "hard",
-      "end": 45,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "diffs-df06-01",
-      "start": 36,
-      "text": "Mary Ruiz"
-    },
-    {
-      "channel": "diffs",
-      "difficulty": "hard",
-      "end": 47,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "diffs-df06-02",
-      "start": 33,
-      "text": "Robert  Taylor"
-    },
-    {
-      "channel": "diffs",
-      "difficulty": "hard",
-      "end": 49,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "diffs-df06-03",
-      "start": 33,
-      "text": "Andrew  Martinez"
     },
     {
       "channel": "jobs",
@@ -971,316 +861,6 @@
       "text": "rnaseq_long_40"
     },
     {
-      "channel": "jobs",
-      "difficulty": "hard",
-      "end": 76,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "jobs-jb08-00",
-      "start": 66,
-      "text": "Nancy Diaz"
-    },
-    {
-      "channel": "jobs",
-      "difficulty": "hard",
-      "end": 84,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "jobs-jb08-01",
-      "start": 67,
-      "text": "Stephen  Gonzalez"
-    },
-    {
-      "channel": "jobs",
-      "difficulty": "hard",
-      "end": 86,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "jobs-jb08-02",
-      "start": 73,
-      "text": "Helen Stewart"
-    },
-    {
-      "channel": "jobs",
-      "difficulty": "hard",
-      "end": 85,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "jobs-jb08-03",
-      "start": 70,
-      "text": "Raymond  Rivera"
-    },
-    {
-      "channel": "jobs",
-      "difficulty": "medium",
-      "end": 66,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "jobs-jb10-00",
-      "start": 54,
-      "text": "Frank M Hill"
-    },
-    {
-      "channel": "jobs",
-      "difficulty": "medium",
-      "end": 72,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "jobs-jb10-01",
-      "start": 54,
-      "text": "Stephanie L Wright"
-    },
-    {
-      "channel": "jobs",
-      "difficulty": "medium",
-      "end": 66,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "jobs-jb10-02",
-      "start": 52,
-      "text": "Timothy Foster"
-    },
-    {
-      "channel": "jobs",
-      "difficulty": "medium",
-      "end": 68,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "jobs-jb10-03",
-      "start": 53,
-      "text": "Donald Gonzalez"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "easy",
-      "end": 30,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt01-00",
-      "start": 17,
-      "text": "Samuel Torres"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "easy",
-      "end": 32,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt01-01",
-      "start": 17,
-      "text": "Kimberly Miller"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "easy",
-      "end": 26,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt01-02",
-      "start": 17,
-      "text": "Anna Diaz"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "easy",
-      "end": 31,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt01-03",
-      "start": 17,
-      "text": "Raymond Martin"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "easy",
-      "end": 32,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt02-00",
-      "start": 21,
-      "text": "Charles Kim"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "easy",
-      "end": 39,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt02-01",
-      "start": 21,
-      "text": "Christopher Howard"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "easy",
-      "end": 34,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt02-02",
-      "start": 21,
-      "text": "Janet Alvarez"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "easy",
-      "end": 33,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt02-03",
-      "start": 21,
-      "text": "Barbara Cook"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "hard",
-      "end": 28,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt07-00",
-      "start": 15,
-      "text": "Jessica Clark"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "hard",
-      "end": 27,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt07-01",
-      "start": 15,
-      "text": "Richard  Lee"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "hard",
-      "end": 28,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt07-02",
-      "start": 15,
-      "text": "Angela  Reyes"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "hard",
-      "end": 28,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt07-03",
-      "start": 15,
-      "text": "Ronald  Patel"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "easy",
-      "end": 25,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt08-00",
-      "start": 13,
-      "text": "Susan Cooper"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "easy",
-      "end": 28,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt08-01",
-      "start": 13,
-      "text": "Charles Roberts"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "easy",
-      "end": 25,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt08-02",
-      "start": 13,
-      "text": "Jason Cooper"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "easy",
-      "end": 26,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt08-03",
-      "start": 13,
-      "text": "Susan Alvarez"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "medium",
-      "end": 73,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt09-00",
-      "start": 55,
-      "text": "Shirley H Campbell"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "medium",
-      "end": 69,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt09-01",
-      "start": 55,
-      "text": "Stephen O Hill"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "medium",
-      "end": 67,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt09-02",
-      "start": 55,
-      "text": "Jerry J Gray"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "medium",
-      "end": 67,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt09-03",
-      "start": 55,
-      "text": "Justin Green"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "hard",
-      "end": 21,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt12-00",
-      "start": 4,
-      "text": "Shirley  Gonzalez"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "hard",
-      "end": 20,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt12-01",
-      "start": 4,
-      "text": "Elizabeth Harris"
-    },
-    {
-      "channel": "notes",
-      "difficulty": "hard",
-      "end": 18,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "notes-nt12-02",
-      "start": 4,
-      "text": "Melissa Torres"
-    },
-    {
       "channel": "notes",
       "difficulty": "hard",
       "end": 17,
@@ -1289,206 +869,6 @@
       "record_id": "notes-nt12-03",
       "start": 4,
       "text": "Emily  Miller"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "easy",
-      "end": 28,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc01-00",
-      "start": 13,
-      "text": "Sandra Thompson"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "easy",
-      "end": 27,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc01-01",
-      "start": 13,
-      "text": "Jessica Wilson"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "easy",
-      "end": 24,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc01-02",
-      "start": 13,
-      "text": "Paul Murphy"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "easy",
-      "end": 25,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc01-03",
-      "start": 13,
-      "text": "Daniel White"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "easy",
-      "end": 28,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc02-00",
-      "start": 17,
-      "text": "Ryan Bailey"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "easy",
-      "end": 27,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc02-01",
-      "start": 17,
-      "text": "Amy Bailey"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "easy",
-      "end": 30,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc02-02",
-      "start": 17,
-      "text": "Shirley Jones"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "easy",
-      "end": 29,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc02-03",
-      "start": 17,
-      "text": "Kevin Cooper"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "hard",
-      "end": 46,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc05-00",
-      "start": 33,
-      "text": "Debra  Nguyen"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "hard",
-      "end": 49,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc05-01",
-      "start": 36,
-      "text": "Joshua  Davis"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "hard",
-      "end": 45,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc05-02",
-      "start": 33,
-      "text": "Kevin  Brown"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "hard",
-      "end": 54,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc05-03",
-      "start": 37,
-      "text": "Jonathan  Edwards"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "hard",
-      "end": 49,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc11-00",
-      "start": 33,
-      "text": "Katherine Miller"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "hard",
-      "end": 45,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc11-01",
-      "start": 33,
-      "text": "William Reed"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "hard",
-      "end": 48,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc11-02",
-      "start": 33,
-      "text": "Jonathan Taylor"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "hard",
-      "end": 47,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc11-03",
-      "start": 33,
-      "text": "Jennifer Lewis"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "easy",
-      "end": 22,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc12-00",
-      "start": 12,
-      "text": "Mary Ramos"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "easy",
-      "end": 28,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc12-01",
-      "start": 12,
-      "text": "Janet Richardson"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "easy",
-      "end": 28,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc12-02",
-      "start": 12,
-      "text": "Christopher Gray"
-    },
-    {
-      "channel": "ocr",
-      "difficulty": "easy",
-      "end": 24,
-      "label": "NAME",
-      "partial_hit": false,
-      "record_id": "ocr-oc12-03",
-      "start": 12,
-      "text": "Joshua Clark"
     }
   ],
   "must_survive_violations": []
