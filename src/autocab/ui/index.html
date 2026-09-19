@@ -180,12 +180,12 @@
           <button id="forge-workflow-action" type="button" disabled>Create skill draft</button>
         </div>
         <ol id="forge-workflow-stages" class="forge-workflow__stages" aria-label="Skill workflow progress">
-          <li data-stage="recorded">Recorded</li>
-          <li data-stage="redacted">Redacted</li>
-          <li data-stage="draft">Draft</li>
-          <li data-stage="review">Review</li>
-          <li data-stage="approved">Approved</li>
-          <li data-stage="packaged">Packaged</li>
+          <li data-stage="recorded"><span>Recorded</span></li>
+          <li data-stage="redacted"><span>Redacted</span></li>
+          <li data-stage="draft"><span>Draft</span></li>
+          <li data-stage="review"><span>Review</span></li>
+          <li data-stage="approved"><span>Approved</span></li>
+          <li data-stage="packaged"><span>Packaged</span></li>
         </ol>
       </section>
 
@@ -363,6 +363,7 @@
     <p id="forge-dialog-message" class="forge-dialog__message" role="alert"></p>
     <div class="forge-dialog__actions">
       <button id="forge-dialog-cancel" type="button">Close</button>
+      <button id="forge-dialog-open" type="button" hidden title="Open skill-spec.json in the default editor">Open in editor</button>
       <button id="forge-dialog-action" class="primary" type="button" hidden></button>
     </div>
   </div>

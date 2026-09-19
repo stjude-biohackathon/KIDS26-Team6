@@ -208,6 +208,11 @@ class ForgeWorkflow:
                         agentWorkflowFile=None,
                     )
                 )
+                forge_log = render_dir / "logs" / "skill-forge.log"
+                if forge_log.is_file():
+                    retained_log = run_dir / "logs" / "skill-forge.log"
+                    retained_log.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(forge_log, retained_log)
                 if result != 0:
                     raise WorkflowError("Skill renderer rejected the approved SkillSpec.")
                 rendered = render_dir / "proposal" / spec["name"]

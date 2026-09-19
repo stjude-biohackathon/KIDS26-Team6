@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from autocab.forge.skill_spec import validateSpec
+from autocab.workflow.dependency_versions import DetectedVersion
 from autocab.workflow import ForgeState, ForgeWorkflow, InvalidTransition, WorkflowError
 from autocab.recording.events import Event
 from autocab.recording.seal import NotSealed
@@ -81,6 +82,27 @@ def test_forge_persists_full_evidence_and_a_blocked_spec(store, seal_now):
     assert spec["decision"] == "blocked"
     assert spec["steps"][0]["commandShape"] == "bcftools view input.vcf.gz"
     assert spec["dependencies"][0]["kind"] == "missing"
+
+
+def test_forge_prefills_detected_dependency_version(store, seal_now, monkeypatch):
+    """Dependency review should start with locally detected version evidence."""
+
+    session, _ = store.start(title="Versioned workflow", analyst="analyst")
+    _record_command(session, "git status")
+    seal_now(session)
+    monkeypatch.setattr(
+        "autocab.workflow.builder.detect_dependency_version",
+        lambda executable: DetectedVersion("2.51.0", f"{executable} --version"),
+    )
+
+    run = ForgeWorkflow().forge(session.session_id)
+    run_dir = session.root.parent.parent / "runs" / run.run_id
+    spec = json.loads((run_dir / "skill-spec.json").read_text(encoding="utf-8"))
+
+    dependency = spec["dependencies"][0]
+    assert dependency["versionConstraint"] == "2.51.0"
+    assert "git --version" in dependency["notes"]
+    assert spec["runtimeEnvironment"]["verified"] is False
     assert validateSpec(spec) == []
 
 

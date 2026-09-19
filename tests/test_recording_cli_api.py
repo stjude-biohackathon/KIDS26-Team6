@@ -12,11 +12,12 @@ from fastapi.testclient import TestClient
 from autocab.recording import paths
 from autocab.recording.api import create_app
 from autocab.recording.cli import main
-from autocab.recording.desktop import DirectoryOpenError
+from autocab.recording.desktop import DirectoryOpenError, FileOpenError
 from autocab.recording.events import Event
 from autocab.recording.recorder import Recorder
 from autocab.recording.session import Manifest, Session, SessionStore
 from autocab.recording.state import RecorderState
+from autocab.workflow import RunStore
 
 
 @pytest.fixture()
@@ -256,7 +257,70 @@ def test_forge_api_exposes_blocked_review_state(client):
     assert "needs_review" in approval.json()["detail"]
 
 
-def test_forge_api_keeps_review_approval_and_packaging_separate(client):
+def test_forge_api_opens_the_current_skill_spec(client, autocab_home: Path, monkeypatch):
+    started = client.post("/sessions/start", json={"title": "Editable draft"}).json()
+    session_id = started["session"]["id"]
+    Session.load(session_id).writer.append(
+        Event(
+            source="shell",
+            type="shell.command.completed",
+            payload={"command": "python workflow.py input.txt", "exit_code": 0},
+        )
+    )
+    client.post("/sessions/stop", json={"session_id": session_id})
+    client.post("/sessions/seal", json={"session_id": session_id})
+    run_id = client.post(f"/sessions/{session_id}/forge-runs").json()["run"]["run_id"]
+    opened: list[Path] = []
+
+    monkeypatch.setattr("autocab.recording.api._request_is_local", lambda _request: True)
+    monkeypatch.setattr("autocab.recording.api.open_file", opened.append)
+
+    response = client.post(f"/forge-runs/{run_id}/open-spec")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "run_id": run_id,
+        "artifact": "skill-spec.json",
+        "opened": True,
+    }
+    assert opened == [autocab_home / "runs" / run_id / "skill-spec.json"]
+
+
+def test_forge_api_reports_an_unavailable_default_editor(client, monkeypatch):
+    started = client.post("/sessions/start", json={"title": "No editor"}).json()
+    session_id = started["session"]["id"]
+    Session.load(session_id).writer.append(
+        Event(
+            source="shell",
+            type="shell.command.completed",
+            payload={"command": "python workflow.py input.txt", "exit_code": 0},
+        )
+    )
+    client.post("/sessions/stop", json={"session_id": session_id})
+    client.post("/sessions/seal", json={"session_id": session_id})
+    run_id = client.post(f"/sessions/{session_id}/forge-runs").json()["run"]["run_id"]
+
+    monkeypatch.setattr("autocab.recording.api._request_is_local", lambda _request: True)
+
+    def unavailable(_path: Path) -> None:
+        raise FileOpenError("No default editor is available.")
+
+    monkeypatch.setattr("autocab.recording.api.open_file", unavailable)
+
+    response = client.post(f"/forge-runs/{run_id}/open-spec")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "No default editor is available."
+
+
+def test_forge_api_rejects_remote_editor_requests(client):
+    response = client.post("/forge-runs/20260919T000000Z-1234abcd/open-spec")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == ("Skill drafts can only be opened from the daemon host.")
+
+
+def test_forge_api_keeps_review_approval_and_packaging_separate(client, monkeypatch):
     started = client.post(
         "/sessions/start", json={"title": "Reviewed workflow", "analyst": "analyst"}
     ).json()
@@ -301,8 +365,34 @@ def test_forge_api_keeps_review_approval_and_packaging_separate(client):
 
     packaged = client.post(f"/forge-runs/{run_id}/package")
     assert packaged.status_code == 200
-    assert packaged.json()["run"]["state"] == "packaged"
-    assert packaged.json()["run"]["package_path"].endswith("reviewed-workflow-std")
+    packaged_run = packaged.json()["run"]
+    assert packaged_run["state"] == "packaged"
+    assert packaged_run["package_path"].endswith("reviewed-workflow-std")
+    package_path = Path(packaged_run["package_full_path"])
+    assert package_path.is_absolute()
+    assert package_path.is_dir()
+    forge_log = RunStore().run_dir(run_id) / "logs" / "skill-forge.log"
+    assert forge_log.is_file()
+    assert "Rendered staged proposal:" in forge_log.read_text(encoding="utf-8")
+
+    opened: list[Path] = []
+    monkeypatch.setattr("autocab.recording.api._request_is_local", lambda request: True)
+    monkeypatch.setattr("autocab.recording.api.open_directory", opened.append)
+    response = client.post(f"/forge-runs/{run_id}/open-package")
+    assert response.status_code == 200
+    assert response.json() == {
+        "run_id": run_id,
+        "path": str(package_path),
+        "opened": True,
+    }
+    assert opened == [package_path]
+
+
+def test_open_package_rejects_a_remote_request(client):
+    response = client.post("/forge-runs/20260919T000000Z-1234abcd/open-package")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == ("Skill packages can only be opened from the daemon host.")
 
 
 def test_toggle_source_over_http(client):
@@ -748,6 +838,29 @@ def test_session_provenance_reports_integrity_failure(client):
     assert "no longer matches its sealed digest" in redaction["integrity"]["detail"]
 
 
+def test_seal_endpoint_can_repair_an_invalid_seal(client):
+    started = client.post("/sessions/start", json={"title": "Repair"}).json()
+    session_id = started["session"]["id"]
+    client.post("/sessions/stop", json={"session_id": session_id})
+    first = client.post("/sessions/seal", json={"session_id": session_id})
+    manifest_path = Session.load(session_id).root / "manifest.json"
+    manifest_path.write_text(manifest_path.read_text(encoding="utf-8") + "\n")
+    refused = client.post("/sessions/seal", json={"session_id": session_id})
+
+    repaired = client.post(
+        "/sessions/seal",
+        json={"session_id": session_id, "reseal": True},
+    )
+    provenance = client.get(f"/sessions/{session_id}/provenance").json()
+
+    assert first.status_code == 200
+    assert refused.status_code == 409
+    assert "no longer matches its sealed digest" in refused.json()["detail"]
+    assert repaired.status_code == 200, repaired.text
+    assert repaired.json()["generation"] == 2
+    assert provenance["redaction"]["integrity"]["status"] == "verified"
+
+
 def test_doctor_endpoint_reports_sources(client):
     report = client.get("/doctor").json()
     assert "sources" in report and "shell" in report["sources"]
@@ -794,8 +907,10 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert "Apply PHI redaction?" in body
     assert "seal it for skill creation" in body
     assert ">Apply redaction</button>" in body
-    assert '<li data-stage="redacted">Redacted</li>' in body
+    assert '<li data-stage="redacted"><span>Redacted</span></li>' in body
     assert "Add notes, errors, or decisions." in body
+    assert 'id="forge-dialog-open"' in body
+    assert ">Open in editor</button>" in body
     assert "AutoCAB masks detected personal information before saving." in body
     assert "AutoCAB will remove detected PHI from a copy." in body
     assert "Your session will not change." in body
@@ -1090,8 +1205,22 @@ def test_ui_serves_phi_redaction_skill_workflow(client):
     assert "action:'redact'" in javascript.text
     assert "Apply PHI redaction" in javascript.text
     assert "Applying redaction…" in javascript.text
-    assert "await sealSession(sessionId)" in javascript.text
+    assert "await sealSession(sessionId, repairing)" in javascript.text
+    assert "Apply PHI redaction again" in javascript.text
+    assert ".forge-dialog__package" in stylesheet.text
+    assert "currentRun.package_full_path || currentRun.package_path" in javascript.text
+    assert "Copy package path" in javascript.text
+    assert "Open package folder" in javascript.text
     assert "await refreshSession()" in javascript.text
+    assert "Validate changes" in javascript.text
+    assert "await openSpec(run.run_id)" in javascript.text
+    assert "await reviewRun(run.run_id, reviewer(), skillSpec, notes)" in javascript.text
+    assert "No formal inputs or outputs" in javascript.text
+    assert "Save answer" in javascript.text
+    assert "resolveInputOutputQuestion" in javascript.text
+    assert "Save dependency review" in javascript.text
+    assert "Do not package dependencies" in javascript.text
+    assert "resolveDependencyQuestion" in javascript.text
 
 
 def test_ui_serves_interactive_dashboard_javascript_without_credentials(client):

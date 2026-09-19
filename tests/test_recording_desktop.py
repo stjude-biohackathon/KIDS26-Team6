@@ -55,3 +55,46 @@ def test_open_directory_requires_an_existing_directory(tmp_path: Path) -> None:
 
     with pytest.raises(desktop.DirectoryOpenError, match="does not exist"):
         desktop.open_directory(missing)
+
+
+def test_open_file_uses_default_application_on_macos(tmp_path: Path, monkeypatch) -> None:
+    file_path = tmp_path / "skill-spec.json"
+    file_path.write_text("{}", encoding="utf-8")
+    commands: list[list[str]] = []
+    monkeypatch.setattr(desktop.sys, "platform", "darwin")
+    monkeypatch.setattr(desktop, "_launch_default_application", commands.append)
+
+    desktop.open_file(file_path)
+
+    assert commands == [["open", str(file_path.resolve())]]
+
+
+def test_open_file_uses_default_application_on_windows(tmp_path: Path, monkeypatch) -> None:
+    file_path = tmp_path / "skill-spec.json"
+    file_path.write_text("{}", encoding="utf-8")
+    opened: list[str] = []
+    monkeypatch.setattr(desktop.sys, "platform", "win32")
+    monkeypatch.setattr(desktop.os, "startfile", opened.append, raising=False)
+
+    desktop.open_file(file_path)
+
+    assert opened == [str(file_path.resolve())]
+
+
+def test_open_file_uses_xdg_open_on_linux(tmp_path: Path, monkeypatch) -> None:
+    file_path = tmp_path / "skill-spec.json"
+    file_path.write_text("{}", encoding="utf-8")
+    commands: list[list[str]] = []
+    monkeypatch.setattr(desktop.sys, "platform", "linux")
+    monkeypatch.setenv("DISPLAY", ":0")
+    monkeypatch.setattr(desktop.shutil, "which", lambda _command: "/usr/bin/xdg-open")
+    monkeypatch.setattr(desktop, "_launch_default_application", commands.append)
+
+    desktop.open_file(file_path)
+
+    assert commands == [["/usr/bin/xdg-open", str(file_path.resolve())]]
+
+
+def test_open_file_requires_an_existing_file(tmp_path: Path) -> None:
+    with pytest.raises(desktop.FileOpenError, match="does not exist"):
+        desktop.open_file(tmp_path / "missing.json")

@@ -1,7 +1,7 @@
 .forge-workflow {
   display: grid;
-  gap: 13px;
-  padding-block: 14px;
+  gap: 10px;
+  padding-block: 12px;
 }
 
 .forge-workflow__header {
@@ -68,6 +68,13 @@
   height: 1px;
   background: var(--line);
   content: "";
+}
+
+.forge-workflow__stages li > span {
+  position: relative;
+  z-index: 1;
+  padding-right: 8px;
+  background: var(--panel);
 }
 
 .forge-workflow__stages li:last-child::after {
@@ -160,10 +167,106 @@
   padding-left: 20px;
 }
 
+.forge-dialog__question + .forge-dialog__question {
+  margin-top: 14px;
+}
+
+.forge-dialog__question > p {
+  margin-bottom: 8px;
+}
+
+.forge-dialog__answer-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.forge-dialog__answer-field {
+  display: grid;
+  gap: 5px;
+  color: var(--dim);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.forge-dialog__answer-field textarea {
+  min-height: 58px;
+  resize: vertical;
+  font: inherit;
+  font-weight: 400;
+}
+
+.forge-dialog__question-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.forge-dialog__question-actions button {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.forge-dialog__dependency-editor {
+  display: grid;
+  gap: 8px;
+}
+
+.forge-dialog__dependency-row {
+  display: grid;
+  grid-template-columns: 20px minmax(80px, 0.8fr) minmax(90px, 1fr) minmax(110px, 1.3fr) minmax(110px, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.forge-dialog__dependency-row input[type="checkbox"] {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+}
+
+.forge-dialog__dependency-row input,
+.forge-dialog__dependency-row select {
+  min-height: 34px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.forge-dialog__dependency-row code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .forge-dialog__facts {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.forge-dialog__package {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.forge-dialog__package code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.forge-dialog__package-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.forge-dialog__package-action {
+  width: 34px;
+  min-height: 34px;
 }
 
 .forge-dialog__message {

@@ -324,9 +324,10 @@ def test_record_finish_uses_the_configured_redaction_engine(
     recorder_calls: list[list[str]] = []
     redaction_calls: list[tuple[str, str]] = []
 
-    def redact(current_session, *, engine: str, profile: str):
+    def redact(current_session, *, engine: str, profile: str, reseal: bool):
         redaction_calls.append((current_session.session_id, engine))
         assert profile == "balanced"
+        assert reseal is False
         return SimpleNamespace(record={"engine": engine, "findings": 2})
 
     monkeypatch.setattr(unified_cli, "_run_recorder", recorder_calls.append)
@@ -351,6 +352,39 @@ def test_record_redact_seals_an_archived_session(autocab_home: Path) -> None:
     assert (session.root / "seal.json").is_file()
     assert "Engine:" in result.output
     assert "regex" in result.output
+
+
+def test_record_redact_can_repair_an_existing_seal(
+    autocab_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = SessionStore()
+    session, _created = store.start(title="Repair seal", analyst="analyst")
+    store.stop(session.session_id)
+    redaction_calls: list[bool] = []
+
+    def redact(
+        current_session,
+        *,
+        engine: str,
+        profile: str,
+        reseal: bool,
+    ) -> SimpleNamespace:
+        assert current_session.session_id == session.session_id
+        assert engine == "regex"
+        assert profile == "balanced"
+        redaction_calls.append(reseal)
+        return SimpleNamespace(record={"engine": engine, "findings": 2})
+
+    monkeypatch.setattr(unified_cli, "apply_phi_redaction", redact)
+
+    result = CliRunner().invoke(
+        cli,
+        ["record", "redact", session.session_id, "--reseal"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert redaction_calls == [True]
 
 
 def test_demo_does_not_approve_by_default(tmp_path: Path) -> None:

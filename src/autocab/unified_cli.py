@@ -366,14 +366,19 @@ def record_finish(session_id: str | None, seal: bool, engine: str | None) -> Non
     type=click.Choice(REDACTION_ENGINES),
     help="PHI detector tier. Defaults to the engine selected during init.",
 )
-def record_redact(session_id: str | None, engine: str | None) -> None:
+@click.option(
+    "--reseal",
+    is_flag=True,
+    help="Apply PHI redaction again and replace an invalid or outdated seal.",
+)
+def record_redact(session_id: str | None, engine: str | None, reseal: bool) -> None:
     """Apply PHI redaction and seal an archived session."""
 
     resolved = SessionStore().resolve(session_id)
-    _apply_redaction(resolved.session_id, engine)
+    _apply_redaction(resolved.session_id, engine, reseal=reseal)
 
 
-def _apply_redaction(session_id: str, engine: str | None) -> None:
+def _apply_redaction(session_id: str, engine: str | None, *, reseal: bool = False) -> None:
     """Apply configured redaction without silently weakening the selected engine."""
 
     from autocab.deid.engines.base import EngineUnavailable
@@ -393,6 +398,7 @@ def _apply_redaction(session_id: str, engine: str | None) -> None:
             SessionStore().resolve(session_id),
             engine=selected_engine,
             profile=config.profile,
+            reseal=reseal,
         )
     except EngineUnavailable as exc:
         raise click.ClickException(f"PHI redaction is unavailable: {exc}") from exc
