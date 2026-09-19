@@ -192,6 +192,13 @@ def test_allowlist_keeps_bioinformatics_surfaces(surface):
     assert allow.keeps(surface, span(0, len(surface), label="NAME"))
 
 
+def test_allowlist_keeps_model_span_clipped_inside_structured_token():
+    text = "Variant p.Leu392Cys was reviewed."
+    start = text.index("Leu392Cys")
+
+    assert Allowlist.default().keeps(text, span(start, start + len("Leu392Cys"), label="NAME"))
+
+
 def test_allowlist_does_not_keep_the_institutional_subject_id_shape():
     # Deliberately not allowlisted: it is the most likely direct identifier in
     # this domain, and allowlisting it "because it looks internal" is the

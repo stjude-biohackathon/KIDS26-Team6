@@ -121,7 +121,7 @@ _SPECS: tuple[LabelSpec, ...] = (
     LabelSpec(DeidLabel.BIOMETRIC, 16, "ID", "biometric identifier", 72),
     LabelSpec(DeidLabel.DOB_LABELLED, 3, "ID", "date of birth", 80),
     LabelSpec(DeidLabel.DATE_BARE, 3, "ID", "calendar date", 85),
-    LabelSpec(DeidLabel.NAME, 1, "NAME", "patient name embedded in a file path or note", 90),
+    LabelSpec(DeidLabel.NAME, 1, "NAME", "person full name", 90),
     LabelSpec(DeidLabel.AGE_OVER_89, 3, "ID", "age over 89 years", 100),
     LabelSpec(
         DeidLabel.LOCATION,
