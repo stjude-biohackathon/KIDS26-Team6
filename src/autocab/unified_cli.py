@@ -9,7 +9,7 @@ from typing import Any
 import click
 
 from autocab.deid.config import ConfigRejected, load as load_deid_config
-from autocab.deid.models import DOWNLOAD_PROGRESS_NOTE, ModelWeightsError, verify_weights
+from autocab.deid.models import ModelWeightsError, download_progress_note, verify_weights
 from autocab.initialization import (
     REDACTION_ENGINES,
     initialize,
@@ -151,7 +151,7 @@ def init_command(
 
         selected_engine = redaction_engine or current_engine
         if fetch_model and not as_json:
-            info(DOWNLOAD_PROGRESS_NOTE, stderr=True)
+            info(download_progress_note(selected_engine), stderr=True)
         model_status = (
             prepare_model(selected_engine, fetch=fetch_model)
             if redaction_engine or fetch_model

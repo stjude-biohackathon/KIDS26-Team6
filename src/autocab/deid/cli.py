@@ -32,9 +32,9 @@ from .eval import corpus as corpus_mod
 from .eval import benchmark, comparison, generate, report
 from .eval.generate import DEFAULT_SEED, DIFFICULTIES
 from .models import (
-    DOWNLOAD_PROGRESS_NOTE,
     MODEL_CHOICES,
     ModelWeightsError,
+    download_progress_note,
     fetch_weights,
     load_bundle,
     verify_weights,
@@ -158,7 +158,7 @@ def run(args: argparse.Namespace) -> int:
 
 
 def _fetch(args: argparse.Namespace) -> int:
-    info(DOWNLOAD_PROGRESS_NOTE, stderr=True)
+    info(download_progress_note(args.model), stderr=True)
     try:
         result = fetch_weights(args.bundle, model=args.model)
     except ModelWeightsError as exc:
