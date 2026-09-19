@@ -1,0 +1,25 @@
+.settings-dialog form {
+  gap: 14px;
+}
+
+.settings-dialog h2 {
+  color: var(--ink);
+  font-size: 16px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.settings-dialog__description {
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.settings-dialog__message {
+  min-height: 18px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.settings-dialog__message:empty {
+  display: none;
+}
