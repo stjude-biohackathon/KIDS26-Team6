@@ -205,6 +205,31 @@ test('user-managed dependencies create a manual review-ready skill', () => {
   assert.equal(updated.name, 'work-std');
 });
 
+test('review resolves current and legacy generated activity rationales', () => {
+  const spec = {
+    decision:'blocked', requestedPackaging:'auto', packaging:'cbd', name:'work-cbd',
+    codebase:{roots:[]}, evidence:[], licenseDecision:'Unknown',
+    runtimeEnvironment:{manager:'none'}, dependencies:[],
+    unresolvedQuestions:[{id:'q-dependency-closure', blocking:true}],
+    steps:[
+      {
+        status:'blocked', dependencies:[],
+        rationale:'The command was observed, but its inputs and dependency closure need review.'
+      },
+      {
+        status:'blocked', dependencies:[],
+        rationale:'The activity was observed, but its inputs and dependency closure need review.'
+      }
+    ]
+  };
+
+  const updated = resolveDependencyQuestion(spec, {
+    runId:'run', dependencies:[], notPackaged:true
+  });
+
+  assert.deepEqual(updated.steps.map(step => step.status), ['manual', 'manual']);
+});
+
 test('dependency review requires versions and a resolved license status', () => {
   const spec = {dependencies:[], unresolvedQuestions:[]};
   assert.throws(

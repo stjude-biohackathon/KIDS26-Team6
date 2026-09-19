@@ -244,10 +244,10 @@ troubleshooting are documented in [`docs/recording.md`](docs/recording.md).
 
 ## Skill Review and Packaging
 
-Skill Forge starts from a sealed event snapshot. The initial draft records
-observed commands, evidence links, unverified dependencies, and unresolved
-questions about inputs and outputs. Missing procedure details remain explicit
-questions for the reviewer.
+Skill Forge starts from a sealed event snapshot. The initial draft combines
+observed shell commands, completed agent tool calls, verified file changes,
+evidence links, unverified dependencies, and unresolved questions. Agent
+messages remain supporting context and do not prove that an action occurred.
 
 A run progresses through these states:
 

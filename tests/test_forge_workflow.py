@@ -106,6 +106,147 @@ def test_forge_prefills_detected_dependency_version(store, seal_now, monkeypatch
     assert validateSpec(spec) == []
 
 
+def test_forge_builds_steps_from_agent_tools_without_trusting_agent_prose(store, seal_now):
+    session, _ = store.start(title="Agent workflow", analyst="analyst")
+    session.writer.extend(
+        [
+            Event(
+                source="agents",
+                type="agent.message",
+                payload={"tool": "codex", "role": "user", "text": "Run the analysis."},
+            ),
+            Event(
+                source="agents",
+                type="agent.message",
+                payload={
+                    "tool": "codex",
+                    "role": "assistant",
+                    "text": "I changed every result successfully.",
+                },
+            ),
+            Event(
+                source="agents",
+                type="agent.tool.completed",
+                payload={
+                    "agent": "codex",
+                    "tool_name": "exec_command",
+                    "category": "command",
+                    "command": "python workflow.py input.txt",
+                    "exit_code": 0,
+                    "session_id": "thread-1",
+                },
+            ),
+        ]
+    )
+    seal_now(session)
+
+    run = ForgeWorkflow().forge(session.session_id)
+    run_dir = session.root.parent.parent / "runs" / run.run_id
+    spec = json.loads((run_dir / "skill-spec.json").read_text(encoding="utf-8"))
+
+    assert len(spec["steps"]) == 1
+    assert spec["steps"][0]["commandShape"] == "python workflow.py input.txt"
+    assert spec["dependencies"][0]["name"] == "python"
+    assert len(spec["steps"][0]["evidenceIds"]) == 1
+    messages = [record for record in spec["evidence"] if "agent.message" in record["summary"]]
+    assert [record["confidence"] for record in messages] == ["medium", "low"]
+    assert validateSpec(spec) == []
+
+
+def test_forge_deduplicates_matching_shell_and_agent_commands(store, seal_now):
+    session, _ = store.start(title="Deduplicated workflow", analyst="analyst")
+    timestamp = "2030-01-01T00:00:01.000Z"
+    session.writer.extend(
+        [
+            Event(
+                source="shell",
+                type="shell.command.completed",
+                ts=timestamp,
+                payload={"command": "python workflow.py", "cwd": "/project", "exit_code": 0},
+            ),
+            Event(
+                source="agents",
+                type="agent.tool.completed",
+                ts="2030-01-01T00:00:02.000Z",
+                payload={
+                    "agent": "codex",
+                    "tool_name": "exec_command",
+                    "category": "command",
+                    "command": "python  workflow.py",
+                    "cwd": "/project",
+                    "session_id": "thread-1",
+                    "exit_code": 0,
+                },
+            ),
+        ]
+    )
+    seal_now(session)
+
+    run = ForgeWorkflow().forge(session.session_id)
+    run_dir = session.root.parent.parent / "runs" / run.run_id
+    spec = json.loads((run_dir / "skill-spec.json").read_text(encoding="utf-8"))
+
+    assert len(spec["steps"]) == 1
+    assert len(spec["steps"][0]["evidenceIds"]) == 2
+    assert len(spec["dependencies"][0]["evidenceIds"]) == 2
+
+
+def test_forge_links_agent_edits_and_keeps_external_tools_reviewable(store, seal_now):
+    session, _ = store.start(title="Agent edits", analyst="analyst")
+    session.writer.extend(
+        [
+            Event(
+                source="agents",
+                type="agent.tool.completed",
+                ts="2030-01-01T00:00:01.000Z",
+                payload={
+                    "agent": "codex",
+                    "tool_name": "apply_patch",
+                    "category": "edit",
+                    "session_id": "thread-1",
+                },
+            ),
+            Event(
+                source="files",
+                type="file.diff",
+                ts="2030-01-01T00:00:02.000Z",
+                payload={"path": "workflow.py", "added": 5, "deleted": 1},
+            ),
+            Event(
+                source="agents",
+                type="agent.tool.completed",
+                ts="2030-01-01T00:00:03.000Z",
+                payload={
+                    "agent": "codex",
+                    "tool_name": "web_search",
+                    "category": "search",
+                    "session_id": "thread-1",
+                },
+            ),
+            Event(
+                source="agents",
+                type="agent.tool.completed",
+                ts="2030-01-01T00:00:04.000Z",
+                payload={"agent": "codex", "tool_name": "wait", "category": "wait"},
+            ),
+        ]
+    )
+    seal_now(session)
+
+    run = ForgeWorkflow().forge(session.session_id)
+    run_dir = session.root.parent.parent / "runs" / run.run_id
+    spec = json.loads((run_dir / "skill-spec.json").read_text(encoding="utf-8"))
+
+    assert [step["summary"] for step in spec["steps"]] == [
+        "Repeat recorded edits with apply_patch.",
+        "Review recorded web_search activity.",
+    ]
+    assert len(spec["steps"][0]["evidenceIds"]) == 2
+    assert all(step["commandShape"] is None for step in spec["steps"])
+    assert spec["dependencies"] == []
+    assert validateSpec(spec) == []
+
+
 def test_review_approval_and_package_are_separate_steps(store, seal_now):
     session, _ = store.start(title="Reviewed workflow", analyst="analyst")
     _record_command(session)
