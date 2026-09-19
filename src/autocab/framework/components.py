@@ -7,7 +7,12 @@ from collections import defaultdict
 from pathlib import Path
 
 from autocab.demo_data import load_skill_catalog
-from autocab.input_sources import InputBundle, load_screen_capture_input, load_terminal_log_input, load_trace_input
+from autocab.input_sources import (
+    InputBundle,
+    load_screen_capture_input,
+    load_terminal_log_input,
+    load_trace_input,
+)
 from autocab.session_bundle import load_session_input
 from autocab.models import (
     MatchResult,
@@ -237,9 +242,13 @@ class SkillProposalBuilder:
         if proposal_type == "composite":
             steps.append("Chain the closest existing skills into one governed workflow recipe.")
         elif proposal_type == "new":
-            steps.append("Create a net-new skill because no existing reference covers the workflow.")
+            steps.append(
+                "Create a net-new skill because no existing reference covers the workflow."
+            )
         else:
-            steps.append("Recommend the existing skill and document any lightweight CAB-specific edits.")
+            steps.append(
+                "Recommend the existing skill and document any lightweight CAB-specific edits."
+            )
 
         validation_notes = [
             "Confirm the workflow only uses public or synthetic data.",
@@ -292,7 +301,10 @@ class SkillProposalBuilder:
         second_score = matches[1].score if len(matches) > 1 else 0.0
         if top_score >= self._covered_threshold:
             return "covered", "existing"
-        if top_score >= self._partial_threshold or (top_score + second_score) >= self._composite_threshold:
+        if (
+            top_score >= self._partial_threshold
+            or (top_score + second_score) >= self._composite_threshold
+        ):
             return "partial", "composite"
         return "missing", "new"
 
@@ -318,9 +330,7 @@ class InMemoryReviewService:
 
     def list_pending(self) -> list[SkillProposal]:
         return [
-            proposal
-            for proposal in self._proposals.values()
-            if proposal.review_status == "pending"
+            proposal for proposal in self._proposals.values() if proposal.review_status == "pending"
         ]
 
 

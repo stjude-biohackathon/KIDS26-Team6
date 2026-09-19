@@ -22,8 +22,8 @@ from .client import Client
 POLL_SECONDS = 2.0
 UNREACHABLE_LIMIT = 3  # consecutive missed polls before giving up and exiting
 
-RECORDING_COLOR = (255, 59, 48, 255)   # Apple systemRed -- actively capturing
-PAUSED_COLOR = (255, 149, 0, 255)      # Apple systemOrange -- session paused
+RECORDING_COLOR = (255, 59, 48, 255)  # Apple systemRed -- actively capturing
+PAUSED_COLOR = (255, 149, 0, 255)  # Apple systemOrange -- session paused
 VISIBLE_STATES = ("active", "paused")
 
 _ICON_SUPERSAMPLE = 4  # render this many times larger, then downsample for crisp anti-aliasing
@@ -38,9 +38,9 @@ def _load_bold_font(size: int):
 
     for path in (
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf",  # macOS
-        "/System/Library/Fonts/Helvetica.ttc",                # macOS fallback
-        "C:\\Windows\\Fonts\\arialbd.ttf",                    # Windows
-        "C:\\Windows\\Fonts\\segoeuib.ttf",                   # Windows fallback
+        "/System/Library/Fonts/Helvetica.ttc",  # macOS fallback
+        "C:\\Windows\\Fonts\\arialbd.ttf",  # Windows
+        "C:\\Windows\\Fonts\\segoeuib.ttf",  # Windows fallback
     ):
         try:
             return ImageFont.truetype(path, size)
@@ -79,13 +79,16 @@ def _make_icon(color: tuple[int, int, int, int]):
     text_w, text_h = bounds[2] - bounds[0], bounds[3] - bounds[1]
     draw.text(
         ((size - text_w) / 2 - bounds[0], (size - text_h) / 2 - bounds[1]),
-        text, fill=(255, 255, 255, 255), font=font,
+        text,
+        fill=(255, 255, 255, 255),
+        font=font,
     )
 
     rim = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     ImageDraw.Draw(rim).ellipse(
         (margin, margin, size - margin, size - margin),
-        outline=(0, 0, 0, 60), width=2 * _ICON_SUPERSAMPLE,
+        outline=(0, 0, 0, 60),
+        width=2 * _ICON_SUPERSAMPLE,
     )
     image.alpha_composite(rim)
     return image.resize((final_size, final_size), Image.LANCZOS)
@@ -183,8 +186,10 @@ def _toggle_overlay(_icon=None, _item=None) -> None:
         with contextlib.suppress(OSError):
             subprocess.Popen(
                 [sys.executable, "-m", "wfrec.overlay"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL, **creation,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                **creation,
             )
     else:
         try:

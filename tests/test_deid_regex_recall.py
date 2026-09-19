@@ -96,9 +96,7 @@ def test_recall_partial_never_exceeds_strict_by_much(scored):
 
     _loaded, card = scored
     clipping = {
-        label: round(row.clip_gap, 3)
-        for label, row in card.by_label.items()
-        if row.clip_gap > 0.05
+        label: round(row.clip_gap, 3) for label, row in card.by_label.items() if row.clip_gap > 0.05
     }
 
     assert clipping == {}, f"labels with a clip gap: {clipping}"
@@ -167,9 +165,9 @@ def test_hard_tier_is_reported_but_not_gated(scored, thresholds):
     assert card.by_difficulty["hard"].gold > 0
     # No `hard` label floors exist under engines.regex; only a much lower
     # aggregate in its own section.
-    assert card.by_difficulty["hard"].recall_strict >= thresholds["hard_tier"][
-        "overall_recall_strict"
-    ]
+    assert (
+        card.by_difficulty["hard"].recall_strict >= thresholds["hard_tier"]["overall_recall_strict"]
+    )
 
 
 def test_high_risk_channels_are_reported_separately(scored):
@@ -209,9 +207,7 @@ def test_a_deleted_pattern_would_fail_the_gate(thresholds):
             [*SurrogateGuard().detect_one(text), *engine.detect_one(text)],
             keeps=allow.keeps,
         )
-        predictions.append(
-            (render(text, spans, lambda s, _t: mask_token(s.label)), spans)
-        )
+        predictions.append((render(text, spans, lambda s, _t: mask_token(s.label)), spans))
 
     crippled = score(loaded, predictions, engine="regex")
     failures = report.check_thresholds(crippled, thresholds, engine="regex")

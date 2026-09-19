@@ -34,9 +34,21 @@ CONFIG_FILENAME = "config.toml"
 #: whole key, and as a substring for the unambiguous ones.
 FORBIDDEN_KEY_NAMES = frozenset(
     {
-        "api_key", "apikey", "api-key", "key", "token", "auth_token",
-        "access_token", "secret", "secret_key", "client_secret", "password",
-        "passwd", "credential", "credentials", "bearer",
+        "api_key",
+        "apikey",
+        "api-key",
+        "key",
+        "token",
+        "auth_token",
+        "access_token",
+        "secret",
+        "secret_key",
+        "client_secret",
+        "password",
+        "passwd",
+        "credential",
+        "credentials",
+        "bearer",
     }
 )
 
@@ -170,8 +182,7 @@ def load(path: Path | None = None) -> DeidConfig:
     problems = scan_for_credentials(payload)
     if problems:
         raise ConfigRejected(
-            f"{path} rejected:\n"
-            + "\n".join(f"  - {problem}" for problem in problems)
+            f"{path} rejected:\n" + "\n".join(f"  - {problem}" for problem in problems)
         )
 
     deid = payload.get("deid")
@@ -194,7 +205,9 @@ def load(path: Path | None = None) -> DeidConfig:
         profile=str(deid.get("profile", "balanced")),
         engine=str(deid.get("engine", "gliner")),
         llm=llm,
-        allowlist_extra=tuple(str(item) for item in extra) if isinstance(extra, (list, tuple)) else (),
+        allowlist_extra=tuple(str(item) for item in extra)
+        if isinstance(extra, (list, tuple))
+        else (),
         source=str(path),
     )
 

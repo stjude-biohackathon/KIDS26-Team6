@@ -62,8 +62,10 @@ def test_resolve_absorbs_overlap_into_the_outer_hull_and_records_the_label():
     text = "https://x/SJ001234"
     out = resolve(
         text,
-        [span(0, 18, label="URL", detector="regex:url_scheme"),
-         span(10, 18, label="SUBJECT_ID", detector="regex:sj_id")],
+        [
+            span(0, 18, label="URL", detector="regex:url_scheme"),
+            span(10, 18, label="SUBJECT_ID", detector="regex:sj_id"),
+        ],
     )
 
     assert len(out) == 1
@@ -85,8 +87,10 @@ def test_resolve_prefers_the_more_certain_label_on_an_exact_tie():
     assert LABEL_RANK["SSN"] < LABEL_RANK["NAME"]
     out = resolve(
         "123-45-6789",
-        [span(0, 11, label="NAME", detector="model:x"),
-         span(0, 11, label="SSN", detector="regex:ssn_dashed")],
+        [
+            span(0, 11, label="NAME", detector="model:x"),
+            span(0, 11, label="SSN", detector="regex:ssn_dashed"),
+        ],
     )
 
     assert out[0].label == "SSN"
@@ -96,8 +100,10 @@ def test_resolve_prefers_the_more_certain_label_on_an_exact_tie():
 def test_resolve_prefers_regex_over_a_model_on_a_label_tie():
     out = resolve(
         "MRN 4412345",
-        [span(0, 11, label="MRN", detector="model:gliner_onnx"),
-         span(0, 11, label="MRN", detector="regex:mrn_labelled")],
+        [
+            span(0, 11, label="MRN", detector="model:gliner_onnx"),
+            span(0, 11, label="MRN", detector="regex:mrn_labelled"),
+        ],
     )
 
     assert out[0].detector == "regex:mrn_labelled"
@@ -162,10 +168,23 @@ def test_coverage_is_label_blind():
 @pytest.mark.parametrize(
     "surface",
     [
-        "GRCh38", "hg19", "HG008", "NA12878", "samtools", "MET", "CLOCK",
-        "SRR12345678", "PRJNA123456", "ENSG00000139618", "rs334",
-        "c.1521A>G", "p.Phe508del", "chr7:117559590", "ATCACGTT",
-        "SI-GA-A1", "T2T-CHM13",
+        "GRCh38",
+        "hg19",
+        "HG008",
+        "NA12878",
+        "samtools",
+        "MET",
+        "CLOCK",
+        "SRR12345678",
+        "PRJNA123456",
+        "ENSG00000139618",
+        "rs334",
+        "c.1521A>G",
+        "p.Phe508del",
+        "chr7:117559590",
+        "ATCACGTT",
+        "SI-GA-A1",
+        "T2T-CHM13",
     ],
 )
 def test_allowlist_keeps_bioinformatics_surfaces(surface):
@@ -271,9 +290,10 @@ def test_the_label_is_inside_the_hmac_so_classes_do_not_collapse():
 
 def test_two_keys_produce_different_surrogates_for_the_same_value():
     with Pseudonymizer(key=b"\x03" * 32) as one, Pseudonymizer(key=b"\x04" * 32) as two:
-        assert one.surrogate_for("NAME", "Jane Smith").text != two.surrogate_for(
-            "NAME", "Jane Smith"
-        ).text
+        assert (
+            one.surrogate_for("NAME", "Jane Smith").text
+            != two.surrogate_for("NAME", "Jane Smith").text
+        )
 
 
 def test_dates_generalize_to_the_year_and_ages_to_a_band():
@@ -387,7 +407,9 @@ def test_deny_findings_carry_the_term():
 def test_the_deny_rule_is_escaped_and_word_bounded():
     # The old rule was `re.sub(token, ...)` on a raw term: it rewrote
     # `outpatients_cohort.tsv` and raised re.error on a term containing `(`.
-    text, _ = mask_text("outpatients_cohort.tsv lists patient and patients", deny_terms=("patient",))
+    text, _ = mask_text(
+        "outpatients_cohort.tsv lists patient and patients", deny_terms=("patient",)
+    )
     assert "outpatients_cohort.tsv" in text
     assert text.count("[REDACTED_TERM]") == 2
 

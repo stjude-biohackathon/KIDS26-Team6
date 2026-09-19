@@ -73,9 +73,7 @@ def _macos() -> WindowInfo:  # pragma: no cover - macOS only
         return _macos_app_only("quartz-unavailable")
 
     try:
-        windows = CGWindowListCopyWindowInfo(
-            kCGWindowListOptionOnScreenOnly, kCGNullWindowID
-        )
+        windows = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID)
     except Exception as exc:
         return _macos_app_only(f"quartz-failed:{type(exc).__name__}")
 
@@ -107,7 +105,9 @@ def _macos_app_only(reason: str) -> WindowInfo:  # pragma: no cover - macOS only
 
         app = NSWorkspace.sharedWorkspace().frontmostApplication()
         name = app.localizedName() if app else None
-        return WindowInfo(None, app=str(name) if name else None, backend="nsworkspace", reason=reason)
+        return WindowInfo(
+            None, app=str(name) if name else None, backend="nsworkspace", reason=reason
+        )
     except Exception:
         return WindowInfo(None, backend="none", reason=reason)
 
@@ -122,16 +122,12 @@ def _linux_x11() -> WindowInfo:
     try:
         disp = xdisplay.Display()
         root = disp.screen().root
-        prop = root.get_full_property(
-            disp.intern_atom("_NET_ACTIVE_WINDOW"), X.AnyPropertyType
-        )
+        prop = root.get_full_property(disp.intern_atom("_NET_ACTIVE_WINDOW"), X.AnyPropertyType)
         if not prop or not prop.value:
             return WindowInfo(None, backend="xlib", reason="no-active-window")
         window = disp.create_resource_object("window", prop.value[0])
         for atom_name in ("_NET_WM_NAME", "WM_NAME"):
-            value = window.get_full_property(
-                disp.intern_atom(atom_name), X.AnyPropertyType
-            )
+            value = window.get_full_property(disp.intern_atom(atom_name), X.AnyPropertyType)
             if value and value.value:
                 raw = value.value
                 title = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else str(raw)

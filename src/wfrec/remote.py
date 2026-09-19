@@ -45,11 +45,7 @@ def _run(cmd: list[str], *, input_text: str | None = None, timeout: int = SSH_TI
 
 
 def hook_body() -> str:
-    return (
-        resources.files("wfrec.hooks")
-        .joinpath("wfrec-remote.sh")
-        .read_text(encoding="utf-8")
-    )
+    return resources.files("wfrec.hooks").joinpath("wfrec-remote.sh").read_text(encoding="utf-8")
 
 
 def bootstrap(host: str) -> dict[str, Any]:
@@ -114,9 +110,7 @@ def _redact_required(text: str, *, what: str, redactor=None):
     redactor = redactor or shared_redactor()
     redacted = redactor.apply(text)
     if text and not redacted.available:
-        raise RuntimeError(
-            f"cannot record {what}: shared redactor is unavailable"
-        )
+        raise RuntimeError(f"cannot record {what}: shared redactor is unavailable")
     return redacted
 
 
@@ -127,9 +121,7 @@ def pull_spool(host: str, session, *, session_id: str | None = None) -> dict[str
     target_dir = session.root / "shell" / "remote" / host
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    listing = _run(
-        ["ssh", host, f"ls -1 $HOME/.wfrec/spool/{sid}/*.rec 2>/dev/null || true"]
-    )
+    listing = _run(["ssh", host, f"ls -1 $HOME/.wfrec/spool/{sid}/*.rec 2>/dev/null || true"])
     files = [line.strip() for line in listing.stdout.splitlines() if line.strip()]
     pulled: list[str] = []
     redactor = shared_redactor()
@@ -164,7 +156,9 @@ def collect_slurm(host: str, session, job_ids: list[str]) -> list[Event]:
     # --parsable2 is pipe-delimited with no trailing pipe. MaxRSS exists only on
     # .batch steps, so a second non-`-X` query is needed for memory numbers.
     fmt = "JobID,JobName,State,Submit,Start,End,Elapsed,ExitCode,NodeList,Partition,ReqCPUS,ReqMem,WorkDir"
-    proc = _run(["ssh", host, f"sacct -X --parsable2 -j {joined} --format={fmt} 2>/dev/null || true"])
+    proc = _run(
+        ["ssh", host, f"sacct -X --parsable2 -j {joined} --format={fmt} 2>/dev/null || true"]
+    )
     rows = [line for line in proc.stdout.splitlines() if line.strip()]
     if len(rows) > 1:
         header = rows[0].split("|")
@@ -195,7 +189,7 @@ def collect_slurm(host: str, session, job_ids: list[str]) -> list[Event]:
                     redactions=sorted(findings),
                 )
             )
-    elif proc.stdout.strip() == "" :
+    elif proc.stdout.strip() == "":
         # sacct returns nothing at all when slurmdbd accounting is not
         # configured, which is common on smaller clusters. Say so rather than
         # reporting "no jobs".

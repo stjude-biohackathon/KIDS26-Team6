@@ -78,9 +78,7 @@ def available_engines() -> dict[str, DetectorInfo]:
         try:
             engine = load(name)
         except EngineUnavailable as exc:
-            out[name] = DetectorInfo(
-                name=name, kind="model", available=False, reason=exc.reason
-            )
+            out[name] = DetectorInfo(name=name, kind="model", available=False, reason=exc.reason)
         else:
             out[name] = engine.info()
     return out

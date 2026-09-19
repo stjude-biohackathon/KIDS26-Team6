@@ -229,9 +229,7 @@ def test_merge_reports_which_families_are_shared(store, tmp_path, wfrec_home):
     _populate(third, ["echo unique"])
 
     out = tmp_path / "merged.json"
-    report = merge_sessions(
-        [first.session_id, second.session_id, third.session_id], out
-    )
+    report = merge_sessions([first.session_id, second.session_id, third.session_id], out)
 
     assert report["traces"] == 3
     assert sorted(report["analysts"]) == ["alice", "bob", "carol"]
@@ -250,9 +248,7 @@ def test_merge_can_force_a_shared_family(store, tmp_path):
     _populate(second, ["fastqc b.bam"])
 
     out = tmp_path / "merged.json"
-    report = merge_sessions(
-        [first.session_id, second.session_id], out, workflow_family="hg008 qc"
-    )
+    report = merge_sessions([first.session_id, second.session_id], out, workflow_family="hg008 qc")
     assert report["workflow_families"] == {"hg008 qc": ["alice", "bob"]}
 
 

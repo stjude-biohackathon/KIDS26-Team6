@@ -117,9 +117,7 @@ class DevSQLClient:
         expected_columns = set(required_columns)
         for row in payload:
             if not isinstance(row, dict):
-                raise DevSQLResponseError(
-                    "Every DevSQL JSON row must be an object."
-                )
+                raise DevSQLResponseError("Every DevSQL JSON row must be an object.")
             missing_columns = expected_columns.difference(row)
             if missing_columns:
                 missing = ", ".join(sorted(missing_columns))
@@ -144,15 +142,11 @@ class DevSQLClient:
                 stdin=subprocess.DEVNULL,
             )
         except subprocess.TimeoutExpired as error:
-            raise DevSQLTimeoutError(
-                "DevSQL query exceeded the configured timeout."
-            ) from error
+            raise DevSQLTimeoutError("DevSQL query exceeded the configured timeout.") from error
         except subprocess.CalledProcessError as error:
             raise DevSQLExecutionError(error.returncode) from error
         except OSError as error:
-            raise DevSQLUnavailableError(
-                "DevSQL executable could not be started."
-            ) from error
+            raise DevSQLUnavailableError("DevSQL executable could not be started.") from error
 
         # Injected test runners may not implement ``check=True`` themselves.
         if result.returncode != 0:

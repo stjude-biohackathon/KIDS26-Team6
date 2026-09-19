@@ -80,8 +80,12 @@ def _after(timestamp: str, seconds: int) -> str:
 
 def test_flatten_handles_every_content_shape():
     assert _flatten_content("plain") == "plain"
-    assert _flatten_content([{"type": "text", "text": "a"}, {"type": "text", "text": "b"}]) == "a\nb"
-    assert "tool_use Bash" in _flatten_content([{"type": "tool_use", "name": "Bash", "input": {"command": "ls"}}])
+    assert (
+        _flatten_content([{"type": "text", "text": "a"}, {"type": "text", "text": "b"}]) == "a\nb"
+    )
+    assert "tool_use Bash" in _flatten_content(
+        [{"type": "tool_use", "name": "Bash", "input": {"command": "ls"}}]
+    )
     assert _flatten_content(None) == ""
 
 
@@ -102,14 +106,28 @@ def test_claude_adapter_reads_jsonl_and_tails_by_offset(tmp_path, monkeypatch):
             for record in records:
                 handle.write(json.dumps(record) + "\n")
 
-    write([
-        {"type": "user", "uuid": "u1", "timestamp": "2026-09-16T17:00:00Z", "cwd": "/tmp/proj",
-         "version": "2.1.246", "message": {"content": "run the qc"}},
-        {"type": "assistant", "uuid": "a1", "timestamp": "2026-09-16T17:00:05Z", "cwd": "/tmp/proj",
-         "version": "2.1.246", "message": {"content": [{"type": "text", "text": "running it"}]}},
-        {"type": "atis-latch", "uuid": "x1", "timestamp": "2026-09-16T17:00:06Z"},
-        {"type": "user", "uuid": "m1", "isMeta": True, "message": {"content": "meta noise"}},
-    ])
+    write(
+        [
+            {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": "2026-09-16T17:00:00Z",
+                "cwd": "/tmp/proj",
+                "version": "2.1.246",
+                "message": {"content": "run the qc"},
+            },
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": "2026-09-16T17:00:05Z",
+                "cwd": "/tmp/proj",
+                "version": "2.1.246",
+                "message": {"content": [{"type": "text", "text": "running it"}]},
+            },
+            {"type": "atis-latch", "uuid": "x1", "timestamp": "2026-09-16T17:00:06Z"},
+            {"type": "user", "uuid": "m1", "isMeta": True, "message": {"content": "meta noise"}},
+        ]
+    )
 
     adapter = ClaudeCodeAdapter()
     adapter.root = tmp_path / "projects"
@@ -124,8 +142,16 @@ def test_claude_adapter_reads_jsonl_and_tails_by_offset(tmp_path, monkeypatch):
 
     # Offset tailing: nothing new until the file grows.
     assert list(adapter.turns(0.0)) == []
-    write([{"type": "user", "uuid": "u2", "timestamp": "2026-09-16T17:01:00Z",
-            "message": {"content": "and the benchmark"}}])
+    write(
+        [
+            {
+                "type": "user",
+                "uuid": "u2",
+                "timestamp": "2026-09-16T17:01:00Z",
+                "message": {"content": "and the benchmark"},
+            }
+        ]
+    )
     assert [t.text for t in adapter.turns(0.0)] == ["and the benchmark"]
 
 
@@ -151,7 +177,9 @@ def test_claude_adapter_seek_to_end_skips_existing_history(tmp_path):
     assert list(adapter.turns(0.0)) == []
 
     with transcript.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps({"type": "user", "uuid": "new", "message": {"content": "fresh"}}) + "\n")
+        handle.write(
+            json.dumps({"type": "user", "uuid": "new", "message": {"content": "fresh"}}) + "\n"
+        )
     assert [t.text for t in adapter.turns(0.0)] == ["fresh"]
 
 
@@ -229,9 +257,7 @@ def test_devsql_codex_adapter_joins_normalized_message_metadata(
     assert "command_events" not in client.queries[1]
 
 
-def test_collector_captures_claude_and_codex_together(
-    store: Any, monkeypatch: Any
-) -> None:
+def test_collector_captures_claude_and_codex_together(store: Any, monkeypatch: Any) -> None:
     session, _ = store.start(title="A", analyst="a")
     interval_start = active_interval_start(session)
     client = FakeDevSQLClient([_codex_row(interval_start)])
@@ -239,9 +265,7 @@ def test_collector_captures_claude_and_codex_together(
     monkeypatch.setattr(ClaudeCodeAdapter, "available", lambda self: True)
     monkeypatch.setattr(ClaudeCodeAdapter, "seek_to_end", lambda self: None)
 
-    def claude_turns(
-        self: ClaudeCodeAdapter, since: float
-    ) -> Iterator[Turn]:
+    def claude_turns(self: ClaudeCodeAdapter, since: float) -> Iterator[Turn]:
         yield Turn(
             "claude-code",
             "assistant",
@@ -255,11 +279,7 @@ def test_collector_captures_claude_and_codex_together(
     status = collector.probe()
     collector._run_once()
 
-    messages = [
-        event
-        for event in session.writer.read()
-        if event.type == AGENT_MESSAGE
-    ]
+    messages = [event for event in session.writer.read() if event.type == AGENT_MESSAGE]
     assert status.backend.startswith("devsql-codex,claude-code")
     assert {event.payload["tool"] for event in messages} == {
         "claude-code",
@@ -267,15 +287,11 @@ def test_collector_captures_claude_and_codex_together(
     }
 
 
-def test_devsql_probe_failure_keeps_direct_claude(
-    store: Any, monkeypatch: Any
-) -> None:
+def test_devsql_probe_failure_keeps_direct_claude(store: Any, monkeypatch: Any) -> None:
     session, _ = store.start(title="A", analyst="a")
     client = FakeDevSQLClient([])
 
-    def fail_query(
-        sql: str, *, required_columns: Collection[str] = ()
-    ) -> list[dict[str, Any]]:
+    def fail_query(sql: str, *, required_columns: Collection[str] = ()) -> list[dict[str, Any]]:
         raise RuntimeError("schema changed")
 
     client.query = fail_query
@@ -313,11 +329,7 @@ def test_devsql_codex_dedupes_across_polls_and_restart(
     ]
     restarted._run_once()
 
-    messages = [
-        event
-        for event in session.writer.read()
-        if event.type == AGENT_MESSAGE
-    ]
+    messages = [event for event in session.writer.read() if event.type == AGENT_MESSAGE]
     assert len(messages) == 1
     assert messages[0].payload["capture_id"] == "codex:thread-1:1"
     assert event_time[:19] in client.queries[-1]
@@ -413,8 +425,10 @@ def test_attach_transcript_handles_jsonl_json_and_plain_text(store, tmp_path):
 
     jsonl = tmp_path / "a.jsonl"
     jsonl.write_text(
-        json.dumps({"role": "user", "content": "first"}) + "\n"
-        + json.dumps({"role": "assistant", "content": "second"}) + "\n",
+        json.dumps({"role": "user", "content": "first"})
+        + "\n"
+        + json.dumps({"role": "assistant", "content": "second"})
+        + "\n",
         encoding="utf-8",
     )
     assert len(attach_transcript(session, jsonl, tool="copilot")) == 2

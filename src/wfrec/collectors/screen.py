@@ -177,9 +177,7 @@ class ScreenCollector(Collector):
 
             # Cap the thread count: the default grabs every core and would make
             # the analyst's own samtools run visibly slower.
-            self._ocr = RapidOCR(
-                intra_op_num_threads=2, inter_op_num_threads=1
-            )
+            self._ocr = RapidOCR(intra_op_num_threads=2, inter_op_num_threads=1)
             self._ocr_backend = "rapidocr"
         except Exception:
             self._ocr = None
@@ -372,10 +370,29 @@ class ScreenCollector(Collector):
 
         output = self.session.root / "screen" / "video" / "session.mp4"
         cmd = [
-            exe, "-hide_banner", "-loglevel", "error", "-y",
-            "-f", "concat", "-safe", "0", "-i", str(listing),
-            "-vsync", "vfr", "-c:v", "libx264", "-preset", "veryfast",
-            "-crf", "28", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+            exe,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(listing),
+            "-vsync",
+            "vfr",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "28",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
             str(output),
         ]
         try:

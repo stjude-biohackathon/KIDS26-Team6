@@ -42,9 +42,7 @@ def test_stopping_removes_the_sentinel(wfrec_home):
 def test_flags_reflect_each_source(wfrec_home):
     state = RecorderState.load()
     state.active_session = "s1"
-    state.sources = {
-        "screen": True, "context": True, "shell": True, "agents": True, "files": True
-    }
+    state.sources = {"screen": True, "context": True, "shell": True, "agents": True, "files": True}
     state.save()
     flags = read_sentinel()[1]
     for source in ("screen", "context", "shell", "agents", "files"):

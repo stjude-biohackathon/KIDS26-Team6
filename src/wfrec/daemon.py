@@ -68,7 +68,11 @@ def stop() -> dict[str, object]:
         clear_api()
         with contextlib.suppress(FileNotFoundError):
             paths.pid_path().unlink()
-        return {"stopped": False, "pid": pid, "reason": "process not running; cleaned up stale files"}
+        return {
+            "stopped": False,
+            "pid": pid,
+            "reason": "process not running; cleaned up stale files",
+        }
     except PermissionError:
         return {"stopped": False, "pid": pid, "reason": "not permitted to signal that process"}
 
@@ -196,9 +200,7 @@ def run(
         server.should_exit = True
 
     for sig in (signal.SIGINT, signal.SIGTERM):
-        with contextlib.suppress(
-            ValueError, OSError
-        ):  # pragma: no cover - non-main thread
+        with contextlib.suppress(ValueError, OSError):  # pragma: no cover - non-main thread
             signal.signal(sig, shutdown)
 
     rows = daemon_summary_rows(bind)

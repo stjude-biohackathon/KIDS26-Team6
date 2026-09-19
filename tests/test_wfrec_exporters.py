@@ -81,7 +81,7 @@ def test_multiline_commands_are_flattened_not_dropped(store):
     _record_commands(session, ["python <<EOF\nprint(1)\nEOF"])
 
     body, _count = build_terminal_log(session)
-    parsed = parse_terminal_session(body)   # must not raise
+    parsed = parse_terminal_session(body)  # must not raise
     assert len(parsed.commands) == 1
     assert "\n" not in parsed.commands[0][1]
     assert "print(1)" in parsed.commands[0][1]
@@ -126,8 +126,12 @@ def test_screen_capture_export_loads_through_existing_adapter(store):
     session, _ = store.start(title="A", analyst="mgatta42")
     session.writer.extend(
         [
-            Event(source="screen", type="screen.ocr", payload={"ocr_text": "samtools flagstat output"}),
-            Event(source="screen", type="screen.window", payload={"window_title": "iTerm2 - hg008"}),
+            Event(
+                source="screen", type="screen.ocr", payload={"ocr_text": "samtools flagstat output"}
+            ),
+            Event(
+                source="screen", type="screen.window", payload={"window_title": "iTerm2 - hg008"}
+            ),
         ]
     )
     _record_commands(session, ["samtools flagstat HG008.bam"])
@@ -177,9 +181,7 @@ def test_events_json_preserves_the_complete_sealed_session(store):
     assert document["session"]["session_id"] == session.session_id
     assert document["session"]["title"] == "Variant QC"
     assert document["seal"]["generation"] == seal.record["generation"]
-    assert document["events"] == [
-        event.to_dict() for event in session.writer.read()
-    ]
+    assert document["events"] == [event.to_dict() for event in session.writer.read()]
     assert result["details"]["events"]["events"] == len(document["events"])
 
 
@@ -189,8 +191,16 @@ def test_waits_become_workflow_steps(store):
     session, _ = store.start(title="A", analyst="a")
     session.writer.extend(
         [
-            Event(source="session", type="session.paused", payload={"reason": "bwa align", "expect": "6h"}),
-            Event(source="session", type="session.waiting", payload={"reason": "bwa align", "elapsed_ms": 3600000}),
+            Event(
+                source="session",
+                type="session.paused",
+                payload={"reason": "bwa align", "expect": "6h"},
+            ),
+            Event(
+                source="session",
+                type="session.waiting",
+                payload={"reason": "bwa align", "elapsed_ms": 3600000},
+            ),
             Event(source="session", type="session.resumed", payload={"gap_ms": 21600000}),
         ]
     )
@@ -346,7 +356,11 @@ def test_action_hints_map_bioinformatics_tools(store):
     session, _ = store.start(title="A", analyst="a")
     _record_commands(session, ["bwa mem ref.fa r1.fq", "sbatch job.sh", "samtools sort in.bam"])
     trace, _ = build_trace(session)
-    actions = {s["detail"].split(":")[1].strip().split()[0]: s["action"] for s in trace["steps"] if s["tool"] == "terminal"}
+    actions = {
+        s["detail"].split(":")[1].strip().split()[0]: s["action"]
+        for s in trace["steps"]
+        if s["tool"] == "terminal"
+    }
     assert actions["bwa"] == "align"
     assert actions["sbatch"] == "submit"
     assert actions["samtools"] == "analyze"
@@ -456,12 +470,24 @@ def test_exports_are_chronological_even_when_the_file_is_not(store):
     # Written out of order on purpose, exactly as concurrent collectors would.
     session.writer.extend(
         [
-            Event(source="screen", type="screen.ocr", ts="2026-03-11T09:00:10.000Z",
-                  payload={"ocr_text": "later frame"}),
-            Event(source="shell", type="shell.command.completed", ts="2026-03-11T09:00:05.000Z",
-                  payload={"command": "earlier_command"}),
-            Event(source="shell", type="shell.command.completed", ts="2026-03-11T09:00:07.000Z",
-                  payload={"command": "middle_command"}),
+            Event(
+                source="screen",
+                type="screen.ocr",
+                ts="2026-03-11T09:00:10.000Z",
+                payload={"ocr_text": "later frame"},
+            ),
+            Event(
+                source="shell",
+                type="shell.command.completed",
+                ts="2026-03-11T09:00:05.000Z",
+                payload={"command": "earlier_command"},
+            ),
+            Event(
+                source="shell",
+                type="shell.command.completed",
+                ts="2026-03-11T09:00:07.000Z",
+                payload={"command": "middle_command"},
+            ),
         ]
     )
 
@@ -469,11 +495,7 @@ def test_exports_are_chronological_even_when_the_file_is_not(store):
     assert raw != sorted(raw), "fixture must actually be out of order"
 
     body, _ = build_terminal_log(session)
-    stamps = [
-        line.split(" ", 1)[0]
-        for line in body.splitlines()
-        if not line.startswith("#")
-    ]
+    stamps = [line.split(" ", 1)[0] for line in body.splitlines() if not line.startswith("#")]
     assert stamps == sorted(stamps)
 
     trace, _ = build_trace(session)

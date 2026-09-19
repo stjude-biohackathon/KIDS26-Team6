@@ -90,11 +90,7 @@ def resolve_shell_backend(
                 if persisted_backend == SHELL_BACKEND_DEVSQL
                 else SHELL_BACKEND_SPOOL
             ),
-            provider=(
-                DEVSQL_SHELL_SOURCE
-                if persisted_backend == SHELL_BACKEND_DEVSQL
-                else ""
-            ),
+            provider=(DEVSQL_SHELL_SOURCE if persisted_backend == SHELL_BACKEND_DEVSQL else ""),
             detail=str(error),
         )
 
@@ -117,9 +113,7 @@ def _connect_devsql(discover: DevSQLDiscoverer) -> ShellBackendSelection:
 def datetime_to_iso(moment: datetime) -> str:
     """Format a timestamp using wfrec's millisecond UTC representation."""
 
-    utc_timestamp = moment.astimezone(timezone.utc).isoformat(
-        timespec="milliseconds"
-    )
+    utc_timestamp = moment.astimezone(timezone.utc).isoformat(timespec="milliseconds")
     return utc_timestamp.replace("+00:00", "Z")
 
 
@@ -219,9 +213,7 @@ class DevSQLCursor:
     active_interval_start: str
     shell_source: str = DEVSQL_SHELL_SOURCE
     last_timestamp: str | None = None
-    identities_at_last_timestamp: set[DevSQLIdentity] = field(
-        default_factory=set
-    )
+    identities_at_last_timestamp: set[DevSQLIdentity] = field(default_factory=set)
 
     @classmethod
     def load(
@@ -258,11 +250,7 @@ class DevSQLCursor:
         if last_timestamp is not None:
             last_moment = parse_devsql_timestamp(last_timestamp)
             interval_start = parse_devsql_timestamp(active_interval_start)
-            if (
-                last_moment is None
-                or interval_start is None
-                or last_moment < interval_start
-            ):
+            if last_moment is None or interval_start is None or last_moment < interval_start:
                 return fresh
             fresh.last_timestamp = datetime_to_iso(last_moment)
 
@@ -278,9 +266,7 @@ class DevSQLCursor:
                 or not all(isinstance(value, str) and value for value in identity)
             ):
                 return fresh
-            fresh.identities_at_last_timestamp.add(
-                (identity[0], identity[1], identity[2])
-            )
+            fresh.identities_at_last_timestamp.add((identity[0], identity[1], identity[2]))
         return fresh
 
     def include(self, occurred_at: datetime, identity: DevSQLIdentity) -> None:
@@ -307,8 +293,7 @@ class DevSQLCursor:
             "active_interval_start": self.active_interval_start,
             "last_timestamp": self.last_timestamp,
             "identities_at_last_timestamp": [
-                list(identity)
-                for identity in sorted(self.identities_at_last_timestamp)
+                list(identity) for identity in sorted(self.identities_at_last_timestamp)
             ],
         }
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -346,9 +331,7 @@ class DevSQLCommandReader:
     ) -> None:
         interval_start = parse_devsql_timestamp(since)
         if interval_start is None:
-            raise ValueError(
-                "DevSQL interval start must be a timezone-aware timestamp."
-            )
+            raise ValueError("DevSQL interval start must be a timezone-aware timestamp.")
         self.client = client
         self.interval_start = interval_start
         self.cursor_path = cursor_path
@@ -365,10 +348,7 @@ class DevSQLCommandReader:
 
         # DevSQL timestamps have mixed fractional precision. SQL narrows to the
         # correct second, then Python applies the exact interval boundary.
-        query_start = (
-            parse_devsql_timestamp(self.cursor.last_timestamp)
-            or self.interval_start
-        )
+        query_start = parse_devsql_timestamp(self.cursor.last_timestamp) or self.interval_start
         query_second = query_start.strftime("%Y-%m-%dT%H:%M:%S")
         columns = ", ".join(DEVSQL_COMMAND_COLUMNS)
         sql = (
@@ -441,9 +421,7 @@ class DevSQLCommandReader:
         session_id = row["session_id"]
         source_id = row["source_id"]
         stable_identity = (source, session_id, source_id)
-        if not all(
-            isinstance(value, str) and value for value in stable_identity
-        ):
+        if not all(isinstance(value, str) and value for value in stable_identity):
             return None
         identity = (str(source), str(session_id), str(source_id))
 
@@ -555,11 +533,7 @@ class ShellCollector(Collector):
             backend=SHELL_BACKEND_SPOOL,
             extra={
                 "spool_dir": str(self.session.spool_dir),
-                **(
-                    {"selection_detail": self._backend_detail}
-                    if self._backend_detail
-                    else {}
-                ),
+                **({"selection_detail": self._backend_detail} if self._backend_detail else {}),
             },
         )
 

@@ -116,11 +116,7 @@ class SpoolRecord:
         """Return every populated field keyed by its canonical name."""
 
         layout = FIELDS.get(self.kind, ())
-        return {
-            name: self.field(index)
-            for index, name in enumerate(layout)
-            if self.field(index)
-        }
+        return {name: self.field(index) for index, name in enumerate(layout) if self.field(index)}
 
     def int_field(self, index: int, default: int | None = None) -> int | None:
         raw = self.field(index).strip()
@@ -148,9 +144,7 @@ def decode_line(line: str, source_file: Path, origin: str = "local") -> SpoolRec
     if not body:
         return None
     parts = body.split(US)
-    return SpoolRecord(
-        kind=parts[0], fields=parts[1:], source_file=source_file, origin=origin
-    )
+    return SpoolRecord(kind=parts[0], fields=parts[1:], source_file=source_file, origin=origin)
 
 
 def spool_file(spool_dir: Path, host: str, pid: int | None = None) -> Path:

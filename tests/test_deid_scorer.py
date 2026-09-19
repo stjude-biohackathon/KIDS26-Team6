@@ -160,9 +160,7 @@ def test_label_is_ignored_for_safety_but_scored_separately():
 def test_an_absorbed_label_counts_as_agreement():
     # `https://x/SJ001234` resolves to one URL hull that swallowed a SUBJECT_ID.
     rec = record("see https://x/SJ001234", [gold(14, 22, "SJ001234", label="SUBJECT_ID")])
-    hull = Span(
-        start=4, end=22, label="URL", detector="regex:url_scheme", absorbed=("SUBJECT_ID",)
-    )
+    hull = Span(start=4, end=22, label="URL", detector="regex:url_scheme", absorbed=("SUBJECT_ID",))
     card = run(rec, [hull])
 
     assert card.by_label["SUBJECT_ID"].recall_strict == 1.0

@@ -27,9 +27,7 @@ def validate_export_state(session: Session, status: str | None = None) -> str:
     if session.writer.sealed:
         return effective_status
     if effective_status not in {STATUS_PAUSED, STATUS_STOPPED}:
-        raise ExportStateError(
-            "Pause or archive the selected session before exporting events."
-        )
+        raise ExportStateError("Pause or archive the selected session before exporting events.")
     return effective_status
 
 
@@ -92,11 +90,7 @@ def _snapshot_session(
     with file_lock(session.root / ".events.lock"):
         manifest_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
         timeline = session.writer.path.read_bytes()
-        sequence = (
-            sequence_path.read_text(encoding="utf-8")
-            if sequence_path.exists()
-            else "0"
-        )
+        sequence = sequence_path.read_text(encoding="utf-8") if sequence_path.exists() else "0"
 
     manifest_payload["status"] = STATUS_STOPPED
     manifest_payload.setdefault("lifecycle", []).append(

@@ -358,11 +358,23 @@ def _date(rng: Rng, difficulty: str, _lex: Lexicons) -> str:
         return iso
     year, month, day = iso.split("-")
     months = (
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
     )
     if difficulty == "medium":
-        return rng.choice((f"{int(month)}/{int(day)}/{year}", f"{int(day)} {months[int(month) - 1]} {year}"))
+        return rng.choice(
+            (f"{int(month)}/{int(day)}/{year}", f"{int(day)} {months[int(month) - 1]} {year}")
+        )
     return f"{months[int(month) - 1]} {int(day)}, {year}"
 
 
@@ -474,7 +486,9 @@ def _container(rng: Rng, _difficulty: str, _lex: Lexicons) -> str:
 
 
 def _version(rng: Rng, _difficulty: str, _lex: Lexicons) -> str:
-    return f"version {rng.between(1, 9)}.{rng.between(0, 19)}.{rng.between(0, 9)}.{rng.between(0, 9)}"
+    return (
+        f"version {rng.between(1, 9)}.{rng.between(0, 19)}.{rng.between(0, 9)}.{rng.between(0, 9)}"
+    )
 
 
 def _lane(rng: Rng, _difficulty: str, _lex: Lexicons) -> str:
@@ -567,29 +581,41 @@ TEMPLATES: tuple[Template, ...] = (
     Template("sh02", "shell", "easy", "$ scp {email}:/scratch/{sra}_1.fastq.gz ."),
     Template("sh03", "shell", "easy", "$ ssh analyst@{ip} '{tool} view -c run.bam'"),
     Template(
-        "sh04", "shell", "medium",
+        "sh04",
+        "shell",
+        "medium",
         "$ {tool} mpileup -f /ref/{build}.fa /data/{name_path}_R1.bam | head",
     ),
     Template(
-        "sh05", "shell", "medium",
+        "sh05",
+        "shell",
+        "medium",
         "$ curl -s {url} -o chart.json   # {benchmark} unaffected",
     ),
     Template("sh06", "shell", "medium", "$ export PATIENT_ID={subject_id}; echo $PATIENT_ID"),
     Template(
-        "sh07", "shell", "easy",
+        "sh07",
+        "shell",
+        "easy",
         "$ ls -l /data/proj/{cohort_id}/{name_path}_R1.fastq.gz /ref/{build}.fa",
     ),
     Template("sh08", "shell", "medium", "$ rsync -av {sample_id} backup@{ipv6}:/vault/"),
     Template(
-        "sh09", "shell", "hard",
+        "sh09",
+        "shell",
+        "hard",
         "$ echo '{mrn}' >> audit.txt && {tool} --version   # {version}",
     ),
     Template(
-        "sh10", "shell", "easy",
+        "sh10",
+        "shell",
+        "easy",
         "$ python3 qc.py --sample={sample_flag} --ref {build} --lane {lane}",
     ),
     Template("sh11", "shell", "medium", "$ git commit -m 'fix chart link {url}'"),
-    Template("sh12", "shell", "easy", "$ psql -h {ip} -c \"select * from subjects where mrn='{mrn}'\""),
+    Template(
+        "sh12", "shell", "easy", "$ psql -h {ip} -c \"select * from subjects where mrn='{mrn}'\""
+    ),
     # ------------------------------------------------------------- ocr
     Template("oc01", "ocr", "easy", "Chart Review\n{name}\n{mrn}\n{dob}"),
     Template("oc02", "ocr", "easy", "Patient Header   {name}   {mrn}   {age90}"),
@@ -598,140 +624,206 @@ TEMPLATES: tuple[Template, ...] = (
     Template("oc05", "ocr", "hard", "CHART  {mrn}  {dob}  {name}"),
     Template("oc06", "ocr", "hard", "PT HEADER   {mrn}   {ssn}"),
     Template(
-        "oc07", "ocr", "medium",
+        "oc07",
+        "ocr",
+        "medium",
         "IGV  {coord}  {gene}  {hgvs_c}  {hgvs_p}\nSession: {giab} on {build}",
     ),
     Template("oc08", "ocr", "easy", "Insurance  {member_id}  {card}"),
     Template("oc09", "ocr", "easy", "Device  {serial}  Provider  {npi}"),
-    Template("oc10", "ocr", "medium", "Terminal\n$ {tool} sort -@ 8 {name_path}_R1.bam\nJob {job_name}"),
+    Template(
+        "oc10", "ocr", "medium", "Terminal\n$ {tool} sort -@ 8 {name_path}_R1.bam\nJob {job_name}"
+    ),
     Template("oc11", "ocr", "hard", "FAX COVER   {fax}   {name}"),
     Template("oc12", "ocr", "easy", "Results for {name} collected {date} at {city}"),
     # ------------------------------------------------------------- notes
     Template(
-        "nt01", "notes", "easy",
+        "nt01",
+        "notes",
+        "easy",
         "Subject {subject_id} ({name}, {dob}) consented on {date}. Contact {phone}.",
     ),
     Template(
-        "nt02", "notes", "easy",
+        "nt02",
+        "notes",
+        "easy",
         "Re-ran alignment for {name} ({mrn}); {build} reference, {benchmark} as control.",
     ),
     Template(
-        "nt03", "notes", "medium",
+        "nt03",
+        "notes",
+        "medium",
         "Called {gene} {hgvs_c} / {hgvs_p} at {coord} in {cohort_id}. Reviewed {date}.",
     ),
     Template(
-        "nt04", "notes", "medium",
+        "nt04",
+        "notes",
+        "medium",
         "Sent QC report to {email} and cc'd {email}. Chart: {url}",
     ),
     Template(
-        "nt05", "notes", "easy",
+        "nt05",
+        "notes",
+        "easy",
         "Patient name: {name}\nMRN on file: {mrn}\nHome: {street}, {city}\nAge: {age90}",
     ),
     Template(
-        "nt06", "notes", "medium",
+        "nt06",
+        "notes",
+        "medium",
         "Specimen {accession} from {subject_labelled} logged {date}; SSN on intake form {ssn}.",
     ),
     Template(
-        "nt07", "notes", "hard",
+        "nt07",
+        "notes",
+        "hard",
         "handoff note - {name} , {mrn} , dob {dob} - see {url}",
     ),
     Template(
-        "nt08", "notes", "easy",
+        "nt08",
+        "notes",
+        "easy",
         "Escalated to {name} (pager {phone}); dataset {sra} from {project} is public.",
     ),
     Template(
-        "nt09", "notes", "medium",
+        "nt09",
+        "notes",
+        "medium",
         "Insurance verification: {member_id}, guarantor {name}, {city}.",
     ),
     Template(
-        "nt10", "notes", "easy",
+        "nt10",
+        "notes",
+        "easy",
         "Cohort {cohort_id} manifest points at /data/{name_path}_R1.fastq.gz ({lane}).",
     ),
     Template(
-        "nt11", "notes", "medium",
+        "nt11",
+        "notes",
+        "medium",
         "Ordering provider {npi} requested repeat on {date} for {subject_id}.",
     ),
     Template(
-        "nt12", "notes", "hard",
+        "nt12",
+        "notes",
+        "hard",
         "pt  {name}  //  {mrn}  //  {ssn}  //  {dob}",
     ),
     # ------------------------------------------------------------- agents
     Template(
-        "ag01", "agents", "easy",
+        "ag01",
+        "agents",
+        "easy",
         "assistant: I will fetch {url} for subject {subject_id}.",
     ),
     Template(
-        "ag02", "agents", "easy",
+        "ag02",
+        "agents",
+        "easy",
         "tool_use bash: grep -c '{mrn}' /data/{cohort_id}/manifest.tsv",
     ),
     Template(
-        "ag03", "agents", "medium",
+        "ag03",
+        "agents",
+        "medium",
         "assistant: Summary for {name} ({dob}) - {gene} variant {hgvs_p} on {build}.",
     ),
     Template(
-        "ag04", "agents", "medium",
+        "ag04",
+        "agents",
+        "medium",
         "tool_result: wrote /out/{name_path}_qc.html; emailed {email}",
     ),
     Template(
-        "ag05", "agents", "easy",
+        "ag05",
+        "agents",
+        "easy",
         "user: please de-identify the note for {subject_labelled} dated {date}",
     ),
     Template(
-        "ag06", "agents", "hard",
+        "ag06",
+        "agents",
+        "hard",
         "assistant: found  {mrn}  and  {ssn}  in the transcript; redacting.",
     ),
     Template(
-        "ag07", "agents", "medium",
+        "ag07",
+        "agents",
+        "medium",
         "tool_use: sbatch --job-name={job_name} --sample={sample_flag} pipeline.sh",
     ),
     Template(
-        "ag08", "agents", "easy",
+        "ag08",
+        "agents",
+        "easy",
         "assistant: {benchmark} truth set from {project} needs no consent; {giab} is public.",
     ),
     # ------------------------------------------------------------- diffs
     Template(
-        "df01", "diffs", "easy",
+        "df01",
+        "diffs",
+        "easy",
         "--- a/manifest.tsv\n+++ b/manifest.tsv\n-{cohort_id}\told\n+{cohort_id}\t{mrn}",
     ),
     Template(
-        "df02", "diffs", "easy",
+        "df02",
+        "diffs",
+        "easy",
         "+++ b/config.yaml\n+contact: {email}\n+endpoint: {url}\n+ref: {build}",
     ),
     Template(
-        "df03", "diffs", "medium",
+        "df03",
+        "diffs",
+        "medium",
         "--- a/samples.csv\n+++ b/samples.csv\n+{sample_flag},{name},{dob}",
     ),
     Template(
-        "df04", "diffs", "medium",
+        "df04",
+        "diffs",
+        "medium",
         "+++ b/hosts\n+{ip}\tredcap\n+{ipv6}\tvault\n# {version}",
     ),
     Template(
-        "df05", "diffs", "easy",
+        "df05",
+        "diffs",
+        "easy",
         "+++ b/run.sh\n+{tool} view -T /ref/{build}.fa /data/{name_path}_R1.cram",
     ),
     Template(
-        "df06", "diffs", "hard",
+        "df06",
+        "diffs",
+        "hard",
         "+++ b/notes.md\n+  {mrn}\n+  {name}\n+  {street}, {city}",
     ),
     # ------------------------------------------------------------- jobs
     Template(
-        "jb01", "jobs", "easy",
+        "jb01",
+        "jobs",
+        "easy",
         "slurm-{job_name}.out\nStarted {date}\nSample {sample_flag}\nRef {build}",
     ),
     Template(
-        "jb02", "jobs", "easy",
+        "jb02",
+        "jobs",
+        "easy",
         "#SBATCH --job-name={job_name}\n#SBATCH --mail-user={email}\n#SBATCH -N 1",
     ),
     Template(
-        "jb03", "jobs", "medium",
+        "jb03",
+        "jobs",
+        "medium",
         "JOBID  NAME              USER\n412391 {job_name}  analyst-a\nInput: /data/{name_path}_R1.fastq.gz",
     ),
     Template(
-        "jb04", "jobs", "easy",
+        "jb04",
+        "jobs",
+        "easy",
         "ERROR: could not open /data/proj/{cohort_id}/{name_path}_R2.fastq.gz",
     ),
     Template(
-        "jb11", "jobs", "easy",
+        "jb11",
+        "jobs",
+        "easy",
         # A bare file stem with **no leading separator**. This exists because
         # its absence hid a real bug: `name_in_path` was anchored on `(?<=/)`,
         # and the seal scrubs path fields component-wise -- splitting on the
@@ -742,27 +834,39 @@ TEMPLATES: tuple[Template, ...] = (
         "Input file {name_path}_R1.fastq.gz not found in cwd; ref {build}",
     ),
     Template(
-        "jb05", "jobs", "medium",
+        "jb05",
+        "jobs",
+        "medium",
         "srun: node compute-07 ({ip}) reported OOM for {job_name} at {date}",
     ),
     Template(
-        "jb06", "jobs", "easy",
+        "jb06",
+        "jobs",
+        "easy",
         "Traceback: KeyError: '{mrn}' while indexing {sample_id}",
     ),
     Template(
-        "jb07", "jobs", "medium",
+        "jb07",
+        "jobs",
+        "medium",
         "Completed {job_name}: {giab} vs {build}, {sra} reads, container {container}",
     ),
     Template(
-        "jb08", "jobs", "hard",
+        "jb08",
+        "jobs",
+        "hard",
         "sacct -j 412391\n  JobName  {job_name}\n  Comment  {mrn} / {name}",
     ),
     Template(
-        "jb09", "jobs", "easy",
+        "jb09",
+        "jobs",
+        "easy",
         "Wrote report to {url}; notify {phone} on failure.",
     ),
     Template(
-        "jb10", "jobs", "medium",
+        "jb10",
+        "jobs",
+        "medium",
         "scancel: job {job_name} cancelled by request of {name} on {date}",
     ),
     # ------------------------------------------------- prescrubbed (gold tier)
@@ -770,27 +874,39 @@ TEMPLATES: tuple[Template, ...] = (
     # tier that *measures* the risk the mandatory-local-tier-first rule takes
     # on: pre-inserted placeholders could plausibly confuse a later detector.
     Template(
-        "ps01", "prescrubbed", "easy",
+        "ps01",
+        "prescrubbed",
+        "easy",
         "Subject {surrogate} ({mask}) still lists {mrn} in the free-text field.",
     ),
     Template(
-        "ps02", "prescrubbed", "easy",
+        "ps02",
+        "prescrubbed",
+        "easy",
         "{surrogate} seen {gen_date}; contact {email} was missed on the first pass.",
     ),
     Template(
-        "ps03", "prescrubbed", "medium",
+        "ps03",
+        "prescrubbed",
+        "medium",
         "{mask} / {surrogate} / {gen_date} / {ssn}",
     ),
     Template(
-        "ps04", "prescrubbed", "medium",
+        "ps04",
+        "prescrubbed",
+        "medium",
         "Sealed note: {surrogate} at {mask}. Residual {subject_id} in the filename.",
     ),
     Template(
-        "ps05", "prescrubbed", "easy",
+        "ps05",
+        "prescrubbed",
+        "easy",
         "gen-1 surrogates {surrogate} and {surrogate} intact; new finding {phone}.",
     ),
     Template(
-        "ps06", "prescrubbed", "hard",
+        "ps06",
+        "prescrubbed",
+        "hard",
         "{mask}{surrogate}  {mrn}",
     ),
     # ---------------------------------------------- negatives (zero gold spans)

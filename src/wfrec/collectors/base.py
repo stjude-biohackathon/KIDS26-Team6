@@ -119,9 +119,7 @@ class Collector:
             return self.status
 
         self._stop.clear()
-        self._thread = threading.Thread(
-            target=self._loop, name=f"wfrec-{self.source}", daemon=True
-        )
+        self._thread = threading.Thread(target=self._loop, name=f"wfrec-{self.source}", daemon=True)
         self._thread.start()
         return self.status
 

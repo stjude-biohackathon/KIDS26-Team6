@@ -6,7 +6,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from autocab.input_sources import InputBundle
-from autocab.models import RedactionReport, ReviewDecision, SkillProposal, SkillReference, TraceCluster
+from autocab.models import (
+    RedactionReport,
+    ReviewDecision,
+    SkillProposal,
+    SkillReference,
+    TraceCluster,
+)
 
 from .config import PipelineConfig
 from .contracts import Clusterer, Exporter, InputAdapter, ProposalBuilder, Redactor, ReviewService

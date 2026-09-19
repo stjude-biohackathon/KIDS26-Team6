@@ -36,8 +36,8 @@ MARGIN = 28  # from the screen edge, for the default top-left placement
 TRANSPARENT_KEY = "#123456"  # windows only: an arbitrary color unlikely to appear in the badge
 
 BADGE_COLORS = {
-    "active": (255, 59, 48, 255),   # Apple systemRed
-    "paused": (255, 149, 0, 255),   # Apple systemOrange
+    "active": (255, 59, 48, 255),  # Apple systemRed
+    "paused": (255, 149, 0, 255),  # Apple systemOrange
 }
 LABELS = {"active": "wfrec — recording", "paused": "wfrec — paused"}
 _BADGE_SUPERSAMPLE = 4  # render this many times larger, then downsample for crisp anti-aliasing
@@ -107,9 +107,7 @@ def _make_badge_image(color: tuple[int, int, int, int]):
     size = final_size * _BADGE_SUPERSAMPLE
     margin = 3 * _BADGE_SUPERSAMPLE
     image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    ImageDraw.Draw(image).ellipse(
-        (margin, margin, size - margin, size - margin), fill=color
-    )
+    ImageDraw.Draw(image).ellipse((margin, margin, size - margin, size - margin), fill=color)
 
     highlight = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     ImageDraw.Draw(highlight).ellipse(
@@ -121,7 +119,8 @@ def _make_badge_image(color: tuple[int, int, int, int]):
     rim = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     ImageDraw.Draw(rim).ellipse(
         (margin, margin, size - margin, size - margin),
-        outline=(0, 0, 0, 70), width=2 * _BADGE_SUPERSAMPLE,
+        outline=(0, 0, 0, 70),
+        width=2 * _BADGE_SUPERSAMPLE,
     )
     image.alpha_composite(rim)
     return image.resize((final_size, final_size), Image.LANCZOS)
@@ -185,8 +184,10 @@ def _run_macos() -> int:
         def drawRect_(self, _rect):
             if self._image is not None:
                 self._image.drawInRect_fromRect_operation_fraction_(
-                    self.bounds(), NSMakeRect(0, 0, size, size),
-                    NSCompositingOperationSourceOver, 1.0,
+                    self.bounds(),
+                    NSMakeRect(0, 0, size, size),
+                    NSCompositingOperationSourceOver,
+                    1.0,
                 )
 
         def mouseDown_(self, event):
@@ -201,9 +202,7 @@ def _run_macos() -> int:
             dx = location.x - self._drag_origin.x
             dy = location.y - self._drag_origin.y
             self._moved = max(self._moved, (dx * dx + dy * dy) ** 0.5)
-            self.window().setFrameOrigin_(
-                (self._window_origin.x + dx, self._window_origin.y + dy)
-            )
+            self.window().setFrameOrigin_((self._window_origin.x + dx, self._window_origin.y + dy))
 
         def mouseUp_(self, _event):
             if self._moved < DRAG_THRESHOLD:
@@ -235,8 +234,10 @@ def _run_macos() -> int:
     x = screen.origin.x + MARGIN
     y = screen.origin.y + screen.size.height - size - MARGIN  # top-left corner
     window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
-        NSMakeRect(x, y, size, size), NSWindowStyleMaskBorderless,
-        NSBackingStoreBuffered, False,
+        NSMakeRect(x, y, size, size),
+        NSWindowStyleMaskBorderless,
+        NSBackingStoreBuffered,
+        False,
     )
     window.setOpaque_(False)
     window.setBackgroundColor_(NSColor.clearColor())
@@ -332,7 +333,9 @@ def _run_windows() -> int:  # pragma: no cover - Windows
         if status not in photos:
             from PIL import ImageTk
 
-            photos[status] = ImageTk.PhotoImage(_make_badge_image(BADGE_COLORS[status]), master=root)
+            photos[status] = ImageTk.PhotoImage(
+                _make_badge_image(BADGE_COLORS[status]), master=root
+            )
         return photos[status]
 
     tooltip_window: dict = {"win": None}
@@ -343,8 +346,14 @@ def _run_windows() -> int:  # pragma: no cover - Windows
         win.overrideredirect(True)
         win.attributes("-topmost", True)
         tk.Label(
-            win, text=_tooltip_text(current["status"] or "", current["title"]),
-            bg="#1a1d24", fg="#e7e9ee", font=("Helvetica", 11), padx=8, pady=4, bd=0,
+            win,
+            text=_tooltip_text(current["status"] or "", current["title"]),
+            bg="#1a1d24",
+            fg="#e7e9ee",
+            font=("Helvetica", 11),
+            padx=8,
+            pady=4,
+            bd=0,
         ).pack()
         win.geometry(f"+{event.x_root + 14}+{event.y_root + 12}")
         tooltip_window["win"] = win

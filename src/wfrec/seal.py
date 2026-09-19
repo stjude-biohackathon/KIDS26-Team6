@@ -139,12 +139,46 @@ class SealAborted(SealError):
 #: by the recorder rather than typed by a human.
 SKIP_KEYS: frozenset[str] = frozenset(
     {
-        "seq", "ts", "type", "source", "backend", "exit_code", "duration_ms",
-        "chars", "lines", "bytes", "width", "height", "sha", "pid", "ppid",
-        "prompt_seq", "job_id", "origin", "session", "kind", "score",
-        "confidence", "count", "index", "frame", "coords", "quality", "method",
-        "enabled", "reason_code", "status", "elapsed", "size", "mode", "v",
-        "version", "schema", "state", "flags", "seconds",
+        "seq",
+        "ts",
+        "type",
+        "source",
+        "backend",
+        "exit_code",
+        "duration_ms",
+        "chars",
+        "lines",
+        "bytes",
+        "width",
+        "height",
+        "sha",
+        "pid",
+        "ppid",
+        "prompt_seq",
+        "job_id",
+        "origin",
+        "session",
+        "kind",
+        "score",
+        "confidence",
+        "count",
+        "index",
+        "frame",
+        "coords",
+        "quality",
+        "method",
+        "enabled",
+        "reason_code",
+        "status",
+        "elapsed",
+        "size",
+        "mode",
+        "v",
+        "version",
+        "schema",
+        "state",
+        "flags",
+        "seconds",
     }
 )
 
@@ -154,9 +188,24 @@ SKIP_KEYS: frozenset[str] = frozenset(
 #: structure an analyst needs survives.
 PATH_KEYS: frozenset[str] = frozenset(
     {
-        "path", "cwd", "root", "workdir", "dir", "directory", "file",
-        "filename", "relpath", "target", "dest", "destination", "src",
-        "source_path", "output", "outdir", "log_path", "ref_path",
+        "path",
+        "cwd",
+        "root",
+        "workdir",
+        "dir",
+        "directory",
+        "file",
+        "filename",
+        "relpath",
+        "target",
+        "dest",
+        "destination",
+        "src",
+        "source_path",
+        "output",
+        "outdir",
+        "log_path",
+        "ref_path",
     }
 )
 
@@ -348,7 +397,9 @@ class Scrubber:
         difference between a 40-second seal and an hour.
         """
 
-        pending = sorted({atom.text for atom in atoms if atom.text and atom.text not in self._spans})
+        pending = sorted(
+            {atom.text for atom in atoms if atom.text and atom.text not in self._spans}
+        )
         if not pending:
             return
         normalized = [normalize_text(text) for text in pending]
@@ -358,9 +409,7 @@ class Scrubber:
             for results in per_detector:
                 candidates.extend(results[index])
             check_bounds(normalized[index], candidates)
-            self._spans[text] = resolve(
-                normalized[index], candidates, keeps=self._allowlist.keeps
-            )
+            self._spans[text] = resolve(normalized[index], candidates, keeps=self._allowlist.keeps)
 
     # -- rewriting ---------------------------------------------------------
     def rewrite_field(
@@ -725,8 +774,7 @@ def assert_idle(
         stop_session()
     except Exception as exc:
         raise SessionActive(
-            f"--force could not stop session {session_id}: {exc}. "
-            "Refusing to seal a live session."
+            f"--force could not stop session {session_id}: {exc}. Refusing to seal a live session."
         ) from exc
     session.manifest = type(session.manifest).from_dict(
         json.loads((session.root / "manifest.json").read_text(encoding="utf-8"))
@@ -814,7 +862,9 @@ def _sha256_file(path: Path) -> str:
 def _verify_seal_targets(session_dir: Path, record: Mapping[str, Any], *, what: str) -> None:
     targets = record.get("targets")
     if not isinstance(targets, Mapping):
-        raise NotSealed(f"{what} refuses session {session_dir.name}: seal.json has no target digests.")
+        raise NotSealed(
+            f"{what} refuses session {session_dir.name}: seal.json has no target digests."
+        )
     expected = {
         "events.jsonl",
         "manifest.json",
@@ -837,12 +887,18 @@ def _verify_seal_targets(session_dir: Path, record: Mapping[str, Any], *, what: 
     for name, digests in targets.items():
         path = session_dir / str(name)
         if not path.is_file():
-            raise NotSealed(f"{what} refuses session {session_dir.name}: sealed target missing: {name}")
+            raise NotSealed(
+                f"{what} refuses session {session_dir.name}: sealed target missing: {name}"
+            )
         if not isinstance(digests, Mapping):
-            raise NotSealed(f"{what} refuses session {session_dir.name}: invalid digest entry for {name}")
+            raise NotSealed(
+                f"{what} refuses session {session_dir.name}: invalid digest entry for {name}"
+            )
         expected_digest = str(digests.get("after_sha256") or "")
         if not expected_digest:
-            raise NotSealed(f"{what} refuses session {session_dir.name}: target {name} has no after_sha256")
+            raise NotSealed(
+                f"{what} refuses session {session_dir.name}: target {name} has no after_sha256"
+            )
         actual_digest = _sha256_file(path)
         if actual_digest != expected_digest:
             raise NotSealed(
@@ -962,7 +1018,9 @@ def seal_session(
     generation = 1
     if existing.exists():
         try:
-            generation = int(json.loads(existing.read_text(encoding="utf-8")).get("generation", 1)) + 1
+            generation = (
+                int(json.loads(existing.read_text(encoding="utf-8")).get("generation", 1)) + 1
+            )
         except (OSError, json.JSONDecodeError, TypeError, ValueError):  # pragma: no cover
             generation = 2
 
@@ -1012,9 +1070,7 @@ def seal_session(
             for event in events:
                 transform_strings(
                     event.payload,
-                    lambda _path, text, is_path: (
-                        atoms.extend(atoms_of(text, is_path)) or text
-                    ),
+                    lambda _path, text, is_path: atoms.extend(atoms_of(text, is_path)) or text,
                     skip_workforce=not policy.pseudonymize_analyst,
                 )
             file_texts: dict[Path, str] = {}
@@ -1056,9 +1112,7 @@ def seal_session(
                     degraded_reasons=degraded_reasons,
                     deny_terms=deny_terms,
                 )
-                dry_targets = sorted(
-                    str(path.relative_to(session_dir)) for path in staged_files
-                )
+                dry_targets = sorted(str(path.relative_to(session_dir)) for path in staged_files)
                 # `file_lock` creates `.seal/lock` as a side effect, so even a
                 # dry run leaves a directory behind unless it is cleaned up
                 # explicitly. "Touches nothing" has to mean nothing, or the next
@@ -1071,7 +1125,6 @@ def seal_session(
             if not dry_run:
                 journal["state"] = STATE_STAGING
                 write_journal(session_dir, journal)
-
 
             if dry_run:
                 # Detection has already run and every finding is real; staging
@@ -1446,9 +1499,7 @@ def _stage_all(
         }
 
     staged_manifest_path = staged_root / "manifest.json"
-    staged_manifest_path.write_text(
-        json.dumps(staged_manifest, indent=2) + "\n", encoding="utf-8"
-    )
+    staged_manifest_path.write_text(json.dumps(staged_manifest, indent=2) + "\n", encoding="utf-8")
     targets["manifest.json"] = {
         "before_sha256": _sha256_file(session_dir / "manifest.json"),
         "after_sha256": _sha256_file(staged_manifest_path),

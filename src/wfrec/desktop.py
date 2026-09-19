@@ -33,10 +33,7 @@ def choose_directory() -> Path | None:
             [
                 "/usr/bin/osascript",
                 "-e",
-                (
-                    "POSIX path of (choose folder with prompt "
-                    f'"{EXPORT_DIRECTORY_PROMPT}")'
-                ),
+                (f'POSIX path of (choose folder with prompt "{EXPORT_DIRECTORY_PROMPT}")'),
             ],
             cancel_return_codes={1},
         )
@@ -69,9 +66,7 @@ def choose_directory() -> Path | None:
 
     if sys.platform.startswith("linux"):
         if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
-            raise DirectorySelectionError(
-                "No graphical desktop is available on this Linux host."
-            )
+            raise DirectorySelectionError("No graphical desktop is available on this Linux host.")
         zenity = shutil.which("zenity")
         if zenity is not None:
             return _run_directory_picker(
@@ -93,9 +88,7 @@ def choose_directory() -> Path | None:
             "A graphical folder picker requires zenity or kdialog on Linux."
         )
 
-    raise DirectorySelectionError(
-        f"Choosing export folders is unsupported on {sys.platform}."
-    )
+    raise DirectorySelectionError(f"Choosing export folders is unsupported on {sys.platform}.")
 
 
 def open_directory(path: Path) -> None:
@@ -112,9 +105,7 @@ def open_directory(path: Path) -> None:
         try:
             startfile(str(directory))
         except OSError as error:
-            raise DirectoryOpenError(
-                f"Could not open the session folder: {error}"
-            ) from error
+            raise DirectoryOpenError(f"Could not open the session folder: {error}") from error
         return
 
     if sys.platform == "darwin":
@@ -123,9 +114,7 @@ def open_directory(path: Path) -> None:
 
     if sys.platform.startswith("linux"):
         if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
-            raise DirectoryOpenError(
-                "No graphical desktop is available on this Linux host."
-            )
+            raise DirectoryOpenError("No graphical desktop is available on this Linux host.")
         opener = shutil.which("xdg-open")
         if opener is None:
             raise DirectoryOpenError("xdg-open is not installed on this Linux host.")
@@ -135,9 +124,7 @@ def open_directory(path: Path) -> None:
     raise DirectoryOpenError(f"Opening folders is unsupported on {sys.platform}.")
 
 
-def _run_directory_picker(
-    command: list[str], *, cancel_return_codes: set[int]
-) -> Path | None:
+def _run_directory_picker(command: list[str], *, cancel_return_codes: set[int]) -> Path | None:
     """Run a platform picker and normalize its selected directory."""
 
     try:
@@ -148,9 +135,7 @@ def _run_directory_picker(
             check=False,
         )
     except OSError as error:
-        raise DirectorySelectionError(
-            f"Could not open the folder picker: {error}"
-        ) from error
+        raise DirectorySelectionError(f"Could not open the folder picker: {error}") from error
 
     if result.returncode in cancel_return_codes:
         return None
@@ -163,9 +148,7 @@ def _run_directory_picker(
         raise DirectorySelectionError("The folder picker returned no directory.")
     directory = Path(selected).expanduser().resolve()
     if not directory.is_dir():
-        raise DirectorySelectionError(
-            f"The selected export folder does not exist: {directory}"
-        )
+        raise DirectorySelectionError(f"The selected export folder does not exist: {directory}")
     return directory
 
 
@@ -181,6 +164,4 @@ def _launch_file_manager(command: list[str]) -> None:
             start_new_session=True,
         )
     except OSError as error:
-        raise DirectoryOpenError(
-            f"Could not open the session folder: {error}"
-        ) from error
+        raise DirectoryOpenError(f"Could not open the session folder: {error}") from error

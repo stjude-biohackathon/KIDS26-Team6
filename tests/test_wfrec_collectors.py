@@ -36,8 +36,15 @@ def test_spool_records_become_timeline_events(store):
     spool.append(
         target,
         spool.encode(
-            spool.KIND_COMMAND, "1789578668017", "/data/hg008", "0", "8421",
-            "samtools view -c HG008.bam", "zsh", "4411", "1",
+            spool.KIND_COMMAND,
+            "1789578668017",
+            "/data/hg008",
+            "0",
+            "8421",
+            "samtools view -c HG008.bam",
+            "zsh",
+            "4411",
+            "1",
         ),
     )
 
@@ -58,7 +65,9 @@ def test_shell_ingest_is_idempotent_across_restart(store):
 
     session, _ = store.start(title="A", analyst="a")
     target = spool.spool_file(session.spool_dir, "host", 10)
-    spool.append(target, spool.encode(spool.KIND_COMMAND, "1", "/tmp", "0", "1", "ls", "bash", "10", "1"))
+    spool.append(
+        target, spool.encode(spool.KIND_COMMAND, "1", "/tmp", "0", "1", "ls", "bash", "10", "1")
+    )
 
     first = ShellCollector(session)
     first.safe_probe()
@@ -79,8 +88,17 @@ def test_shell_commands_are_redacted(store):
     target = spool.spool_file(session.spool_dir, "host", 11)
     spool.append(
         target,
-        spool.encode(spool.KIND_COMMAND, "1", "/tmp", "0", "1",
-                     "curl -u bob@stjude.org https://x/SJ001234", "bash", "11", "1"),
+        spool.encode(
+            spool.KIND_COMMAND,
+            "1",
+            "/tmp",
+            "0",
+            "1",
+            "curl -u bob@stjude.org https://x/SJ001234",
+            "bash",
+            "11",
+            "1",
+        ),
     )
     collector = ShellCollector(session)
     collector.safe_probe()
@@ -129,11 +147,7 @@ def test_devsql_ingests_atuin_claude_and_codex_without_duplicates(
     collector._run_once()
     collector._run_once()
 
-    events = [
-        event
-        for event in session.writer.read()
-        if event.type == "shell.command.completed"
-    ]
+    events = [event for event in session.writer.read() if event.type == "shell.command.completed"]
     assert [event.payload["source"] for event in events] == [
         "atuin",
         "claude",
@@ -147,10 +161,7 @@ def test_devsql_ingests_atuin_claude_and_codex_without_duplicates(
     assert "SJ001234" not in events[0].payload["command"]
     assert "sj_id" in events[0].redactions
     assert len(queries) == 2
-    assert all(
-        "source = 'atuin' OR channel = 'agent_tool'" in sql
-        for sql in queries
-    )
+    assert all("source = 'atuin' OR channel = 'agent_tool'" in sql for sql in queries)
 
 
 def test_devsql_restores_shell_from_atuin_database(
@@ -162,9 +173,7 @@ def test_devsql_restores_shell_from_atuin_database(
     database_path = tmp_path / "history.db"
     connection = sqlite3.connect(database_path)
     try:
-        connection.execute(
-            "CREATE TABLE history (id TEXT PRIMARY KEY, shell TEXT)"
-        )
+        connection.execute("CREATE TABLE history (id TEXT PRIMARY KEY, shell TEXT)")
         connection.execute(
             "INSERT INTO history (id, shell) VALUES (?, ?)",
             ("atuin-command", "zsh"),
@@ -201,11 +210,7 @@ def test_devsql_restores_shell_from_atuin_database(
 
     ShellCollector(session, devsql_client=_devsql_client([row]))._run_once()
 
-    event = [
-        event
-        for event in session.writer.read()
-        if event.type == "shell.command.completed"
-    ][0]
+    event = [event for event in session.writer.read() if event.type == "shell.command.completed"][0]
     assert event.payload["shell"] == "zsh"
     assert connect_calls == [(f"{database_path.as_uri()}?mode=ro", True)]
 
@@ -227,11 +232,7 @@ def test_devsql_omits_shell_when_atuin_database_is_unavailable(
 
     ShellCollector(session, devsql_client=_devsql_client([row]))._run_once()
 
-    event = [
-        event
-        for event in session.writer.read()
-        if event.type == "shell.command.completed"
-    ][0]
+    event = [event for event in session.writer.read() if event.type == "shell.command.completed"][0]
     assert "shell" not in event.payload
 
 
@@ -270,11 +271,7 @@ def test_devsql_rejects_rows_outside_the_safe_capture_scope(
     collector.safe_probe()
     collector._run_once()
 
-    events = [
-        event
-        for event in session.writer.read()
-        if event.type == "shell.command.completed"
-    ]
+    events = [event for event in session.writer.read() if event.type == "shell.command.completed"]
     assert events == []
 
 
@@ -286,7 +283,9 @@ def test_remote_spool_keeps_its_own_hostname(store, tmp_path):
     remote_dir.mkdir()
     spool.append(
         remote_dir / "login2-7788.rec",
-        spool.encode(spool.KIND_COMMAND, "1", "/scratch", "0", "5", "sbatch align.sh", "sh", "7788", "1"),
+        spool.encode(
+            spool.KIND_COMMAND, "1", "/scratch", "0", "5", "sbatch align.sh", "sh", "7788", "1"
+        ),
     )
 
     collector = ShellCollector(session)
@@ -396,9 +395,14 @@ def _devsql_client(
 @pytest.mark.parametrize(
     "name,binary",
     [
-        ("HG008.bam", True), ("reads.fastq.gz", True), ("x.cram", True),
-        ("calls.vcf", True), ("matrix.h5ad", True), ("run.py", False),
-        ("Snakefile", False), ("notes.md", False),
+        ("HG008.bam", True),
+        ("reads.fastq.gz", True),
+        ("x.cram", True),
+        ("calls.vcf", True),
+        ("matrix.h5ad", True),
+        ("run.py", False),
+        ("Snakefile", False),
+        ("notes.md", False),
     ],
 )
 def test_genomics_extensions_are_never_read(name, binary):
@@ -427,9 +431,11 @@ def test_git_runs_with_no_optional_locks(monkeypatch, tmp_path):
 
     def fake_run(cmd, **kwargs):
         seen["cmd"] = cmd
+
         class Result:
             returncode = 0
             stdout = ""
+
         return Result()
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -444,7 +450,11 @@ def test_large_file_is_metadata_only(store, tmp_path, monkeypatch):
     big = tmp_path / "huge.tsv"
     big.write_text("x" * 64)
     monkeypatch.setattr(
-        Path, "stat", lambda self, *a, **k: type("S", (), {"st_size": METADATA_ONLY_BYTES + 1, "st_mtime_ns": 1})()
+        Path,
+        "stat",
+        lambda self, *a, **k: type(
+            "S", (), {"st_size": METADATA_ONLY_BYTES + 1, "st_mtime_ns": 1}
+        )(),
     )
     event = collector._describe(big)
     assert event.payload["content"] == "skipped-too-large"
@@ -469,7 +479,7 @@ def test_repeated_identical_change_emits_once(store, tmp_path):
     target.write_text("print(1)\n")
 
     assert collector._describe(target) is not None
-    assert collector._describe(target) is None   # unchanged size+mtime
+    assert collector._describe(target) is None  # unchanged size+mtime
 
     target.write_text("print(1)\nprint(2)\n")
     assert collector._describe(target) is not None
@@ -485,11 +495,17 @@ def test_file_collector_without_roots_degrades(store):
 def test_git_snapshot_and_diff_against_real_repo(store, tmp_path):
     repo = tmp_path / "proj"
     repo.mkdir()
-    for args in (["init", "-q", "."], ["config", "user.email", "t@t"], ["config", "user.name", "t"]):
+    for args in (
+        ["init", "-q", "."],
+        ["config", "user.email", "t@t"],
+        ["config", "user.name", "t"],
+    ):
         subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
     (repo / "run.py").write_text("print('v1')\n")
     subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True, capture_output=True)
-    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "init"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-qm", "init"], check=True, capture_output=True
+    )
 
     session, _ = store.start(title="A", analyst="a")
     collector = FileCollector(session, roots=[repo])
@@ -510,12 +526,18 @@ def test_git_pathspec_excludes_genomics_files(store, tmp_path):
 
     repo = tmp_path / "proj"
     repo.mkdir()
-    for args in (["init", "-q", "."], ["config", "user.email", "t@t"], ["config", "user.name", "t"]):
+    for args in (
+        ["init", "-q", "."],
+        ["config", "user.email", "t@t"],
+        ["config", "user.name", "t"],
+    ):
         subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
     (repo / "x.bam").write_bytes(b"\x00" * 32)
     (repo / "run.py").write_text("a\n")
     subprocess.run(["git", "-C", str(repo), "add", "-A", "-f"], check=True, capture_output=True)
-    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "init"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-qm", "init"], check=True, capture_output=True
+    )
 
     (repo / "x.bam").write_bytes(b"\x01" * 64)
     (repo / "run.py").write_text("b\n")
@@ -554,7 +576,9 @@ def test_change_detection_thresholds():
     base = frame_signature(terminal(["$ samtools view -c HG008.bam", "1234567"]))
     same = frame_signature(terminal(["$ samtools view -c HG008.bam", "1234567"]))
     cursor = frame_signature(terminal(["$ samtools view -c HG008.bam", "1234567 "]))
-    added = frame_signature(terminal(["$ samtools view -c HG008.bam", "1234567", "$ bwa mem ref.fa"]))
+    added = frame_signature(
+        terminal(["$ samtools view -c HG008.bam", "1234567", "$ bwa mem ref.fa"])
+    )
 
     assert changed_fraction(base, same) < CHANGE_THRESHOLD
     assert changed_fraction(base, cursor) < CHANGE_THRESHOLD, "cursor blink must not keep a frame"
@@ -647,7 +671,11 @@ def test_diff_patches_are_redacted_before_they_touch_disk(store, tmp_path):
     session, _ = store.start(title="A", analyst="a")
     root = tmp_path / "repo"
     root.mkdir()
-    for args in (["init", "-q"], ["config", "user.email", "t@example.org"], ["config", "user.name", "t"]):
+    for args in (
+        ["init", "-q"],
+        ["config", "user.email", "t@example.org"],
+        ["config", "user.name", "t"],
+    ):
         subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
     tracked = root / "manifest.tsv"
     tracked.write_text("id\tnote\n", encoding="utf-8")
@@ -681,7 +709,11 @@ def test_a_diff_filename_cannot_reintroduce_the_identifier(store, tmp_path):
     session, _ = store.start(title="A", analyst="a")
     root = tmp_path / "repo2"
     root.mkdir()
-    for args in (["init", "-q"], ["config", "user.email", "t@example.org"], ["config", "user.name", "t"]):
+    for args in (
+        ["init", "-q"],
+        ["config", "user.email", "t@example.org"],
+        ["config", "user.name", "t"],
+    ):
         subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
     tracked = root / "SJ-4817_notes.txt"
     tracked.write_text("one\n", encoding="utf-8")
@@ -703,9 +735,15 @@ def test_git_snapshot_redacts_root_branch_and_reports_findings(store, tmp_path):
     session, _ = store.start(title="A", analyst="a")
     root = tmp_path / "repo3"
     root.mkdir()
-    for args in (["init", "-q"], ["config", "user.email", "t@example.org"], ["config", "user.name", "t"]):
+    for args in (
+        ["init", "-q"],
+        ["config", "user.email", "t@example.org"],
+        ["config", "user.name", "t"],
+    ):
         subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
-    subprocess.run(["git", "checkout", "-qb", "SJ-4817-branch"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "checkout", "-qb", "SJ-4817-branch"], cwd=root, check=True, capture_output=True
+    )
     tracked = root / "SJ-4817.txt"
     tracked.write_text("one\n", encoding="utf-8")
     subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)

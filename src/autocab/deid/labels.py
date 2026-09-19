@@ -98,9 +98,7 @@ class LabelSpec:
 _SPECS: tuple[LabelSpec, ...] = (
     LabelSpec(DeidLabel.SSN, 7, "SSN", "US social security number", 10),
     LabelSpec(DeidLabel.MRN, 8, "MRN", "medical record number", 20),
-    LabelSpec(
-        DeidLabel.HEALTH_PLAN_ID, 9, "ACC", "health plan beneficiary number", 25
-    ),
+    LabelSpec(DeidLabel.HEALTH_PLAN_ID, 9, "ACC", "health plan beneficiary number", 25),
     LabelSpec(
         DeidLabel.SUBJECT_ID,
         18,
@@ -108,32 +106,22 @@ _SPECS: tuple[LabelSpec, ...] = (
         "study subject or patient identifier code",
         30,
     ),
-    LabelSpec(
-        DeidLabel.ACCESSION, 18, "ACC", "laboratory or specimen accession number", 40
-    ),
-    LabelSpec(
-        DeidLabel.SAMPLE_ID, 18, "ID", "sequencing sample identifier", 45
-    ),
-    LabelSpec(
-        DeidLabel.SLURM_JOB_NAME, 18, "ID", "SLURM job name", 48
-    ),
+    LabelSpec(DeidLabel.ACCESSION, 18, "ACC", "laboratory or specimen accession number", 40),
+    LabelSpec(DeidLabel.SAMPLE_ID, 18, "ID", "sequencing sample identifier", 45),
+    LabelSpec(DeidLabel.SLURM_JOB_NAME, 18, "ID", "SLURM job name", 48),
     LabelSpec(DeidLabel.ACCOUNT, 10, "ACC", "financial account number", 49),
     LabelSpec(DeidLabel.PHONE, 4, "PHONE", "telephone number", 50),
     LabelSpec(DeidLabel.FAX, 5, "PHONE", "fax number", 52),
     LabelSpec(DeidLabel.EMAIL, 6, "EMAIL", "email address", 60),
     LabelSpec(DeidLabel.URL, 14, "ID", "web URL", 62),
     LabelSpec(DeidLabel.IP, 15, "ID", "IP address", 64),
-    LabelSpec(
-        DeidLabel.LICENSE, 11, "ID", "professional certificate or license number", 66
-    ),
+    LabelSpec(DeidLabel.LICENSE, 11, "ID", "professional certificate or license number", 66),
     LabelSpec(DeidLabel.VEHICLE, 12, "ID", "vehicle identifier or license plate", 68),
     LabelSpec(DeidLabel.DEVICE, 13, "DEV", "medical device serial number", 70),
     LabelSpec(DeidLabel.BIOMETRIC, 16, "ID", "biometric identifier", 72),
     LabelSpec(DeidLabel.DOB_LABELLED, 3, "ID", "date of birth", 80),
     LabelSpec(DeidLabel.DATE_BARE, 3, "ID", "calendar date", 85),
-    LabelSpec(
-        DeidLabel.NAME, 1, "NAME", "patient name embedded in a file path or note", 90
-    ),
+    LabelSpec(DeidLabel.NAME, 1, "NAME", "patient name embedded in a file path or note", 90),
     LabelSpec(DeidLabel.AGE_OVER_89, 3, "ID", "age over 89 years", 100),
     LabelSpec(
         DeidLabel.LOCATION,
@@ -152,25 +140,19 @@ ALL_LABELS: tuple[DeidLabel, ...] = tuple(spec.label for spec in _SPECS)
 
 LABEL_RANK: dict[str, int] = {spec.label.value: spec.rank for spec in _SPECS}
 
-HIPAA_BY_LABEL: dict[str, int | None] = {
-    spec.label.value: spec.hipaa for spec in _SPECS
-}
+HIPAA_BY_LABEL: dict[str, int | None] = {spec.label.value: spec.hipaa for spec in _SPECS}
 
 PREFIX: dict[str, str] = {spec.label.value: spec.prefix for spec in _SPECS}
 
 ZERO_SHOT_LABELS: tuple[str, ...] = tuple(spec.description for spec in _SPECS)
 
-LABEL_BY_DESCRIPTION: dict[str, str] = {
-    spec.description: spec.label.value for spec in _SPECS
-}
+LABEL_BY_DESCRIPTION: dict[str, str] = {spec.description: spec.label.value for spec in _SPECS}
 
 # The prefix alphabet SurrogateGuard recognizes. Kept as an explicit constant so
 # adding a label with a novel prefix breaks a test instead of quietly producing
 # surrogates that the idempotency guard cannot see -- which would make a reseal
 # pseudonymize its own pseudonyms.
-PSEUDONYM_PREFIXES: tuple[str, ...] = tuple(
-    sorted({spec.prefix for spec in _SPECS})
-)
+PSEUDONYM_PREFIXES: tuple[str, ...] = tuple(sorted({spec.prefix for spec in _SPECS}))
 
 # Detector kinds, ranked. regex wins ties because its label is structurally
 # certain: a Luhn-valid 9-digit string preceded by "SSN:" is an SSN, whereas a

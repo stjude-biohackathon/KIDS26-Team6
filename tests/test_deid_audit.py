@@ -152,8 +152,18 @@ def test_the_audit_carries_no_matched_text_and_no_digest_of_it(sealed):
 
     assert records
     allowed = {
-        "target", "field", "label", "engine", "score", "start", "end",
-        "action", "surrogate", "value_id", "seq", "absorbed",
+        "target",
+        "field",
+        "label",
+        "engine",
+        "score",
+        "start",
+        "end",
+        "action",
+        "surrogate",
+        "value_id",
+        "seq",
+        "absorbed",
     }
     for record in records:
         assert set(record) <= allowed, set(record) - allowed

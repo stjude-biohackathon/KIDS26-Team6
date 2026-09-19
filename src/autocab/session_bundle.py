@@ -76,9 +76,7 @@ def _trace_from_session_dir(path: Path) -> WorkflowTrace:
         trace, steps = build_trace(session)
         if steps:
             return WorkflowTrace.from_dict(trace)
-        raise SessionBundleError(
-            f"Session {path} contains no convertible workflow steps."
-        )
+        raise SessionBundleError(f"Session {path} contains no convertible workflow steps.")
     except ImportError as exc:
         export_paths = (
             path / "exports" / "workflow-trace.json",

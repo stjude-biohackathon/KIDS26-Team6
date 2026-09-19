@@ -129,7 +129,5 @@ def mask_text(
     normalized = normalize_text(text)
     if not normalized:
         return normalized, []
-    spans = detect(
-        [normalized], detectors=detectors, deny_terms=deny_terms, allowlist=allowlist
-    )[0]
+    spans = detect([normalized], detectors=detectors, deny_terms=deny_terms, allowlist=allowlist)[0]
     return render(normalized, spans, lambda span, _surface: mask_token(span.label)), spans

@@ -59,9 +59,7 @@ def export_session(
     written: list[str] = []
     details: dict[str, Any] = {}
     exports = (
-        destination.expanduser().resolve()
-        if destination is not None
-        else session.root / "exports"
+        destination.expanduser().resolve() if destination is not None else session.root / "exports"
     )
     exports.mkdir(parents=True, exist_ok=True)
     if prefix_filenames is None:

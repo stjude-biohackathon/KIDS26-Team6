@@ -42,11 +42,42 @@ def all_event_types() -> list[str]:
 #: Payload keys the recorder actually writes, harvested from across the
 #: collectors and exporters. Every one gets a sentinel.
 TEXT_KEYS = (
-    "text", "label", "command", "cwd", "path", "root", "workdir", "note",
-    "ocr_text", "window_title", "title", "detail", "message", "content",
-    "branch", "diff", "patch", "summary", "reason", "job_name", "name",
-    "stdout", "stderr", "output", "error", "shell", "tool", "role", "ref",
-    "adapter", "family", "workflow_family", "tags", "dest", "src", "filename",
+    "text",
+    "label",
+    "command",
+    "cwd",
+    "path",
+    "root",
+    "workdir",
+    "note",
+    "ocr_text",
+    "window_title",
+    "title",
+    "detail",
+    "message",
+    "content",
+    "branch",
+    "diff",
+    "patch",
+    "summary",
+    "reason",
+    "job_name",
+    "name",
+    "stdout",
+    "stderr",
+    "output",
+    "error",
+    "shell",
+    "tool",
+    "role",
+    "ref",
+    "adapter",
+    "family",
+    "workflow_family",
+    "tags",
+    "dest",
+    "src",
+    "filename",
 )
 
 
@@ -115,11 +146,7 @@ def test_no_planted_sentinel_survives_the_seal(planted):
     seal_session(session, force=True, key=b"\x01" * 32)
 
     blob = (session.root / "events.jsonl").read_text(encoding="utf-8")
-    survivors = sorted(
-        where
-        for where, sentinel in sentinels.items()
-        if sentinel in blob
-    )
+    survivors = sorted(where for where, sentinel in sentinels.items() if sentinel in blob)
 
     assert survivors == [], (
         f"{len(survivors)} planted sentinel(s) survived the seal. This is the "
