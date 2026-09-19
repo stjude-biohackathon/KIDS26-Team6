@@ -9,13 +9,17 @@ import shlex
 from typing import Any
 
 from autocab.forge.skill_spec import SCHEMA_VERSION, validateSpec
-from autocab.recording.events import DEID_SEALED, SHELL_COMMAND, Event
+from autocab.recording.events import AGENT_MESSAGE, AGENT_TOOL_COMPLETED, DEID_SEALED, Event
 from autocab.recording.session import Session
 
 from .dependency_versions import detect_dependency_version
 from .models import WorkflowError
+from .observed_actions import ObservedAction, build_observed_actions
 
 NON_MATERIAL_PREFIXES = ("session.", "source.", "screen.recording.")
+GENERATED_ACTIVITY_RATIONALE = (
+    "The activity was observed, but its inputs and dependency closure need review."
+)
 SHELL_ONLY_COMMANDS = {
     ".",
     ":",
@@ -85,6 +89,10 @@ def _event_summary(event: Event) -> str:
     if isinstance(command, str) and command.strip():
         exit_code = event.payload.get("exit_code")
         return f"Recorded command completed with exit code {exit_code}: {command[:240]}"
+    if event.type == AGENT_TOOL_COMPLETED:
+        tool_name = event.payload.get("tool_name") or "tool"
+        status = event.payload.get("status") or "completed"
+        return f"Recorded agent tool {tool_name} {status}."
     for field in ("text", "note", "message", "path"):
         value = event.payload.get(field)
         if isinstance(value, str) and value.strip():
@@ -133,13 +141,16 @@ def build_evidence_snapshot(
         )
         if event.type == DEID_SEALED or event.type.startswith(NON_MATERIAL_PREFIXES):
             continue
+        confidence = "high"
+        if event.type == AGENT_MESSAGE:
+            confidence = "medium" if event.payload.get("role") == "user" else "low"
         summaries.append(
             {
                 "id": evidence_id,
                 "source": f"session:{session.session_id}",
                 "locator": f"events.jsonl#seq={event.seq or 0}",
                 "basis": "observed",
-                "confidence": "high",
+                "confidence": confidence,
                 "summary": summary,
             }
         )
@@ -154,18 +165,12 @@ def build_blocked_spec(
     """Create a valid blocked draft that makes uncertainty explicit."""
 
     evidence_by_locator = {record["locator"]: record["id"] for record in evidence}
+    actions = build_observed_actions(events, evidence_by_locator)
     steps: list[dict[str, Any]] = []
     dependencies: dict[str, dict[str, Any]] = {}
-    for event in events:
-        if event.type != SHELL_COMMAND:
-            continue
-        command = event.payload.get("command")
-        if not isinstance(command, str) or not command.strip():
-            continue
-        evidence_id = evidence_by_locator.get(f"events.jsonl#seq={event.seq or 0}")
-        if evidence_id is None:
-            continue
-        executable = _executable(command)
+    for index, action in enumerate(actions, start=1):
+        command = action.command
+        executable = _executable(command) if command else None
         dependency_names = [executable] if executable else []
         if executable and executable not in dependencies:
             detected = detect_dependency_version(executable)
@@ -179,7 +184,7 @@ def build_blocked_spec(
                 "name": executable,
                 "kind": "missing",
                 "required": True,
-                "evidenceIds": [evidence_id],
+                "evidenceIds": list(action.evidence_ids),
                 "install": None,
                 "environmentPackage": None,
                 "versionConstraint": detected.value if detected else None,
@@ -189,18 +194,23 @@ def build_blocked_spec(
                 "notes": f"Observed in a sealed session. {version_note}",
             }
         elif executable:
-            dependencies[executable]["evidenceIds"].append(evidence_id)
+            existing_evidence = dependencies[executable]["evidenceIds"]
+            existing_evidence.extend(
+                evidence_id
+                for evidence_id in action.evidence_ids
+                if evidence_id not in existing_evidence
+            )
         steps.append(
             {
-                "id": f"command-{len(steps) + 1}",
-                "summary": f"Run recorded command {len(steps) + 1}.",
+                "id": f"activity-{index}",
+                "summary": _action_summary(action, index),
                 "status": "blocked",
                 "basis": "observed",
-                "evidenceIds": [evidence_id],
+                "evidenceIds": list(action.evidence_ids),
                 "existingSkill": None,
                 "commandShape": command,
                 "dependencies": dependency_names,
-                "rationale": "The command was observed, but its inputs and dependency closure need review.",
+                "rationale": GENERATED_ACTIVITY_RATIONALE,
                 "approvalRequired": False,
             }
         )
@@ -275,3 +285,13 @@ def build_blocked_spec(
     if issues:
         raise WorkflowError("Generated SkillSpec is invalid: " + "; ".join(issues))
     return spec
+
+
+def _action_summary(action: ObservedAction, index: int) -> str:
+    """Describe a normalized action without claiming unobserved intent."""
+
+    if action.kind == "command":
+        return f"Run recorded command {index}."
+    if action.kind == "edit":
+        return f"Repeat recorded edits with {action.tool_name}."
+    return f"Review recorded {action.tool_name} activity."

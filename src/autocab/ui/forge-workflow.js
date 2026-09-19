@@ -9,8 +9,10 @@
   const DEPENDENCY_QUESTION = 'q-dependency-closure';
   const NO_FORMAL_IO_ASSUMPTION =
     'This skill describes an interactive work practice with no formal input or output artifacts.';
-  const GENERATED_STEP_RATIONALE =
-    'The command was observed, but its inputs and dependency closure need review.';
+  const GENERATED_STEP_RATIONALES = new Set([
+    'The command was observed, but its inputs and dependency closure need review.',
+    'The activity was observed, but its inputs and dependency closure need review.'
+  ]);
 
   function stateModel(session, run, busy=false, needsRepair=false){
     if(!session){
@@ -117,7 +119,7 @@
     spec.name = stdName(spec.name);
     spec.codebase = {roots:[]};
     spec.steps = (spec.steps || []).map(step => {
-      if(step.status !== 'blocked' || step.rationale !== GENERATED_STEP_RATIONALE) return step;
+      if(step.status !== 'blocked' || !GENERATED_STEP_RATIONALES.has(step.rationale)) return step;
       return {
         ...step,
         status:managedDependencies ? 'supported' : 'manual',
