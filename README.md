@@ -246,7 +246,34 @@ installation. Then invoke the installed skill:
 
 ## Usage
 
-### Run the Demo Pipeline
+### Complete a Recorded Workflow
+
+The `autocab` command connects recording, Skill Forge review, and package
+creation. Approval is always a separate action.
+
+```bash
+autocab record start --title "HG008 variant QC" --watch .
+autocab record note "Reran because the BAM was truncated" --label why
+autocab record pause --reason "Waiting on BWA" --expect 6h
+autocab record resume
+autocab record finish --seal
+
+autocab forge --session <session-id>
+autocab review <run-id> --reviewer "Analyst name" --spec reviewed-skill-spec.json
+autocab approve <run-id> --reviewer "Analyst name"
+autocab package <run-id>
+autocab status
+```
+
+Forging starts with a blocked draft. Review the evidence, define inputs and
+outputs, verify dependencies, and resolve every blocking question before
+approval. Packaging works only after explicit approval and strict validation.
+The dashboard shows the same states and actions for the selected session.
+
+See [the integrated workflow guide](docs/integrated-workflow.md) for the state
+model, stored artifacts, and recovery behavior.
+
+### Run the Legacy Demo Pipeline
 
 Run the default demo pipeline:
 
@@ -260,7 +287,7 @@ Run with explicit input modes:
 uv run autocab demo --input-mode trace --trace-file data/sample_workflow_traces.json
 uv run autocab demo --input-mode screen-capture --capture-file data/sample_screen_capture.json
 uv run autocab demo --input-mode terminal-log --log-file path/to/terminal-session.txt
-uv run autocab demo --input-mode session --session-dir ~/.wfrec/sessions/<id>
+uv run autocab demo --input-mode session --session-dir ~/.autocab/sessions/<id>
 ```
 
 Convert a terminal log into normalized trace JSON:
@@ -273,9 +300,9 @@ Generated proposals are written to `skills/generated-drafts/` by default.
 
 ### Collect Workflow Evidence
 
-`wfrec` records live work and produces the session artifacts that AutoCAB's
-input adapters read. Recorded sessions follow the same path to a reviewed skill
-proposal as the supplied demo inputs.
+`wfrec` is AutoCAB's recording engine. Its advanced source and remote controls
+remain available through the `wfrec` command, while the common session lifecycle
+is available through `autocab record`.
 
 After completing the setup above, check which backends are available:
 

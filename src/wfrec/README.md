@@ -74,7 +74,7 @@ wfrec hooks uninstall
 
 This appends one guarded, marker-delimited `source` line to your rc file and
 takes a timestamped backup first. The hook body itself lives in
-`~/.wfrec/hooks/`, so your rc file gains two reviewable lines rather than a few
+`~/.autocab/hooks/`, so your rc file gains two reviewable lines rather than a few
 hundred of someone else's code.
 
 On Windows, one installation updates the current-user all-hosts profiles for
@@ -109,7 +109,7 @@ wfrec start --title "HG008 variant QC" --watch .
 AutoCAB clusters on, and `--analyst` (defaulting to your OS username) is what
 makes multi-analyst aggregation work.
 
-`start` auto-spawns the background daemon; its log is `~/.wfrec/daemon.log`.
+`start` auto-spawns the background daemon; its log is `~/.autocab/daemon.log`.
 Pass `--no-daemon` to skip background collectors. Installed fallback hooks can
 still spool commands for later ingestion.
 
@@ -161,7 +161,7 @@ A session folder is self-contained and movable — zip one and hand it to a
 teammate:
 
 ```text
-~/.wfrec/sessions/<id>/
+~/.autocab/sessions/<id>/
 ├── manifest.json     # title, analyst, host, lifecycle log, toggle history
 ├── events.jsonl      # the verbose timeline (source of truth)
 ├── screen/           # frames, ocr text, video
@@ -182,7 +182,7 @@ chronology — `EventWriter.read_sorted()` does, and so does every exporter.
 
 ```bash
 wfrec export
-autocab demo --input-mode session --session-dir ~/.wfrec/sessions/<id>
+autocab demo --input-mode session --session-dir ~/.autocab/sessions/<id>
 ```
 
 `wfrec export` prints the exact `autocab` command with the id filled in. Drafts
@@ -263,8 +263,8 @@ export WFREC_BIND_HOST=0.0.0.0
 # optional if auto-detect is wrong:
 # export WFREC_ADVERTISE_URL="http://10.x.x.x:8787"
 
-nohup wfrec daemon >> ~/.wfrec/daemon.log 2>&1 &
-# tail -f ~/.wfrec/daemon.log   # Host / Public / Private URLs appear at startup
+nohup wfrec daemon >> ~/.autocab/daemon.log 2>&1 &
+# tail -f ~/.autocab/daemon.log   # Host / Public / Private URLs appear at startup
 
 wfrec doctor
 wfrec hooks install             # if shell backend is hook-spool
@@ -280,7 +280,7 @@ wfrec daemon --stop             # when done for the day
 `wfrec start` can auto-spawn a daemon if none is running; on HPC it is clearer
 to start **`nohup wfrec daemon &`** first so background collectors stay up and
 the startup summary (with **Local**, **Private**, **Public** URLs) is in
-`~/.wfrec/daemon.log`.
+`~/.autocab/daemon.log`.
 
 Per-source toggle switches, a paste box, session controls and a live event
 tail. It is a client of the same HTTP control API the CLI and the agent skill
@@ -294,7 +294,7 @@ family while collecting the distinct analysts per cluster.
 
 ```bash
 wfrec merge <id1> <id2> <id3> --output merged.json --workflow-family "hg008 qc"
-autocab demo --input-mode session --session-dir ~/.wfrec/sessions     # a folder of sessions
+autocab demo --input-mode session --session-dir ~/.autocab/sessions  # a folder of sessions
 ```
 
 `merge` reports which families more than one analyst performed — that is the
@@ -473,7 +473,7 @@ in to a non-loopback bind with `--allow-remote` / `WFREC_ALLOW_REMOTE=1`.
 | `agents` says `no-agent-tools-found` | No transcripts found. `wfrec attach-transcript <file> --tool <name>` |
 | Screen capture disabled on Linux | Wayland. See the platform table above |
 | File events missing on HPC scratch | inotify delivers nothing on NFS/Lustre. Those roots are polled instead; `wfrec doctor` reports it |
-| Session seems dead | `cat ~/.wfrec/daemon.log`; `wfrec daemon --stop && wfrec daemon` |
+| Session seems dead | `cat ~/.autocab/daemon.log`; `wfrec daemon --stop && wfrec daemon` |
 | Anything else | `wfrec doctor` first |
 
 ## Driving it from an agent
