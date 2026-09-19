@@ -189,7 +189,7 @@ def find_session_dir(session_id: str) -> Path:
 def hooks_dir() -> Path:
     """Where installed shell hook scripts are materialized."""
 
-    return home() / "hooks"
+    return autocab_paths.hooks_dir()
 
 
 def ensure_home() -> Path:

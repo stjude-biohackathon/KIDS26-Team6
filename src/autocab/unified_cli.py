@@ -9,6 +9,7 @@ from typing import Any
 
 import click
 
+from autocab.initialization import initialize
 from autocab.migration import migrate_wfrec_sessions
 from autocab.orchestrator import run_pipeline
 from autocab.terminal_logs import convert_terminal_log, write_trace_json
@@ -42,6 +43,29 @@ def _run_wfrec(arguments: list[str]) -> None:
 @click.version_option(package_name="autocab")
 def cli() -> None:
     """AutoCAB's unified workflow command group."""
+
+
+@cli.command("init")
+@click.option("--analyst", default="", help="Default analyst name or identifier.")
+@click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
+def init_command(analyst: str, as_json: bool) -> None:
+    """Create a local AutoCAB workspace and safe default configuration."""
+
+    try:
+        result = initialize(analyst=analyst)
+    except OSError as exc:
+        raise click.ClickException(f"Could not initialize AutoCAB: {exc}") from exc
+    if as_json:
+        _emit(result.to_dict(), as_json=True)
+        return
+    click.echo(f"AutoCAB home: {result.home}")
+    click.echo(f"Configuration: {result.config}")
+    click.echo(f"Analyst: {result.analyst}")
+    if result.legacy_sessions:
+        click.echo(f"Legacy wfrec sessions found: {result.legacy_sessions}")
+    click.echo("Next:")
+    for command in result.next_commands:
+        click.echo(f"  {command}")
 
 
 @cli.group(help="Start, annotate, pause, resume, or finish a recording session.")

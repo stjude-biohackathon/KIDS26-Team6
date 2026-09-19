@@ -89,10 +89,22 @@ def models_dir() -> Path:
     return home() / "models"
 
 
+def hooks_dir() -> Path:
+    """Return the directory containing installed shell-hook assets."""
+
+    return home() / "hooks"
+
+
+def config_path() -> Path:
+    """Return the user-level AutoCAB configuration file."""
+
+    return home() / "config.toml"
+
+
 def ensure_home() -> Path:
     """Create canonical AutoCAB durable directories and return the root."""
 
     root = home()
-    for path in (root, sessions_dir(), runs_dir(), models_dir()):
+    for path in (root, sessions_dir(), runs_dir(), models_dir(), hooks_dir()):
         path.mkdir(parents=True, exist_ok=True)
     return root
