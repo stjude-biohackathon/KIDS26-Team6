@@ -34,7 +34,7 @@ autocab init --no-interactive \
   --redaction gliner2-pii \
   --fetch-model \
   --install-hooks \
-  --migrate-wfrec \
+  --migrate-legacy \
   --check
 ```
 
@@ -60,6 +60,12 @@ autocab record finish --seal
 `record finish --seal` uses the engine selected by `autocab init`. Use
 `--engine` to override it for one session. Model setup failure stops before the
 saved engine is changed.
+
+For a session that is already archived, apply the configured engine separately:
+
+```bash
+autocab record redact <session-id>
+```
 
 Advanced capture controls remain available through `wfrec`, including source
 toggles, remote SSH capture, Slurm collection, transcript attachment, and
@@ -112,7 +118,7 @@ validation. It does not publish, push, or open a pull request.
 | `~/.autocab/hooks/` | Materialized shell capture hooks |
 
 Existing `~/.wfrec/sessions/` remain visible for compatibility. Run
-`autocab migrate --from-wfrec` to copy them into AutoCAB storage. Migration
+`autocab migrate --legacy` to copy them into AutoCAB storage. Migration
 verifies copied files and does not delete the original sessions.
 
 Each forge run contains:
