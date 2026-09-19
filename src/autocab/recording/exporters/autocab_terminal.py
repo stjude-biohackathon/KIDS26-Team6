@@ -1,16 +1,8 @@
-"""Export to the strict terminal-log format ``autocab.terminal_logs`` parses.
+"""Write the terminal log format read by ``autocab.terminal_logs``.
 
-That parser is unforgiving, and the constraints are not obvious:
-
-* ``METADATA_PATTERN`` accepts only ``# key: value``.
-* ``TIMESTAMP_PATTERN`` accepts only ``YYYY-MM-DDTHH:MM:SS <command>`` -- no
-  timezone suffix, no sub-second precision.
-* **Any other line raises ``ValueError``** and aborts the whole import.
-
-So a command containing a newline, or an empty command, cannot be emitted at
-all, and timestamps must be truncated to whole seconds. A round-trip test in
-``tests/test_recording_exporters.py`` feeds this file's output back through
-``parse_terminal_session`` to prove conformance rather than assuming it.
+Metadata uses ``# key: value``. Commands use whole-second ISO timestamps and
+one line per command. The exporter flattens newlines and skips empty commands
+so the parser can read every record.
 """
 
 from __future__ import annotations

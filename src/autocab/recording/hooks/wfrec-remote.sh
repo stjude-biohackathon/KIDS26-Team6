@@ -1,15 +1,8 @@
-# wfrec remote hook -- strict POSIX sh, sourced from the remote ~/.bashrc and
-# ~/.profile by `wfrec ssh`.
+# AutoCAB remote hook for POSIX sh and Bash.
 #
-# This file must run under dash, ksh, BusyBox sh and bash 4.2 on a RHEL login
-# node, so it uses none of the following: arrays, ${var//x/y}, [[ ]],
-# EPOCHREALTIME, or $'...'. Duration therefore has whole-second resolution,
-# which the record reports honestly via its own precision marker.
-#
-# The spool lives under $HOME deliberately -- the opposite of the local case.
-# HPC login nodes are load-balanced, so /tmp on login2 is invisible from
-# login1, whereas $HOME is shared. Multi-writer O_APPEND over NFS is unsafe,
-# but this design has exactly one writer per file, which makes it safe.
+# It supports dash, ksh, BusyBox sh, and Bash 4.2. Remote spools use shared home
+# storage because HPC login nodes can change between commands. Each process
+# writes its own spool file.
 
 [ -n "${__WFREC_LOADED:-}" ] && return 0
 __WFREC_LOADED=1

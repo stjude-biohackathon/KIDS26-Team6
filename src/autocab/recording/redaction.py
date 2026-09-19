@@ -1,14 +1,7 @@
-"""Redaction bridge into AutoCAB's existing privacy layer.
+"""Connect recording events to AutoCAB's shared PHI redaction rules.
 
-``autocab.framework.components.SensitiveDataRedactor`` already covers email,
-``SJ\\d{4,8}``, MRN and DOB patterns, and ``PipelineConfig.redact_deny_terms``
-already carries the deny list. The recorder reuses it rather than growing a
-second, divergent set of patterns -- two redactors in one repo is how a term
-ends up scrubbed on one path and leaked on another.
-
-The import is guarded so ``wfrec`` stays usable (and testable) on its own; if
-AutoCAB is not importable the recorder records *that fact* on the timeline
-instead of silently capturing unredacted text.
+The recorder reuses the pipeline detector and deny list. If the shared detector
+is unavailable, the timeline records that state for review.
 """
 
 from __future__ import annotations

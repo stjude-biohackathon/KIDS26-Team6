@@ -1,24 +1,8 @@
-"""THE de-identification taxonomy.
+"""Define the shared de-identification labels and HIPAA mapping.
 
-One taxonomy, one place. This module feeds *four* consumers and they must never
-drift apart:
-
-1. the regex tier (``engines/regex_rules.py``) -- which label each pattern emits;
-2. the zero-shot model prompt (``engines/gliner_onnx.py``) -- the ``description``
-   fields below are the literal label strings handed to GLiNER;
-3. the LLM structured-output schema (``engines/llm_findings.py``) -- ``DeidLabel``
-   is the enum in the JSON schema, so a model physically cannot return a label
-   we do not know;
-4. the corpus validator (``eval/corpus.py``) -- a fixture carrying an unknown
-   label is a test failure, not a silent skip.
-
-Adding a label here is therefore the whole change; there is no second list to
-update. That is the point.
-
-HIPAA mapping uses the Safe Harbor identifier numbers (45 CFR 164.514(b)(2)).
-``hipaa=None`` means "not a Safe Harbor identifier" -- the deny-term rule is a
-site policy control, not a HIPAA one, and saying so keeps the compliance rollup
-in ``docs/deid-evaluation.md`` honest.
+Regex rules, model prompts, structured findings, and corpus checks use this
+list. Add each new label here. ``hipaa=None`` marks a site rule outside the
+HIPAA Safe Harbor identifier list.
 """
 
 from __future__ import annotations

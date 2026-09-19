@@ -1,24 +1,8 @@
-"""``~/.autocab/config.toml`` -- standing user intent, and nothing secret.
+"""Load de-identification choices from ``~/.autocab/config.toml``.
 
-Gate layer 3 lives here: ``[deid.llm] enabled``. It is deliberately in a
-*different file* from the org acknowledgement, because one person editing one
-file must never be sufficient to arm network egress.
-
-**The loader hard-rejects credentials.** Not a warning -- it refuses to run the
-LLM path at all. The schema has no key field, and a config that carries one is
-treated as a configuration error rather than as a convenience:
-
-* a key *named* ``api_key`` / ``token`` / ``secret`` / ``password`` anywhere in
-  the tree, at any depth;
-* a string *value* matching a known credential shape, wherever it appears.
-
-The **name** check is the real catch-all. The shape checks are belt and braces
-for a key pasted under an innocuous name like ``endpoint_suffix``.
-
-There is deliberately **no dotenv dependency and no ``.env`` autoload from the
-working directory.** That is exactly how a key ends up inside a session folder
-when somebody records while sitting in a repository -- and session folders are
-designed to be zipped and handed to a teammate.
+Provider policy and user choices stay in separate files. The loader rejects
+credential names and credential-shaped values. Provider tools supply secrets
+through their own credential sources.
 """
 
 from __future__ import annotations

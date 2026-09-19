@@ -1,16 +1,8 @@
-"""Remote capture over the user's own ssh.
+"""Capture remote shell and scheduler activity through the user's ``ssh``.
 
-Design choice that matters most here: **wrap the user's ``ssh`` binary, do not
-reimplement SSH.** ``paramiko`` does not honour ``~/.ssh/config`` ``Match``/
-``Include`` semantics, and its keyboard-interactive handling for Duo/2FA is
-manual work -- both of which are disqualifying on hospital HPC. Shelling out to
-``ssh`` means ProxyJump, GSSAPI, ControlMaster, agent forwarding and 2FA all
-behave exactly as the analyst already expects.
-
-The remote spool deliberately lives under ``$HOME``, the opposite of the local
-choice. HPC login nodes are load-balanced, so ``/tmp`` on ``login2`` is
-invisible from ``login1``, while ``$HOME`` is shared. Multi-writer ``O_APPEND``
-over NFS would be unsafe, but there is exactly one writer per spool file.
+This preserves SSH configuration, proxies, authentication, and two-factor
+prompts. Remote spool files use shared home storage and one writer per file,
+which supports load-balanced HPC login nodes.
 """
 
 from __future__ import annotations

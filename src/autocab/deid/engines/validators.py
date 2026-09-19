@@ -1,23 +1,8 @@
-"""Checksum and range validators, adopted from Presidio's recognizers.
+"""Score matched identifiers with checksum and range tests.
 
-Presidio (MIT, Microsoft) is declined as a *framework* -- see the packaging
-notes -- but its validators are the cheapest precision win available, and the
-tier they replace had no validation at all. These are reimplementations of the
-same public algorithms, not copied code.
-
-**Validators raise the score; they never reject.** That distinction is
-deliberate and it is the opposite of what Presidio does by default:
-
-* a mistyped SSN is still PHI, and the eval corpus is built entirely from
-  *reserved invalid* SSNs (``000-``, ``666-``, ``9xx-``) precisely so no fixture
-  can collide with a living person. A validator that rejected those ranges would
-  drive the measured ``SSN`` recall to zero while the real-world behaviour was
-  unchanged -- a benchmark measuring the benchmark;
-* a Luhn-failing card number in a screenshot is still a disclosure.
-
-So a validator's output lands in ``Span.score`` and in the audit, where it
-informs a reviewer, and precision is controlled where it belongs: by the
-over-redaction ceiling in ``thresholds.json``.
+Validators increase confidence for plausible values. They keep low-confidence
+matches because invalid or mistyped identifiers can still contain PHI. The
+over-redaction limit in ``thresholds.json`` controls precision.
 """
 
 from __future__ import annotations
