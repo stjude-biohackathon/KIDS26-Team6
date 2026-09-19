@@ -67,7 +67,7 @@ rationale and architecture.
 
 ## Install & Setup
 
-### Install AutoCAB
+### Install AutoCAB via uv
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then
 create a local environment and install the project with its test dependencies:
@@ -82,6 +82,24 @@ AutoCAB requires Python 3.10 or newer. Its Python packages are installed from
 `pyproject.toml`. Live shell and Codex capture use DevSQL and Atuin, which are
 installed separately from the Python environment. Use the activity-tracking
 skill below to manage their setup and removal.
+
+Initialize the local workspace after installation:
+
+```bash
+autocab init
+```
+
+In a terminal, setup asks for the analyst name, PHI redaction engine, shell
+hooks, legacy session migration, and a readiness check. Each action is
+optional. For non-interactive setup, pass only the actions you want:
+
+```bash
+autocab init --no-interactive --analyst "Analyst name" --redaction regex --check
+```
+
+New configuration, sessions, forge runs, hooks, and model weights live under
+`~/.autocab/`. Existing `~/.wfrec/sessions/` remain discoverable until they are
+copied with `autocab migrate --from-wfrec`.
 
 #### Install without uv (pip / venv)
 
@@ -131,7 +149,7 @@ background and open the web UI from your **laptop browser** (do not use
    exports if you set them):
 
    ```bash
-   nohup wfrec daemon >> ~/.wfrec/daemon.log 2>&1 &
+   nohup wfrec daemon >> ~/.autocab/daemon.log 2>&1 &
    ```
 
    Or in `tmux`/`screen` without `nohup`: `wfrec daemon` in the foreground.
@@ -164,26 +182,34 @@ notes, and troubleshooting.
 
 Pattern-based PHI redaction works by default and requires no setup.
 
-For additional name and location detection, download and verify the local
-GLiNER model:
+For additional contextual detection, select and download a local model during
+setup:
 
 ```bash
-wfrec deid fetch
-wfrec deid verify
+autocab init --redaction gliner --fetch-model
 ```
 
-The model is stored in `~/.wfrec/models/` or `$WFREC_HOME/models/`. AutoCAB
-does not download it during installation.
-
-Select GLiNER when sealing a session:
+GLiNER2 PII scored slightly better than GLiNER on the committed synthetic
+evaluation. It is larger and needs its optional runtime:
 
 ```bash
-wfrec seal <session-id> --engine gliner
+uv pip install -e '.[deid-gliner2]'
+autocab init --redaction gliner2-pii --fetch-model
 ```
 
-Pattern matching still runs before GLiNER. See
-[`docs/deid-evaluation.md`](docs/deid-evaluation.md) for benchmark results and
-limitations.
+Models are stored in `~/.autocab/models/` or `$AUTOCAB_HOME/models/`. AutoCAB
+does not download weights during package installation. Pattern matching still
+runs before either model.
+
+The configured engine is used when a session is finished and sealed:
+
+```bash
+autocab record finish <session-id> --seal
+```
+
+You can override it for one session with `--engine`. See
+[`docs/deid-evaluation.md`](docs/deid-evaluation.md) for the measured synthetic
+results and their limits.
 
 ### Set Up Activity Tracking with Codex or Claude
 

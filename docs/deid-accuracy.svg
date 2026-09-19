@@ -25,9 +25,9 @@
   <rect x="640" y="39" width="14" height="14" fill="#10b981"/>
   <text class="legend" x="660" y="51">Regex + GLiNER</text>
   <rect x="40" y="61" width="14" height="14" fill="#8b5cf6"/>
-  <text class="legend" x="60" y="73">GLiNER2 PII only (experimental)</text>
+  <text class="legend" x="60" y="73">GLiNER2 PII only (diagnostic)</text>
   <rect x="340" y="61" width="14" height="14" fill="#db2777"/>
-  <text class="legend" x="360" y="73">Regex + GLiNER2 PII (experimental)</text>
+  <text class="legend" x="360" y="73">Regex + GLiNER2 PII</text>
   <text class="label" x="45" y="134">Safe records</text>
   <rect x="250" y="116" width="470.9" height="22" fill="#2563eb" rx="3"/>
   <text class="value" x="727.9" y="132">0.759</text>

@@ -6,8 +6,11 @@ import json
 from pathlib import Path
 
 from click.testing import CliRunner
+import pytest
 
+from autocab.deid.models import WeightStatus
 from autocab.orchestrator import run_demo
+import autocab.unified_cli as unified_cli
 from autocab.unified_cli import cli
 from wfrec.session import SessionStore
 
@@ -96,6 +99,157 @@ def test_init_reports_an_unwritable_home_as_a_cli_error(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "Could not initialize AutoCAB" in result.output
+
+
+def test_init_guides_setup_when_interactive(tmp_path: Path) -> None:
+    home = tmp_path / "autocab"
+    environment = {
+        "AUTOCAB_HOME": str(home),
+        "WFREC_HOME": str(home),
+        "WFREC_RUN": str(tmp_path / "run"),
+    }
+
+    result = CliRunner().invoke(
+        cli,
+        ["init", "--interactive"],
+        input="analyst-guide\nregex\nn\nn\n",
+        env=environment,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Analyst: analyst-guide" in result.output
+    assert "PHI redaction: regex" in result.output
+    assert "Install shell capture hooks?" in result.output
+    assert "Run readiness checks?" in result.output
+
+
+def test_init_rejects_interactive_json_output(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        cli,
+        ["init", "--interactive", "--json"],
+        env={"AUTOCAB_HOME": str(tmp_path / "autocab")},
+    )
+
+    assert result.exit_code == 2
+    assert "Use --no-interactive with --json" in result.output
+
+
+@pytest.mark.parametrize("engine", ["gliner", "gliner2-pii"])
+def test_init_configures_a_verified_model_engine(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    engine: str,
+) -> None:
+    home = tmp_path / "autocab"
+    config = home / "config.toml"
+    config.parent.mkdir(parents=True)
+    config.write_text(
+        '[deid]\nengine = "regex"\n\n[deid.llm]\nenabled = false\n',
+        encoding="utf-8",
+    )
+    status = WeightStatus(home / "models" / engine, True, True)
+
+    def prepared(selected: str, *, fetch: bool) -> WeightStatus:
+        assert selected == engine
+        assert fetch is True
+        return status
+
+    monkeypatch.setattr(unified_cli, "prepare_model", prepared)
+    result = CliRunner().invoke(
+        cli,
+        ["init", "--redaction", engine, "--fetch-model", "--json"],
+        env={"AUTOCAB_HOME": str(home), "WFREC_RUN": str(tmp_path / "run")},
+    )
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["redaction_engine"] == engine
+    saved = config.read_text(encoding="utf-8")
+    assert f'engine = "{engine}"' in saved
+    assert "[deid.llm]\nenabled = false" in saved
+
+
+def test_failed_model_setup_keeps_the_previous_configuration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    home = tmp_path / "autocab"
+    config = home / "config.toml"
+    config.parent.mkdir(parents=True)
+    original = '[deid]\nengine = "regex"\n'
+    config.write_text(original, encoding="utf-8")
+
+    def fail_model(_engine: str, *, fetch: bool) -> WeightStatus:
+        assert fetch is True
+        raise unified_cli.ModelWeightsError("download failed")
+
+    monkeypatch.setattr(unified_cli, "prepare_model", fail_model)
+    result = CliRunner().invoke(
+        cli,
+        ["init", "--redaction", "gliner", "--fetch-model"],
+        env={"AUTOCAB_HOME": str(home), "WFREC_RUN": str(tmp_path / "run")},
+    )
+
+    assert result.exit_code == 1
+    assert "download failed" in result.output
+    assert config.read_text(encoding="utf-8") == original
+
+
+def test_init_runs_explicit_setup_actions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def hooks() -> list[dict[str, str]]:
+        return [{"shell": "zsh", "status": "installed"}]
+
+    def migration() -> dict[str, list[str]]:
+        return {"copied": ["session-1"], "skipped": []}
+
+    def readiness() -> dict[str, object]:
+        return {
+            "available_sources": 4,
+            "total_sources": 5,
+            "sources": {},
+            "redaction_engine": "regex",
+            "redaction_ready": True,
+            "warnings": [],
+        }
+
+    monkeypatch.setattr(unified_cli, "install_shell_hooks", hooks)
+    monkeypatch.setattr(unified_cli, "migrate_legacy_sessions", migration)
+    monkeypatch.setattr(unified_cli, "readiness_summary", readiness)
+
+    result = CliRunner().invoke(
+        cli,
+        ["init", "--install-hooks", "--migrate-wfrec", "--check", "--json"],
+        env={
+            "AUTOCAB_HOME": str(tmp_path / "autocab"),
+            "WFREC_RUN": str(tmp_path / "run"),
+        },
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["hooks"][0]["status"] == "installed"
+    assert payload["migration"]["copied"] == ["session-1"]
+    assert payload["readiness"]["available_sources"] == 4
+
+
+def test_record_finish_uses_the_configured_redaction_engine(
+    wfrec_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session, _created = SessionStore().start(title="Configured seal", analyst="analyst")
+    (wfrec_home / "config.toml").write_text(
+        '[deid]\nengine = "gliner2-pii"\n',
+        encoding="utf-8",
+    )
+    calls: list[list[str]] = []
+    monkeypatch.setattr(unified_cli, "_run_wfrec", calls.append)
+
+    result = CliRunner().invoke(cli, ["record", "finish", session.session_id, "--seal"])
+
+    assert result.exit_code == 0, result.output
+    assert calls[-1] == ["seal", session.session_id, "--engine", "gliner2-pii"]
 
 
 def test_demo_does_not_approve_by_default(tmp_path: Path) -> None:

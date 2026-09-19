@@ -373,8 +373,8 @@ process ends. **No reverse map is produced, ever**; `deid/audit.jsonl` records
 labels, offsets and a `value_id` integer, never the matched text and never a
 digest of it (a six-digit MRN brute-forces against a bare SHA-256 in
 milliseconds). This pass is deterministic and local. It uses patterns by
-default. To add the local GLiNER model for contextual names and locations,
-install its pinned files once and select it explicitly:
+default. To add the local GLiNER model, install its pinned files once and
+select it explicitly:
 
 ```bash
 wfrec deid fetch
@@ -382,13 +382,12 @@ wfrec deid verify
 wfrec seal <id> --engine gliner
 ```
 
-The model lives under `~/.wfrec/models/` or `$WFREC_HOME/models/`. Package
+The model lives under `~/.autocab/models/` or `$AUTOCAB_HOME/models/`. Package
 installation, the dashboard, and ordinary regex sealing never download model
 data. Use `wfrec deid fetch --bundle gliner-model.zip` followed by
 `wfrec deid load gliner-model.zip` for an offline computer.
 
-An experimental PII-tuned GLiNER2 model can be compared in the evaluation
-harness without making it a sealing option:
+A PII-tuned GLiNER2 model is also available as a local sealing option:
 
 ```bash
 uv sync --extra deid-gliner2
@@ -396,18 +395,18 @@ wfrec deid fetch --model gliner2-pii
 autocab deid eval --engine gliner2-pii-only
 autocab deid eval --engine gliner2-pii
 autocab deid benchmark --engine gliner2-pii
+wfrec seal <id> --engine gliner2-pii
 ```
 
-Its pinned files live under the same `~/.wfrec/models/` root. This model is not
-used by capture, export, or `wfrec seal` while its local results are under
-review.
+Its pinned files live under the same `~/.autocab/models/` root. The production
+seal keeps the pattern-matching floor and adds GLiNER2 findings.
 
 The model architecture is from Zaratiana U, Tomeh N, Holat P, and Charnois T,
 “GLiNER: Generalist Model for Named Entity Recognition using Bidirectional
 Transformer,” arXiv:2311.08526 (2023),
 <https://arxiv.org/abs/2311.08526>.
 
-The experimental PII model is from Zaratiana U, Lewis A, and Hurn-Maloney G,
+The PII model is from Zaratiana U, Lewis A, and Hurn-Maloney G,
 “GLiNER2-PII: A Multilingual Model for Personally Identifiable Information
 Extraction,” arXiv:2605.09973 (2026), <https://arxiv.org/abs/2605.09973>.
 

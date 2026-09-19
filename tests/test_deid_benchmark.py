@@ -185,7 +185,9 @@ def test_gliner_only_loads_gliner_but_is_not_a_production_choice(
     assert "gliner-only" not in ENGINE_CHOICES
 
 
-def test_gliner2_modes_are_evaluation_only(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_gliner2_supports_production_and_model_only_evaluation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     detector = _NameDetector()
     loaded: list[str] = []
 
@@ -198,7 +200,7 @@ def test_gliner2_modes_are_evaluation_only(monkeypatch: pytest.MonkeyPatch) -> N
     assert report.build_detectors("gliner2-pii-only") == [detector]
     assert report.build_detectors("gliner2-pii") == [detector]
     assert loaded == ["gliner2-pii", "gliner2-pii"]
-    assert "gliner2-pii" not in ENGINE_CHOICES
+    assert "gliner2-pii" in ENGINE_CHOICES
 
 
 def test_benchmark_cli_accepts_three_engines_and_output_paths(tmp_path: Path) -> None:

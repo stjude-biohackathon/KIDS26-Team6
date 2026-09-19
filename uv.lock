@@ -101,6 +101,7 @@ dependencies = [
     { name = "rapidocr-onnxruntime" },
     { name = "rich" },
     { name = "tokenizers" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "uvicorn" },
     { name = "watchdog" },
 ]
@@ -176,6 +177,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16.8" },
     { name = "spacy", marker = "extra == 'deid-presidio'", specifier = ">=3.7" },
     { name = "tokenizers", specifier = ">=0.20" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
     { name = "torch", marker = "extra == 'deid-torch'", specifier = ">=2.2" },
     { name = "transformers", marker = "extra == 'deid-torch'", specifier = ">=4.40" },
     { name = "uvicorn", specifier = ">=0.27" },

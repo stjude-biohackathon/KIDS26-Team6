@@ -9,7 +9,17 @@ from typing import Any
 
 import click
 
-from autocab.initialization import initialize
+from autocab.deid.config import ConfigRejected, load as load_deid_config
+from autocab.deid.models import ModelWeightsError, verify_weights
+from autocab.initialization import (
+    REDACTION_ENGINES,
+    initialize,
+    install_shell_hooks,
+    legacy_session_count,
+    migrate_legacy_sessions,
+    prepare_model,
+    readiness_summary,
+)
 from autocab.migration import migrate_wfrec_sessions
 from autocab.orchestrator import run_pipeline
 from autocab.terminal_logs import convert_terminal_log, write_trace_json
@@ -17,6 +27,7 @@ from autocab.workflow import ForgeWorkflow, RunStore, WorkflowError
 from wfrec.recorder import Recorder
 from wfrec.seal import SealError
 from wfrec.session import SessionNotFound, SessionStore
+from wfrec.state import resolved_default_analyst
 
 
 def _emit(payload: Any, *, as_json: bool = False) -> None:
@@ -47,20 +58,130 @@ def cli() -> None:
 
 @cli.command("init")
 @click.option("--analyst", default="", help="Default analyst name or identifier.")
+@click.option(
+    "--redaction",
+    "redaction_engine",
+    type=click.Choice(REDACTION_ENGINES),
+    help="Default session redaction engine.",
+)
+@click.option("--fetch-model", is_flag=True, help="Download and verify selected model weights.")
+@click.option("--install-hooks", is_flag=True, help="Install auto-detected shell capture hooks.")
+@click.option("--migrate-wfrec", is_flag=True, help="Copy legacy ~/.wfrec sessions.")
+@click.option("--check", "run_checks", is_flag=True, help="Run recorder readiness checks.")
+@click.option(
+    "--interactive/--no-interactive",
+    default=None,
+    help="Prompt for setup choices. Defaults to prompts in an interactive terminal.",
+)
 @click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
-def init_command(analyst: str, as_json: bool) -> None:
-    """Create a local AutoCAB workspace and safe default configuration."""
+def init_command(
+    analyst: str,
+    redaction_engine: str | None,
+    fetch_model: bool,
+    install_hooks: bool,
+    migrate_wfrec: bool,
+    run_checks: bool,
+    interactive: bool | None,
+    as_json: bool,
+) -> None:
+    """Create and optionally configure a local AutoCAB workspace."""
 
     try:
-        result = initialize(analyst=analyst)
-    except OSError as exc:
+        current_engine = load_deid_config().engine
+        current_engine = current_engine if current_engine in REDACTION_ENGINES else "regex"
+        explicit_setup = any(
+            (
+                analyst,
+                redaction_engine,
+                fetch_model,
+                install_hooks,
+                migrate_wfrec,
+                run_checks,
+            )
+        )
+        guided = (
+            interactive
+            if interactive is not None
+            else sys.stdin.isatty() and not explicit_setup and not as_json
+        )
+        if as_json and guided:
+            raise click.UsageError("Use --no-interactive with --json.")
+
+        if guided:
+            analyst = click.prompt("Analyst name", default=analyst or resolved_default_analyst())
+            redaction_engine = click.prompt(
+                "PHI redaction",
+                type=click.Choice(REDACTION_ENGINES),
+                default=current_engine,
+                show_choices=True,
+            )
+            if redaction_engine != "regex" and not verify_weights(model=redaction_engine).valid:
+                model_name = "GLiNER2 PII" if redaction_engine == "gliner2-pii" else "GLiNER"
+                model_size = (
+                    "about 1.25 GB" if redaction_engine == "gliner2-pii" else "about 192 MB"
+                )
+                fetch_model = click.confirm(
+                    f"Download and verify the local {model_name} model ({model_size})?",
+                    default=False,
+                )
+                if not fetch_model:
+                    click.echo(f"Keeping regex redaction because {model_name} is not installed.")
+                    redaction_engine = "regex"
+            install_hooks = click.confirm(
+                "Install shell capture hooks? This updates your shell profile.",
+                default=False,
+            )
+            if legacy_session_count():
+                migrate_wfrec = click.confirm(
+                    "Copy legacy .wfrec sessions into .autocab?",
+                    default=False,
+                )
+            run_checks = click.confirm("Run readiness checks?", default=True)
+
+        selected_engine = redaction_engine or current_engine
+        model_status = (
+            prepare_model(selected_engine, fetch=fetch_model)
+            if redaction_engine or fetch_model
+            else None
+        )
+        result = initialize(analyst=analyst, redaction_engine=redaction_engine)
+        hooks = install_shell_hooks() if install_hooks else []
+        migration = migrate_legacy_sessions() if migrate_wfrec else None
+        readiness = readiness_summary() if run_checks else None
+    except click.ClickException:
+        raise
+    except (ConfigRejected, ModelWeightsError, OSError, ValueError) as exc:
         raise click.ClickException(f"Could not initialize AutoCAB: {exc}") from exc
+
+    payload = result.to_dict()
+    payload.update(
+        {
+            "model": model_status.to_dict() if model_status else None,
+            "hooks": hooks,
+            "migration": migration,
+            "readiness": readiness,
+        }
+    )
     if as_json:
-        _emit(result.to_dict(), as_json=True)
+        _emit(payload, as_json=True)
         return
     click.echo(f"AutoCAB home: {result.home}")
     click.echo(f"Configuration: {result.config}")
     click.echo(f"Analyst: {result.analyst}")
+    click.echo(f"PHI redaction: {result.redaction_engine}")
+    if model_status:
+        click.echo(f"Redaction model: verified at {model_status.path}")
+    if hooks:
+        click.echo(f"Shell hooks: {len(hooks)} configuration change(s)")
+    if migration:
+        click.echo(f"Migrated sessions: {len(migration['copied'])}")
+    if readiness:
+        click.echo(
+            "Readiness: "
+            f"{readiness['available_sources']}/{readiness['total_sources']} capture sources available"
+        )
+        click.echo(f"Redaction ready: {'yes' if readiness['redaction_ready'] else 'no'}")
+        click.echo(f"Readiness warnings: {len(readiness['warnings'])}")
     if result.legacy_sessions:
         click.echo(f"Legacy wfrec sessions found: {result.legacy_sessions}")
     click.echo("Next:")
@@ -152,14 +273,25 @@ def record_resume(session_id: str | None) -> None:
 @record.command("finish")
 @click.argument("session_id", required=False)
 @click.option("--seal", is_flag=True, help="Apply PHI redaction and seal after stopping.")
-@click.option("--engine", default="regex", help="PHI detector tier used when sealing.")
-def record_finish(session_id: str | None, seal: bool, engine: str) -> None:
+@click.option(
+    "--engine",
+    type=click.Choice(REDACTION_ENGINES),
+    help="PHI detector tier. Defaults to the engine selected during init.",
+)
+def record_finish(session_id: str | None, seal: bool, engine: str | None) -> None:
     """Stop a session permanently and optionally seal it."""
 
     resolved = SessionStore().resolve(session_id)
     _run_wfrec(["stop", resolved.session_id])
     if seal:
-        _run_wfrec(["seal", resolved.session_id, "--engine", engine])
+        configured_engine = load_deid_config().engine
+        selected_engine = engine or configured_engine
+        if selected_engine not in REDACTION_ENGINES:
+            raise click.ClickException(
+                f"Configured redaction engine {selected_engine!r} cannot seal sessions. "
+                f"Choose one of: {', '.join(REDACTION_ENGINES)}."
+            )
+        _run_wfrec(["seal", resolved.session_id, "--engine", selected_engine])
 
 
 @cli.command("forge")

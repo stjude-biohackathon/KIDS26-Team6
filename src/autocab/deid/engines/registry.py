@@ -18,8 +18,16 @@ from typing import Callable, Protocol, cast
 from ..spans import Detector, DetectorInfo
 from .base import EngineUnavailable
 
-#: ``--engine`` choices. ``gliner+llm`` is a composition, resolved by the seal.
-ENGINE_CHOICES: tuple[str, ...] = ("regex", "gliner", "gliner+llm", "llm", "torch", "presidio")
+#: ``--engine`` choices. Composite names are resolved by the seal.
+ENGINE_CHOICES: tuple[str, ...] = (
+    "regex",
+    "gliner",
+    "gliner2-pii",
+    "gliner+llm",
+    "llm",
+    "torch",
+    "presidio",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,7 +55,7 @@ ENTRIES: dict[str, EngineEntry] = {
         "autocab.deid.engines.gliner2_pii",
         "Gliner2Pii",
         "deid-gliner2",
-        "Experimental PII-tuned GLiNER2 model for offline evaluation.",
+        "PII-tuned GLiNER2 model for local session redaction.",
     ),
     "torch": EngineEntry(
         "torch",

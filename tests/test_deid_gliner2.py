@@ -1,4 +1,4 @@
-"""The experimental GLiNER2 adapter stays local and preserves exact offsets."""
+"""The GLiNER2 adapter stays local and preserves exact offsets."""
 
 from __future__ import annotations
 

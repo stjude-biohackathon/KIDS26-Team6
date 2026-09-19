@@ -39,6 +39,7 @@ dependencies = [
   "psutil>=5.9",                   # process names for window attribution
   "rich>=15.0",                    # readable terminal status tables
   "click>=8.1",                    # unified, nested AutoCAB command groups
+  "tomli>=2; python_version < '3.11'",  # config.toml support on minimum Python
   # Markdown event details are rendered server-side and sanitized before the
   # browser receives them. markdown-it-py is already pulled in by Rich, but it
   # remains direct here because wfrec imports and relies on its public API.

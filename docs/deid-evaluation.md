@@ -8,7 +8,7 @@ Corpus `ccfbf64eb85ed302` · 316 records · 572 gold spans
 
 ## Headline comparison
 
-| Metric | Regex | GLiNER only (diagnostic) | Regex + GLiNER | GLiNER2 PII only (experimental) | Regex + GLiNER2 PII (experimental) |
+| Metric | Regex | GLiNER only (diagnostic) | Regex + GLiNER | GLiNER2 PII only (diagnostic) | Regex + GLiNER2 PII |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Safe records | 0.7595 | 0.1994 | 0.9557 | 0.1867 | 0.9747 |
 | Leaks per 1,000 records | 240.51 | 1458.86 | 44.30 | 1544.30 | 25.32 |
@@ -19,12 +19,12 @@ Corpus `ccfbf64eb85ed302` · 316 records · 572 gold spans
 Full-coverage recall counts a gold span only when every character is rewritten. Partial overlap remains a leak. The gated result uses the easy and medium tiers.
 `Regex + GLiNER` is additive: the regex rules always run, then GLiNER adds contextual findings.
 `GLiNER only` is a diagnostic evaluation mode. It is not available for production capture or sealing.
-The GLiNER2 PII modes are experimental evaluation modes. They do not change the production sealing choices.
+`Regex + GLiNER2 PII` is a supported local sealing choice. The model-only mode is diagnostic and does not bypass the production regex floor.
 The tested GLiNER2 PII configuration requests only `person` at a 0.97 threshold. A local prompt and threshold sweep found that broader PII prompts increased false positives without improving the additive redaction result.
 
 ## Recall by label
 
-| Label | Regex | GLiNER only (diagnostic) | Regex + GLiNER | GLiNER2 PII only (experimental) | Regex + GLiNER2 PII (experimental) |
+| Label | Regex | GLiNER only (diagnostic) | Regex + GLiNER | GLiNER2 PII only (diagnostic) | Regex + GLiNER2 PII |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | `ACCESSION` | 1.0000 | 0.0000 | 1.0000 | 0.0000 | 1.0000 |
 | `ACCOUNT` | 1.0000 | 0.0000 | 1.0000 | 0.0000 | 1.0000 |
@@ -48,7 +48,7 @@ The tested GLiNER2 PII configuration requests only `person` at a 0.97 threshold.
 
 ## Recall by channel
 
-| Channel | Regex | GLiNER only (diagnostic) | Regex + GLiNER | GLiNER2 PII only (experimental) | Regex + GLiNER2 PII (experimental) |
+| Channel | Regex | GLiNER only (diagnostic) | Regex + GLiNER | GLiNER2 PII only (diagnostic) | Regex + GLiNER2 PII |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | `agents` | 0.8571 | 0.1071 | 0.9286 | 0.0714 | 0.9286 |
 | `diffs` | 0.8667 | 0.1167 | 0.9833 | 0.1500 | 1.0000 |
@@ -60,7 +60,7 @@ The tested GLiNER2 PII configuration requests only `person` at a 0.97 threshold.
 
 ## Remaining full-coverage misses
 
-| Label | Regex | GLiNER only (diagnostic) | Regex + GLiNER | GLiNER2 PII only (experimental) | Regex + GLiNER2 PII (experimental) |
+| Label | Regex | GLiNER only (diagnostic) | Regex + GLiNER | GLiNER2 PII only (diagnostic) | Regex + GLiNER2 PII |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | `ACCESSION` | 0 | 8 | 0 | 8 | 0 |
 | `ACCOUNT` | 0 | 4 | 0 | 4 | 0 |

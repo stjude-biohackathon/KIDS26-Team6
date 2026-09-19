@@ -6,7 +6,7 @@ prompt. So this module runs rarely and must be conservative.
 
 Two deliberate choices about rc files:
 
-* The hook body is written to ``~/.wfrec/hooks/`` and the rc file only gains a
+* The hook body is written to ``~/.autocab/hooks/`` and the rc file only gains a
   two-line, marker-delimited ``source`` guard. Appending hundreds of lines of
   someone else's code into a personal ``.zshrc`` is rude and unreviewable.
 * A timestamped backup is taken before any edit. Modifying shell startup files
@@ -126,7 +126,7 @@ def detect_shells() -> list[str]:
 
 
 def materialize_hook(target: ShellTarget) -> Path:
-    """Write the hook body into ``~/.wfrec/hooks``, substituting the runtime dir.
+    """Write the hook body into ``~/.autocab/hooks``, substituting the runtime dir.
 
     The runtime directory is resolved once here, in Python, and baked into the
     hook. Re-deriving ``XDG_RUNTIME_DIR``/``TMPDIR``/``LOCALAPPDATA`` precedence

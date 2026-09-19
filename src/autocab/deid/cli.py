@@ -19,8 +19,8 @@ from .eval import corpus as corpus_mod
 from .eval import benchmark, comparison, generate, report
 from .eval.generate import DEFAULT_SEED, DIFFICULTIES
 
-EXPERIMENTAL_ENGINE_CHOICES = ("gliner2-pii-only", "gliner2-pii")
-EVAL_ENGINE_CHOICES = (*ENGINE_CHOICES, "gliner-only", *EXPERIMENTAL_ENGINE_CHOICES)
+DIAGNOSTIC_ENGINE_CHOICES = ("gliner-only", "gliner2-pii-only")
+EVAL_ENGINE_CHOICES = (*ENGINE_CHOICES, *DIAGNOSTIC_ENGINE_CHOICES)
 
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
@@ -86,7 +86,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
     )
     bench.add_argument(
         "--engine",
-        choices=("regex", "gliner-only", "gliner", *EXPERIMENTAL_ENGINE_CHOICES),
+        choices=("regex", "gliner-only", "gliner", "gliner2-pii-only", "gliner2-pii"),
         action="append",
         dest="engines",
         help="Engine to measure. Repeatable. Default: regex, gliner-only, and gliner.",
