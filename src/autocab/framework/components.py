@@ -23,7 +23,7 @@ from autocab.models import (
     TraceCluster,
     WorkflowTrace,
 )
-from pr_generator import export_proposal
+from autocab.forge.exporter import export_proposal
 
 STOP_WORDS = {
     "a",

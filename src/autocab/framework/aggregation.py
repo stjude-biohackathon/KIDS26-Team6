@@ -1,4 +1,4 @@
-"""Compatibility wrappers for workflow aggregation and proposal generation."""
+"""Public helpers for workflow aggregation and proposal generation."""
 
 from __future__ import annotations
 
