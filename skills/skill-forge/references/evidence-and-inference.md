@@ -51,6 +51,12 @@ Assign each material fact an evidence ID and record:
 Do not raise confidence merely because several records repeat text copied from
 the same source. Track source independence where it matters.
 
+Completed tool calls and verified file changes can support observed workflow
+steps. User messages describe intent, while assistant messages may contain
+useful context. Neither message type proves that a command or edit happened.
+Keep agent prose linked as evidence, but confirm actions with tool, shell, file,
+or reviewer evidence before making them supported instructions.
+
 ## Source ingestion
 
 ### Structured logs
