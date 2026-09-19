@@ -59,6 +59,9 @@ def test_agent_diagnostics_only_probe_devsql_schema() -> None:
     status = _agents_status(_metadata_client(queries))
 
     assert status["detected"]["devsql-codex"] is True
+    assert status["detected"]["devsql-codex-tools"] is True
     assert "devsql-codex" in status["backend"]
-    assert len(queries) == 1
+    assert "devsql-codex-tools" in status["backend"]
+    assert len(queries) == 2
     assert "JOIN codex_threads AS thread" in queries[0]
+    assert "codex_tool_executions" in queries[1]
