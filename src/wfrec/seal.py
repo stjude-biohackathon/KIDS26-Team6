@@ -815,6 +815,21 @@ def seal_status(session_dir: Path) -> dict[str, Any]:
     return out
 
 
+def verify_seal_integrity(session_dir: Path) -> dict[str, Any]:
+    """Read a seal and verify its recorded targets without applying policy gates."""
+
+    guard_readers(session_dir)
+    marker = marker_path(session_dir)
+    if not marker.exists():
+        raise NotSealed(f"session {session_dir.name} has no seal.json")
+    try:
+        record = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise NotSealed(f"seal.json is unreadable: {exc}") from exc
+    _verify_seal_targets(session_dir, record, what="Integrity check")
+    return record
+
+
 def is_sealed(session_dir: Path) -> bool:
     return marker_path(session_dir).exists()
 

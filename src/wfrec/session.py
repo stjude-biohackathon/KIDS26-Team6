@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from . import SOURCES, paths
+from . import SOURCES, __version__, paths
 from .events import (
     Event,
     EventWriter,
@@ -71,6 +71,7 @@ class Manifest:
     """Session metadata, persisted as ``manifest.json``."""
 
     session_id: str
+    wfrec_version: str = __version__
     title: str = ""
     analyst: str = "unknown-analyst"
     workflow_family: str = ""
@@ -108,6 +109,7 @@ class Manifest:
     def to_dict(self) -> dict[str, Any]:
         return {
             "session_id": self.session_id,
+            "wfrec_version": self.wfrec_version,
             "title": self.title,
             "analyst": self.analyst,
             "workflow_family": self.workflow_family,
@@ -140,6 +142,7 @@ class Manifest:
             shell_backend = SHELL_BACKEND_SPOOL
         manifest = cls(
             session_id=payload["session_id"],
+            wfrec_version=payload.get("wfrec_version", ""),
             title=payload.get("title", ""),
             analyst=payload.get("analyst", "unknown-analyst"),
             workflow_family=payload.get("workflow_family", ""),
@@ -237,6 +240,8 @@ class Session:
                 "title": manifest.title,
                 "analyst": manifest.analyst,
                 "platform": manifest.platform,
+                "wfrec_version": manifest.wfrec_version,
+                "autocab_version": manifest.wfrec_version,
                 "sources": dict(manifest.sources),
                 "shell_backend": manifest.shell_backend,
             },
@@ -291,22 +296,25 @@ class Session:
     def mark_started(self, *, resumed: bool = False, gap_ms: int | None = None) -> Event:
         self._accrue_time()
         self.manifest.status = STATUS_ACTIVE
+        version = {"autocab_version": __version__}
         if resumed:
-            self._log_lifecycle("resumed", {"gap_ms": gap_ms})
+            self._log_lifecycle("resumed", {"gap_ms": gap_ms, **version})
             event = self.record(
                 SESSION_RESUMED,
                 payload={
                     "gap_ms": gap_ms,
                     "shell_backend": self.manifest.shell_backend,
+                    **version,
                 },
             )
         else:
-            self._log_lifecycle("started", {})
+            self._log_lifecycle("started", version)
             event = self.record(
                 SESSION_STARTED,
                 payload={
                     "sources": dict(self.manifest.sources),
                     "shell_backend": self.manifest.shell_backend,
+                    **version,
                 },
             )
         self.save()
