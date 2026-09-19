@@ -2,7 +2,7 @@
 
 Uses a fake engine where a model tier is needed, so every mechanic here is
 verified at zero model cost -- which is the point of keeping detection in
-``autocab.deid`` and orchestration in ``wfrec.seal``.
+``autocab.deid`` and orchestration in ``autocab.recording.seal``.
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ import pytest
 
 from autocab.deid.policy import Policy, RenderMode
 from autocab.deid.spans import DetectorInfo, Span
-from wfrec.events import DEID_SEALED, Event, SessionSealed
-from wfrec.seal import (
+from autocab.recording.events import DEID_SEALED, Event, SessionSealed
+from autocab.recording.seal import (
     PATH_KEYS,
     SKIP_KEYS,
     NotSealed,
@@ -224,7 +224,7 @@ def test_force_stops_the_session_first_rather_than_sealing_anyway(store):
         stop_session=lambda: store.stop(session.session_id),
     )
 
-    from wfrec.session import STATUS_STOPPED
+    from autocab.recording.session import STATUS_STOPPED
 
     assert store.resolve(session.session_id).manifest.status == STATUS_STOPPED
     assert is_sealed(session.root)
@@ -352,7 +352,7 @@ def test_pseudonymize_analyst_scrubs_event_metadata_and_manifest(unsealed):
 def test_the_sealed_event_does_not_become_a_workflow_step(unsealed):
     seal_session(unsealed, force=True, key=b"\x01" * 32)
 
-    from wfrec.exporters.trace import build_trace
+    from autocab.recording.exporters.trace import build_trace
 
     trace, _steps = build_trace(unsealed)
 
@@ -440,7 +440,7 @@ def test_seal_status_never_mutates(unsealed):
 def test_a_sealed_session_refuses_appends(unsealed):
     seal_session(unsealed, force=True, key=b"\x01" * 32)
 
-    from wfrec.session import Session
+    from autocab.recording.session import Session
 
     reloaded = Session.load(unsealed.session_id)
     assert reloaded.writer.sealed
@@ -466,7 +466,7 @@ def test_a_writer_loaded_before_the_seal_still_refuses_new_appends(unsealed):
 def test_the_seal_itself_can_still_write_through_the_bypass(unsealed):
     seal_session(unsealed, force=True, key=b"\x01" * 32)
 
-    from wfrec.events import EventWriter
+    from autocab.recording.events import EventWriter
 
     writer = EventWriter(unsealed.root, session_id=unsealed.session_id, allow_sealed=True)
     writer.append(Event(source="deid", type="deid.sealed", payload={"generation": 9}))
@@ -559,7 +559,7 @@ def test_recover_is_a_no_op_with_no_journal(unsealed):
 def test_readers_refuse_while_a_journal_sits_in_committing(unsealed):
     """A mixed state can exist on disk for milliseconds; it is never consumed."""
 
-    from wfrec.seal import guard_readers, write_journal
+    from autocab.recording.seal import guard_readers, write_journal
 
     write_journal(
         unsealed.root,
@@ -603,7 +603,7 @@ def test_nested_remote_files_are_sealed(store):
 def test_every_documented_target_channel_is_actually_reached(store):
     """One file per covered channel, each with a planted identifier."""
 
-    from wfrec.seal import iter_text_targets
+    from autocab.recording.seal import iter_text_targets
 
     session, _ = store.start(title="A", analyst="a")
     files = {

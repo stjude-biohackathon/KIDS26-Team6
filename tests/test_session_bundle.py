@@ -10,8 +10,8 @@ import pytest
 from autocab.framework import build_default_pipeline
 from autocab.framework.config import PipelineConfig
 from autocab.session_bundle import SessionBundleError, load_session_input
-from wfrec.events import Event
-from wfrec.merge import merge_sessions
+from autocab.recording.events import Event
+from autocab.recording.merge import merge_sessions
 
 
 def _seal(session):
@@ -22,7 +22,7 @@ def _seal(session):
     ingestible by anyone pointing `--session-dir` at the folder.
     """
 
-    from wfrec.seal import seal_session
+    from autocab.recording.seal import seal_session
 
     return seal_session(session, key=b"\x2a" * 32, engine_label="regex", force=True)
 
@@ -70,7 +70,7 @@ def test_load_a_single_session_folder(store):
     assert "qc" in bundle.traces[0].tags
 
 
-def test_load_a_directory_of_sessions_for_multi_analyst(store, wfrec_home):
+def test_load_a_directory_of_sessions_for_multi_analyst(store, autocab_home):
     """Challenge extension (b): several analysts ingested together."""
 
     first, _ = store.start(title="HG008 QC", analyst="alice")
@@ -78,13 +78,13 @@ def test_load_a_directory_of_sessions_for_multi_analyst(store, wfrec_home):
     second, _ = store.start(title="HG008 QC", analyst="bob")
     _populate(second, ["fastqc HG008.bam"])
 
-    bundle = load_session_input(wfrec_home / "sessions")
+    bundle = load_session_input(autocab_home / "sessions")
     assert len(bundle.traces) == 2
     assert {t.analyst for t in bundle.traces} == {"alice", "bob"}
     assert "2 analyst(s)" in bundle.source_note
 
 
-def test_clusterer_groups_two_analysts_into_one_family(store, wfrec_home):
+def test_clusterer_groups_two_analysts_into_one_family(store, autocab_home):
     from autocab.framework.components import WorkflowClusterer
 
     first, _ = store.start(title="Variant QC", analyst="alice")
@@ -92,7 +92,7 @@ def test_clusterer_groups_two_analysts_into_one_family(store, wfrec_home):
     second, _ = store.start(title="Variant QC", analyst="bob")
     _populate(second, ["bcftools view in.vcf.gz"])
 
-    bundle = load_session_input(wfrec_home / "sessions")
+    bundle = load_session_input(autocab_home / "sessions")
     clusters = WorkflowClusterer().cluster(bundle.traces)
 
     assert len(clusters) == 1
@@ -101,7 +101,7 @@ def test_clusterer_groups_two_analysts_into_one_family(store, wfrec_home):
 
 
 def test_load_an_exported_trace_file(store):
-    from wfrec.exporters import export_session
+    from autocab.recording.exporters import export_session
 
     session, _ = store.start(title="A", analyst="a")
     _populate(session, ["ls"])
@@ -143,7 +143,7 @@ def test_an_unsealed_session_cannot_be_ingested(store):
     failed de-identification pass blocks the leak instead of permitting it.
     """
 
-    from wfrec.seal import NotSealed
+    from autocab.recording.seal import NotSealed
 
     session, _ = store.start(title="A", analyst="a")
     _populate(session, ["fastqc HG008.bam"], seal=False)
@@ -163,7 +163,7 @@ def test_adapter_rebuilds_rather_than_trusting_a_stale_export(store):
 
     import json as jsonlib
 
-    from wfrec.exporters import export_session
+    from autocab.recording.exporters import export_session
 
     session, _ = store.start(title="A", analyst="a")
     _populate(session, ["fastqc HG008.bam"])
@@ -220,7 +220,7 @@ def test_full_pipeline_run_from_a_session_folder(store, tmp_path):
     assert "mgatta42" in body
 
 
-def test_merge_reports_which_families_are_shared(store, tmp_path, wfrec_home):
+def test_merge_reports_which_families_are_shared(store, tmp_path, autocab_home):
     first, _ = store.start(title="Variant QC", analyst="alice")
     _populate(first, ["bcftools view in.vcf.gz"])
     second, _ = store.start(title="Variant QC", analyst="bob")

@@ -16,7 +16,7 @@ def run_pipeline(
     log_path: Path | None = None,
     session_path: Path | None = None,
     reviewer: str = "CAB Maintainer",
-    approve: bool = True,
+    approve: bool = False,
 ) -> list[SkillProposal]:
     """Run the bundled BioHackathon pipeline."""
 
@@ -37,7 +37,7 @@ def run_pipeline(
 def run_demo(
     output_dir: Path,
     reviewer: str = "CAB Maintainer",
-    approve: bool = True,
+    approve: bool = False,
 ) -> list[SkillProposal]:
     """Run the safe trace-based BioHackathon demo."""
 

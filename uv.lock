@@ -82,6 +82,7 @@ name = "autocab"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "huggingface-hub" },
@@ -100,6 +101,7 @@ dependencies = [
     { name = "rapidocr-onnxruntime" },
     { name = "rich" },
     { name = "tokenizers" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "uvicorn" },
     { name = "watchdog" },
 ]
@@ -145,6 +147,7 @@ macos = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", marker = "extra == 'deid-anthropic'", specifier = ">=1.0" },
+    { name = "click", specifier = ">=8.1" },
     { name = "fastapi", specifier = ">=0.110" },
     { name = "gliner2", extras = ["local"], marker = "extra == 'deid-gliner2'", specifier = ">=2.0,<3" },
     { name = "google-genai", marker = "extra == 'deid-google'", specifier = ">=1.0" },
@@ -174,6 +177,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16.8" },
     { name = "spacy", marker = "extra == 'deid-presidio'", specifier = ">=3.7" },
     { name = "tokenizers", specifier = ">=0.20" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
     { name = "torch", marker = "extra == 'deid-torch'", specifier = ">=2.2" },
     { name = "transformers", marker = "extra == 'deid-torch'", specifier = ">=4.40" },
     { name = "uvicorn", specifier = ">=0.27" },

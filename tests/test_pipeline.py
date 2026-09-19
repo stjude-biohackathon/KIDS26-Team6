@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from aggregation import aggregate_traces
 from autocab.demo_data import load_skill_catalog, load_workflow_traces
+from autocab.framework.aggregation import aggregate_traces
 from autocab.input_sources import (
     load_screen_capture_input,
     load_terminal_log_input,

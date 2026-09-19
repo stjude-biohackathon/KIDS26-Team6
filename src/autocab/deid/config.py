@@ -1,4 +1,4 @@
-"""``~/.wfrec/config.toml`` -- standing user intent, and nothing secret.
+"""``~/.autocab/config.toml`` -- standing user intent, and nothing secret.
 
 Gate layer 3 lives here: ``[deid.llm] enabled``. It is deliberately in a
 *different file* from the org acknowledgement, because one person editing one
@@ -214,7 +214,7 @@ def load(path: Path | None = None) -> DeidConfig:
 
 def _default_path() -> Path | None:
     try:
-        from wfrec import paths
+        from autocab.recording import paths
     except Exception:  # pragma: no cover - autocab-only installs
         return None
     try:

@@ -103,36 +103,37 @@ def terminal_log_path(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
-def wfrec_home(tmp_path, monkeypatch):
-    """Redirect wfrec's durable and runtime roots into a temp directory."""
+def autocab_home(tmp_path, monkeypatch):
+    """Redirect AutoCAB's durable and runtime roots into a temp directory."""
 
-    home = tmp_path / "wfrec-home"
-    run = tmp_path / "wfrec-run"
+    home = tmp_path / "autocab-home"
+    run = tmp_path / "autocab-run"
+    monkeypatch.setenv("AUTOCAB_HOME", str(home))
     monkeypatch.setenv("WFREC_HOME", str(home))
     monkeypatch.setenv("WFREC_RUN", str(run))
 
     # State is cached per-process in a module global; drop it so each test sees
     # a clean recorder rather than the previous test's redactor/state.
-    import wfrec.redaction as redaction
+    import autocab.recording.redaction as redaction
 
     redaction._SHARED = None
 
     # Same treatment for the de-identification allowlist: it caches
-    # `~/.wfrec/deid-allowlist.txt` process-wide, so without this a test that
+    # `~/.autocab/deid-allowlist.txt` process-wide, so without this a test that
     # plants a user allowlist leaks its entries into every later test.
     from autocab.deid import allowlist as deid_allowlist
 
     deid_allowlist._SHARED = None
 
-    from wfrec import paths
+    from autocab.recording import paths
 
     paths.ensure_home()
     return home
 
 
 @pytest.fixture()
-def store(wfrec_home):
-    from wfrec.session import SessionStore
+def store(autocab_home):
+    from autocab.recording.session import SessionStore
 
     return SessionStore()
 
@@ -149,7 +150,7 @@ def seal_now():
     """
 
     def _seal(session, **kwargs):
-        from wfrec.seal import seal_session
+        from autocab.recording.seal import seal_session
 
         kwargs.setdefault("key", b"\x2a" * 32)
         kwargs.setdefault("engine_label", "regex")

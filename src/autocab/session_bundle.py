@@ -48,9 +48,9 @@ def _trace_from_session_dir(path: Path) -> WorkflowTrace:
     """
 
     try:
-        from wfrec.exporters.trace import build_trace
-        from wfrec.seal import require_sealed
-        from wfrec.session import Manifest, Session
+        from autocab.recording.exporters.trace import build_trace
+        from autocab.recording.seal import require_sealed
+        from autocab.recording.session import Manifest, Session
 
         # The **second** hard gate, and the one that actually matters: this
         # function rebuilds the trace from `events.jsonl` live, so gating only
@@ -65,7 +65,7 @@ def _trace_from_session_dir(path: Path) -> WorkflowTrace:
         # Point the session at this folder explicitly: a bundle handed over by
         # a teammate will not live under the local WFREC_HOME.
         session.root = path
-        from wfrec.events import EventWriter
+        from autocab.recording.events import EventWriter
 
         session.writer = EventWriter(
             path,
@@ -90,7 +90,7 @@ def _trace_from_session_dir(path: Path) -> WorkflowTrace:
         raise SessionBundleError(
             f"wfrec is not importable ({exc}) and {path} has no exported "
             "workflow trace. "
-            "Run `wfrec export --format trace` inside the session, or install wfrec."
+            "Run `wfrec export --format trace` inside the session, or install AutoCAB."
         ) from exc
 
 

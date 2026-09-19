@@ -1,4 +1,4 @@
-"""Experimental local inference with the PII-tuned GLiNER2 checkpoint."""
+"""Local inference with the PII-tuned GLiNER2 checkpoint."""
 
 from __future__ import annotations
 

@@ -149,7 +149,7 @@ def policy_dir(home: Path | None = None) -> Path | None:
     if home is not None:
         return home / POLICY_DIRNAME
     try:
-        from wfrec import paths
+        from autocab.recording import paths
     except Exception:  # pragma: no cover - autocab-only installs
         return None
     return paths.home() / POLICY_DIRNAME

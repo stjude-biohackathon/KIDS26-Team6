@@ -3,74 +3,57 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![Tests](https://github.com/stjude-biohackathon/KIDS26-Team6/actions/workflows/tests.yml/badge.svg)](https://github.com/stjude-biohackathon/KIDS26-Team6/actions/workflows/tests.yml)
-[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](src/wfrec/README.md)
+[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](docs/recording.md)
 
-Every recurring fix, workaround, and analysis step that lives only in one
-person's head or one messy terminal history is knowledge the next analyst has
-to rediscover from scratch. AutoCAB watches how you actually work, and turns
-that observation into a shared, reviewed skill — instead of leaving it tacit
-or duplicated across the team.
+AutoCAB records computational work and turns sealed sessions into
+evidence-linked agent skill drafts. Analysts review, edit, and explicitly
+approve every draft before AutoCAB packages it as a reusable skill.
 
-![wfrec activity dashboard screenshot](images/clipboard-2893987244.png)
+The project connects three parts of the workflow:
 
-## Features
+- **Recording** captures shell commands, screen activity, notes, agent
+  transcripts, and file changes.
+- **PHI redaction** applies pattern matching during capture and can add a local
+  GLiNER model when a session is sealed.
+- **Skill Forge** links proposed instructions to recorded evidence and blocks
+  packaging until a person resolves the review questions and approves the run.
 
-- **Governed pipeline**: workflow evidence is normalized, redacted, and
-  compared against existing skills before a draft is proposed — nothing
-  becomes a shared skill without a human reviewing, editing, and approving it.
-- **Cross-platform recording** with `wfrec` (macOS, Linux, Windows, and HPC
-  login nodes): five independently toggleable capture sources — screen, shell,
-  context notes, agent transcripts, and file changes.
-- **Privacy by construction**: an always-on regex redaction tier runs inline
-  during capture, with optional heavier tiers (model-based, Presidio, or
-  LLM-gated) layered on top, plus `wfrec seal` to retroactively scrub an
-  already-recorded session before sharing it.
-- **Live activity dashboard**: session composition, an activity timeline, and
-  event/window/agent breakdowns, right in the recorder's own GUI.
-- **Always know you're being recorded**: a menu-bar/tray indicator and a
-  floating on-screen badge, so recording is never silent or easy to miss.
-- **Remote and multi-analyst workflows**: SSH-based capture on HPC clusters,
-  a remotely reachable dashboard, and session merging across analysts.
-- **skill-forge**: an evidence-linked toolchain for turning incomplete
-  activity records into a validated, human-approved skill package.
+The BioHackathon prototype is intended for public data, synthetic data, and
+volunteer-consented sessions involving public data. Automated redaction can
+miss PHI. Review exported files before sharing them.
 
-## Project Background
+![AutoCAB activity dashboard](images/clipboard-2893987244.png)
 
-Agent skills package instructions, scripts, examples, and validation steps so AI
-agents can perform scientific workflows consistently. CAB already publishes
-these skills. Creating one currently requires maintainers to recognize a
-repeated workflow, document it, test it, and contribute it to the shared
-library. As a result, recurring work in data preparation, quality control,
-analysis, reporting, and troubleshooting can remain tacit or duplicated.
-
-AutoCAB addresses this gap through a governed observation-to-review workflow.
-People review, edit, and approve every proposal before it becomes a shared
-skill.
-
-The BioHackathon prototype uses public or synthetic data and
-volunteer-consented sessions involving public data only. `wfrec` provides the
-current recording layer. Input adapters can extend collection to ActivityWatch,
-Screenpipe, and future activity sources.
+## Workflow
 
 ```text
-Workflow evidence
-  -> normalize and cluster
-  -> redact and compare with existing skills
-  -> draft SKILL.md
-  -> human review
-  -> PR-ready skill folder
+record -> seal -> forge -> review -> approve -> package
+  |        |        |        |          |          |
+events   redacted  blocked  validated  signed     skill
+         session    draft    edits      decision   folder
 ```
 
-See the [challenge description](docs/proposal/AutoCAB-challenge-description.docx)
-and [framework documentation](docs/biohackathon-framework.md) for the project
-rationale and architecture.
+AutoCAB stores recording sessions and Skill Forge runs separately. A sealed
+session remains the evidence source for a forge run. Review and approval add
+new records to that run without changing the original session.
 
-## Install & Setup
+| Stage | Command | Main result |
+| --- | --- | --- |
+| Initialize | `autocab init` | Local configuration, storage, and optional capture setup |
+| Record | `autocab record start` | Append-only session evidence under `~/.autocab/sessions/` |
+| Seal | `autocab record finish --seal` | Redacted session contents and an integrity record |
+| Forge | `autocab forge --session <session-id>` | Blocked draft under `~/.autocab/runs/` |
+| Review | `autocab review <run-id> ...` | Validated reviewer edits and open questions |
+| Approve | `autocab approve <run-id> ...` | Explicit approval record |
+| Package | `autocab package <run-id>` | Rendered and strictly validated skill folder |
 
-### Install AutoCAB
+Packaging does not publish the skill, push commits, or open a pull request.
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then
-create a local environment and install the project with its test dependencies:
+## Quick Start
+
+AutoCAB requires Python 3.10 or newer. Install
+[`uv`](https://docs.astral.sh/uv/getting-started/installation/), create a local
+environment, and install the project:
 
 ```bash
 uv venv
@@ -78,263 +61,256 @@ source .venv/bin/activate
 uv pip install -e '.[dev]'
 ```
 
-AutoCAB requires Python 3.10 or newer. Its Python packages are installed from
-`pyproject.toml`. Live shell and Codex capture use DevSQL and Atuin, which are
-installed separately from the Python environment. Use the activity-tracking
-skill below to manage their setup and removal.
-
-#### Install without uv (pip / venv)
-
-On HPC and shared Linux hosts, default `python3` is often older than 3.10. Create
-the environment with **Python 3.10+** explicitly:
+Optional platform integrations are available through extras:
 
 ```bash
-cd KIDS26-Team6
-python3.11 -m venv .venv          # not plain python3 if that is 3.6/3.8
-source .venv/bin/activate
-python -m pip install --upgrade pip setuptools wheel
-pip install -e '.[linux,dev]'   # quote extras in zsh: '.[linux,dev]'
-python --version                # must be >= 3.10
+uv pip install -e '.[macos,dev]'  # macOS window titles and native OCR
+uv pip install -e '.[linux,dev]'  # X11 and Wayland capture support
+uv pip install -e '.[gui,dev]'    # optional native dashboard window
 ```
 
-If OCR fails with `libGL.so.1`, run `pip install --force-reinstall opencv-python-headless`
-and `wfrec doctor` again.
-
-#### Install and run on HPC (daemon + browser UI)
-
-On a cluster **login or interactive node**, run the recorder daemon in the
-background and open the web UI from your **laptop browser** (do not use
-`wfrec daemon --gui` on headless nodes; `BROWSER` is often `lynx`).
-
-1. **Install** (once per clone / venv) as above with `'.[linux,dev]'`.
-
-2. **Optional shell hooks** (if `wfrec doctor` reports `hook-spool`):
-
-   ```bash
-   wfrec hooks install
-   eval "$(wfrec hooks eval)"    # or add to ~/.bashrc for new shells
-   ```
-
-3. **Export remote-bind settings** (for UI via node IP; skip if you only use
-   SSH port forwarding to `127.0.0.1`):
-
-   ```bash
-   export WFREC_ALLOW_REMOTE=1
-   export WFREC_BIND_HOST=0.0.0.0
-   export WFREC_ADVERTISE_URL="http://YOUR_NODE_IP:8787"   # optional; see daemon summary
-   ```
-
-   Replace `YOUR_NODE_IP` with the **Public** or **Private** URL from the daemon
-   startup table (`hostname -I`: first field = site/public, second = internal/private).
-
-4. **Start the daemon in the background** (same shell session must keep these
-   exports if you set them):
-
-   ```bash
-   nohup wfrec daemon >> ~/.wfrec/daemon.log 2>&1 &
-   ```
-
-   Or in `tmux`/`screen` without `nohup`: `wfrec daemon` in the foreground.
-
-5. **Open the UI** on your laptop: use **Public** / **Private** from the log or
-   run `wfrec daemon` once in the foreground to print the summary. Alternative:
-   `ssh -L 8787:127.0.0.1:8787 you@login-node` and open `http://127.0.0.1:8787/`
-   (loopback bind only; no `WFREC_*` remote exports needed).
-
-6. **Record a session** (in terminals where hooks are active):
-
-   ```bash
-   wfrec start --title "My workflow" --watch /path/to/project
-   wfrec status
-   wfrec stop
-   wfrec seal
-   wfrec export
-   ```
-
-7. **Stop the background daemon** when finished:
-
-   ```bash
-   wfrec daemon --stop
-   ```
-
-See [`src/wfrec/README.md`](src/wfrec/README.md) for capture sources, security
-notes, and troubleshooting.
-
-### Set Up PHI Redaction
-
-Pattern-based PHI redaction works by default and requires no setup.
-
-For additional name and location detection, download and verify the local
-GLiNER model:
+Run guided setup:
 
 ```bash
-wfrec deid fetch
-wfrec deid verify
+autocab init
 ```
 
-The model is stored in `~/.wfrec/models/` or `$WFREC_HOME/models/`. AutoCAB
-does not download it during installation.
+Setup can save the analyst name, select a redaction engine, fetch explicitly
+selected model weights, install shell hooks, copy legacy sessions, and run
+readiness checks. Each system-changing action requires a flag or interactive
+confirmation.
 
-Select GLiNER when sealing a session:
+Record and seal a workflow:
 
 ```bash
-wfrec seal <session-id> --engine gliner
+autocab record start --title "HG008 variant QC" --watch .
+autocab record note "Reran because the BAM was truncated" --label decision
+autocab record pause --reason "Waiting on BWA" --expect 6h
+autocab record resume
+autocab record finish --seal
 ```
 
-Pattern matching still runs before GLiNER. See
-[`docs/deid-evaluation.md`](docs/deid-evaluation.md) for benchmark results and
-limitations.
+Create and review a skill draft:
 
-### Set Up Activity Tracking with Codex or Claude
+```bash
+autocab forge --session <session-id>
+autocab review <run-id> \
+  --reviewer "Analyst name" \
+  --spec reviewed-skill-spec.json
+autocab approve <run-id> --reviewer "Maintainer name"
+autocab package <run-id>
+autocab status
+```
 
-The maintained skill in `skills/setup-activity-tracking/` helps Codex or Claude
-verify and install DevSQL and Atuin. It configures Atuin for shell history.
-Agent-attributed Atuin hooks remain opt-in because `wfrec` reads Codex messages
-through DevSQL and Claude Code transcripts directly. The agent shows the
-planned changes and waits for approval before changing the system.
+Before running `review`, copy the generated `skill-spec.json`, resolve its
+blocking questions, and save the edited file as `reviewed-skill-spec.json`.
+The draft remains blocked while required evidence or decisions are missing.
 
-#### Codex
+See the [integrated workflow guide](docs/integrated-workflow.md) for the state
+model, stored artifacts, review rules, and recovery behavior.
 
-Ask Codex to install the skill from this repository:
+## Dashboard
+
+Start the local recorder and open the dashboard:
+
+```bash
+autocab dashboard
+```
+
+Without the optional native GUI dependency, AutoCAB opens the dashboard in the
+system browser. On a headless or remote host, run
+`autocab dashboard --no-open` and use an SSH tunnel or an explicitly enabled
+remote bind. The `wfrec` command remains the compatibility interface for
+recorder-specific controls and existing automation.
+
+The dashboard and CLI read the same session and forge-run files. The dashboard
+provides:
+
+- recording state, session metadata, and provenance;
+- source activity, a time-sorted activity timeline, and recent completed
+  events;
+- session renaming, workflow names, tags, notes, archiving, and local folder
+  access;
+- session exports with an additional local pattern-based redaction check; and
+- the selected session's forge, review, approval, and packaging state.
+
+The dashboard cannot bypass CLI validation or approval rules. See the
+[recording guide](docs/recording.md#the-gui) for local, HPC, and remote access.
+
+## PHI Redaction
+
+Pattern-based redaction is enabled by default and requires no model download.
+It runs during capture and establishes the minimum redaction layer used by the
+supported model configurations.
+
+Select and fetch the local GLiNER model during setup:
+
+```bash
+autocab init --redaction gliner --fetch-model
+```
+
+GLiNER2 PII requires its optional runtime:
+
+```bash
+uv pip install -e '.[deid-gliner2]'
+autocab init --redaction gliner2-pii --fetch-model
+```
+
+Model weights are downloaded only after explicit selection and are stored in
+`~/.autocab/models/` or `$AUTOCAB_HOME/models/`. They are not downloaded during
+package installation. Interrupted downloads retain their resumable cache under
+the same models directory. The configured engine runs when a session is sealed:
+
+```bash
+autocab record finish <session-id> --seal
+```
+
+Apply redaction to an already archived session with:
+
+```bash
+autocab record redact <session-id>
+```
+
+Use `--engine` to override the configured engine for one session. Missing or
+unverified weights stop model-based sealing instead of silently changing the
+redaction engine.
+
+The committed evaluation uses 316 synthetic records with 572 labelled spans.
+It measures complete span coverage and over-redaction for regex, GLiNER, and
+GLiNER2 PII configurations. These results are regression evidence for the test
+corpus. They are not a HIPAA Safe Harbor determination or validation on
+external clinical text.
+
+See the [de-identification evaluation](docs/deid-evaluation.md) for the figure,
+scorecards, label-level results, benchmark commands, and limitations.
+
+## Storage and Migration
+
+AutoCAB keeps user data outside the repository:
+
+| Path | Contents |
+| --- | --- |
+| `~/.autocab/config.toml` | Analyst and redaction defaults |
+| `~/.autocab/state.json` | Current recorder state |
+| `~/.autocab/sessions/<session-id>/` | Raw events, frames, diffs, notes, job logs, and seal records |
+| `~/.autocab/runs/<run-id>/` | Forge evidence, specification, reviews, validation, and package |
+| `~/.autocab/models/` | Explicitly downloaded local model weights |
+| `~/.autocab/hooks/` | Installed shell capture hooks |
+
+Existing sessions under `~/.wfrec/sessions/` remain discoverable for
+compatibility. Copy them into canonical AutoCAB storage with:
+
+```bash
+autocab migrate --legacy
+```
+
+Migration verifies the copied files and leaves the original sessions in place.
+Set `AUTOCAB_HOME` to use a different AutoCAB data directory.
+
+## Recording Across Environments
+
+Five evidence sources can be enabled independently:
+
+| Source | Recorded evidence |
+| --- | --- |
+| `shell` | Commands, exit codes, and durations |
+| `screen` | Changed frames, OCR text, and window titles |
+| `context` | Notes deliberately added by the analyst |
+| `agents` | Supported local agent transcripts |
+| `files` | Git-verified changes under declared roots |
+
+One session is active at a time. Starting or resuming another session pauses
+the current session and records the handover in both timelines. Shell commands
+appear after completion so their exit status and duration can be recorded.
+
+Use `wfrec doctor` or `autocab init --check` to inspect capture readiness.
+Recorder-specific commands support source toggles, SSH capture, Slurm log
+collection, transcript attachment, and multi-session merging:
+
+```bash
+wfrec doctor
+wfrec source screen on
+wfrec ssh <host>
+wfrec pull <host>
+wfrec merge <session-id> <session-id> --output <folder>
+```
+
+The maintained `skills/setup-activity-tracking/` skill can verify and install
+DevSQL and Atuin for local shell and agent activity. It shows the planned
+system changes and waits for approval before installing hooks or dependencies.
+
+Platform permissions, HPC setup, remote access, capture limits, and
+troubleshooting are documented in [`docs/recording.md`](docs/recording.md).
+
+## Skill Review and Packaging
+
+Skill Forge starts from a sealed event snapshot. The initial draft records
+observed commands, evidence links, unverified dependencies, and unresolved
+questions about inputs and outputs. Missing procedure details remain explicit
+questions for the reviewer.
+
+A run progresses through these states:
 
 ```text
-Use $skill-installer to install:
-https://github.com/stjude-biohackathon/KIDS26-Team6/tree/main/skills/setup-activity-tracking
+blocked -> needs_review -> approved -> packaged
 ```
 
-On the next turn, invoke the installed skill:
+- `review` validates edited skill specifications and reports remaining
+  blockers.
+- `approve` records a separate human decision after review.
+- `package` renders the approved skill and applies strict package validation.
 
-```text
-$setup-activity-tracking verify and set up activity tracking
-```
+Every forge run preserves `evidence.json`, `skill-spec.json`, append-only
+`reviews.jsonl`, and the current `run.json` state. Packaged runs also contain
+`validation.json` and a `package/` directory.
 
-#### Claude Code
+The current tests establish that AutoCAB creates and validates evidence-linked
+drafts. Evaluating whether a generated skill faithfully reproduces a recorded
+scientific workflow requires independent execution and expert review.
 
-Ask Claude Code to copy `skills/setup-activity-tracking/` to
-`~/.claude/skills/setup-activity-tracking/` while preserving an existing
-installation. Then invoke the installed skill:
+## Compatibility Commands
 
-```text
-/setup-activity-tracking verify and set up activity tracking
-```
-
-## Usage
-
-### Run the Demo Pipeline
-
-Run the default demo pipeline:
+The `wfrec` command remains available for advanced recorder controls and older
+automation. AutoCAB also retains the original demonstration pipeline:
 
 ```bash
-uv run autocab demo
+uv run autocab demo --help
+uv run autocab ingest-terminal-log --help
 ```
 
-Run with explicit input modes:
+Legacy demo proposals are written to `skills/generated-drafts/` by default.
+New integrated work should use `record`, `forge`, `review`, `approve`, and
+`package`.
+
+## Development
+
+Install the development dependencies, then run the project quality checks:
 
 ```bash
-uv run autocab demo --input-mode trace --trace-file data/sample_workflow_traces.json
-uv run autocab demo --input-mode screen-capture --capture-file data/sample_screen_capture.json
-uv run autocab demo --input-mode terminal-log --log-file path/to/terminal-session.txt
-uv run autocab demo --input-mode session --session-dir ~/.wfrec/sessions/<id>
-```
-
-Convert a terminal log into normalized trace JSON:
-
-```bash
-uv run autocab ingest-terminal-log path/to/terminal-session.txt --output /tmp/generated_terminal_trace.json
-```
-
-Generated proposals are written to `skills/generated-drafts/` by default.
-
-### Collect Workflow Evidence
-
-`wfrec` records live work and produces the session artifacts that AutoCAB's
-input adapters read. Recorded sessions follow the same path to a reviewed skill
-proposal as the supplied demo inputs.
-
-After completing the setup above, check which backends are available:
-
-```bash
-wfrec doctor                  # which backend each source resolved to, and why
-```
-
-DevSQL with Atuin is the primary local shell backend. If `wfrec doctor` selects
-`hook-spool`, install the fallback hook with `wfrec hooks install` and confirm
-it with `wfrec hooks status`.
-
-Then record:
-
-```bash
-wfrec start --title "HG008 variant QC" --watch .
-wfrec status
-wfrec source screen on                       # toggle any source, any time
-wfrec note "reran because the BAM was truncated" --label why
-wfrec pause --reason "waiting on bwa" --expect 6h
-wfrec resume
-wfrec stop
-wfrec export
-```
-
-#### Capture Sources and Boundaries
-
-Toggles and pause apply to already-open terminals at the next prompt. One
-session is active at a time; starting or resuming another pauses the current
-session and records the handover in both timelines.
-
-Five sources can be toggled independently: `screen` (frames, OCR text, window
-titles), `context` (text deliberately added through the paste box), `shell`
-(commands, exit codes, and durations), `agents` (Codex, Claude Code, Copilot
-Chat, and Cursor transcripts), and `files` (git-verified changes in declared
-roots). Local shell collection stores command metadata; bounded Slurm output
-enters through remote job-log collection.
-
-#### Session Data and Exports
-
-Each session stores an append-only `events.jsonl` timeline plus frames, diffs,
-notes, and job logs. `wfrec export` creates a complete `events.json` document
-plus three **lossy** AutoCAB adapter formats. The timeline remains the source
-of truth. Paused and archived sessions export through a temporary, local,
-pattern-checked snapshot.
-
-#### Remote and Team Workflows
-
-`wfrec ssh <host>` and `wfrec pull <host>` add remote commands, SLURM metadata,
-and bounded `slurm-*.out` slices through a POSIX hook on the HPC login node.
-For multiple analysts, `wfrec merge` or a session folder passed to
-`--session-dir` combines sessions and separates repeated workflows from
-one-off work.
-
-#### Help and Detailed Documentation
-
-Run `wfrec --help`, or use the `recorder` skill in
-`.claude/skills/recorder/` from Claude Code or Copilot.
-
-**Full usage guide: [`src/wfrec/README.md`](src/wfrec/README.md)**: install,
-per-platform notes (including the macOS Screen Recording restart and the
-Wayland limits), multi-analyst and HPC workflows, and troubleshooting.
-See [`docs/mgatta42/plan.md`](docs/mgatta42/plan.md) for the design rationale
-and the per-OS backend matrix.
-
-## Development and Testing
-
-Run the test suite from the repository-local environment:
-
-```bash
+.venv/bin/python -m ruff check src tests
 .venv/bin/python -m pytest
+node --test tests/test_recording_dashboard.js
+uv lock --check
 ```
 
-## Repository Layout
+Repository layout:
 
 ```text
-src/autocab/       CLI, orchestration, pipeline framework, and de-identification engine
-src/wfrec/         Cross-platform workflow recorder (the observation front end)
-skills/            Agent skills, including skill-forge and setup-activity-tracking
-docs/              Project documentation, proposal, and team information
-data/              Sample inputs used by the prototype
-tests/             Unit and pipeline tests
+src/autocab/       Unified CLI, recorder, dashboard, Skill Forge, and redaction
+skills/            Agent skills and Skill Forge assets
+docs/              Workflow, recording, evaluation, proposal, and team documents
+data/              Sample workflow inputs and de-identification evaluation data
+tests/             Python and JavaScript tests
 ```
 
-See [`src/wfrec/README.md`](src/wfrec/README.md) for the recorder's own layout
-(collectors, exporters, hooks) in detail.
+## Documentation
+
+- [Integrated AutoCAB workflow](docs/integrated-workflow.md)
+- [Recording, platforms, and remote use](docs/recording.md)
+- [PHI redaction evaluation](docs/deid-evaluation.md)
+- [Project framework](docs/biohackathon-framework.md)
+- [Challenge description](docs/proposal/AutoCAB-challenge-description.docx)
+- [Architecture and platform rationale](docs/mgatta42/plan.md)
 
 ## Team
 
@@ -343,4 +319,4 @@ project leads and team members.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE.md).
+AutoCAB is licensed under the [MIT License](LICENSE.md).

@@ -24,8 +24,8 @@ ENGINE_NAMES = {
     "regex": "Regex",
     "gliner-only": "GLiNER only (diagnostic)",
     "gliner": "Regex + GLiNER",
-    "gliner2-pii-only": "GLiNER2 PII only (experimental)",
-    "gliner2-pii": "Regex + GLiNER2 PII (experimental)",
+    "gliner2-pii-only": "GLiNER2 PII only (diagnostic)",
+    "gliner2-pii": "Regex + GLiNER2 PII",
 }
 
 ENGINE_ORDER = {
@@ -124,8 +124,8 @@ def render_markdown(cards: Sequence[Mapping[str, object]]) -> str:
         "findings.",
         "`GLiNER only` is a diagnostic evaluation mode. It is not available for production "
         "capture or sealing.",
-        "The GLiNER2 PII modes are experimental evaluation modes. They do not change the "
-        "production sealing choices.",
+        "`Regex + GLiNER2 PII` is a supported local sealing choice. The model-only mode is "
+        "diagnostic and does not bypass the production regex floor.",
         "The tested GLiNER2 PII configuration requests only `person` at a 0.97 threshold. "
         "A local prompt and threshold sweep found that broader PII prompts increased false "
         "positives without improving the additive redaction result.",

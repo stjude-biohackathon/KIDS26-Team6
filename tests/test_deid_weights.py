@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -23,17 +24,17 @@ def _model_file(remote_path: str, local_name: str, content: bytes) -> models.Mod
     )
 
 
-def test_missing_weights_never_trigger_a_download(wfrec_home: Path) -> None:
+def test_missing_weights_never_trigger_a_download(autocab_home: Path) -> None:
     status = models.verify_weights()
 
     assert status.present is False
     assert status.valid is False
-    with pytest.raises(EngineUnavailable, match="wfrec deid fetch"):
+    with pytest.raises(EngineUnavailable, match="autocab deid fetch"):
         GlinerOnnx()
 
 
 def test_fetch_bundle_load_and_verify_are_hash_checked(
-    wfrec_home: Path,
+    autocab_home: Path,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -50,10 +51,16 @@ def test_fetch_bundle_load_and_verify_are_hash_checked(
     def fake_download(
         *,
         filename: str,
-        local_dir: Path,
+        cache_dir: Path,
         **_kwargs: object,
     ) -> str:
-        destination = Path(local_dir) / filename
+        assert Path(cache_dir) == models.model_cache_root()
+        assert "local_dir" not in _kwargs
+        assert os.environ[models.XET_INITIAL_CONCURRENCY_VARIABLE] == str(
+            models.DEFAULT_DOWNLOAD_CONCURRENCY
+        )
+        assert Path(os.environ[models.XET_CACHE_VARIABLE]) == models.model_xet_cache_root()
+        destination = Path(cache_dir) / filename
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(source_files[filename])
         return str(destination)
@@ -68,8 +75,10 @@ def test_fetch_bundle_load_and_verify_are_hash_checked(
 
     installed = models.load_bundle(bundle)
     assert installed.valid is True
-    assert installed.path.parent.parent.parent == wfrec_home
+    assert installed.path.parent.parent.parent == autocab_home
     assert models.verify_weights().valid is True
+    assert models.XET_INITIAL_CONCURRENCY_VARIABLE not in os.environ
+    assert models.XET_CACHE_VARIABLE not in os.environ
 
     installed.path.joinpath(pinned[0].local_name).write_bytes(b"corrupt")
     corrupt = models.verify_weights()
@@ -77,8 +86,45 @@ def test_fetch_bundle_load_and_verify_are_hash_checked(
     assert any("expected" in problem for problem in corrupt.problems)
 
 
+def test_interrupted_download_keeps_the_hub_cache(
+    autocab_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    partial = models.model_cache_root() / "model.safetensors.incomplete"
+
+    def interrupted_download(*, cache_dir: Path, **_kwargs: object) -> str:
+        assert Path(cache_dir) == models.model_cache_root()
+        partial.parent.mkdir(parents=True, exist_ok=True)
+        partial.write_bytes(b"partial model data")
+        raise ConnectionError("connection interrupted")
+
+    import huggingface_hub
+
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", interrupted_download)
+
+    with pytest.raises(models.ModelWeightsError, match="connection interrupted"):
+        models.fetch_weights(model="gliner2-pii")
+
+    assert partial.read_bytes() == b"partial model data"
+
+
+def test_download_environment_preserves_operator_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    custom_cache = Path("/custom/xet-cache")
+    monkeypatch.setenv(models.XET_INITIAL_CONCURRENCY_VARIABLE, "3")
+    monkeypatch.setenv(models.XET_CACHE_VARIABLE, str(custom_cache))
+
+    with models._download_environment():
+        assert os.environ[models.XET_INITIAL_CONCURRENCY_VARIABLE] == "3"
+        assert Path(os.environ[models.XET_CACHE_VARIABLE]) == custom_cache
+
+    assert os.environ[models.XET_INITIAL_CONCURRENCY_VARIABLE] == "3"
+    assert Path(os.environ[models.XET_CACHE_VARIABLE]) == custom_cache
+
+
 def test_bundle_must_match_the_pinned_manifest(
-    wfrec_home: Path,
+    autocab_home: Path,
     tmp_path: Path,
 ) -> None:
     invalid = tmp_path / "invalid.zip"

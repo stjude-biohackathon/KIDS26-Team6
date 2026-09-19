@@ -15,8 +15,8 @@ import json
 
 import pytest
 
-from wfrec.events import Event
-from wfrec.seal import AUDIT_RELPATH, marker_path, seal_session
+from autocab.recording.events import Event
+from autocab.recording.seal import AUDIT_RELPATH, marker_path, seal_session
 
 #: Planted values, one per label class, all inside the reserved ranges the eval
 #: corpus documents so no fixture can collide with a live value.
@@ -253,7 +253,7 @@ def test_the_seal_record_states_the_key_and_map_status(sealed):
 
 @pytest.mark.parametrize("credential", sorted(CREDENTIALS))
 def test_no_credential_shape_appears_under_the_session_or_the_daemon_log(
-    sealed, credential, wfrec_home
+    sealed, credential, autocab_home
 ):
     """Parameterized over all four credential shapes.
 
@@ -268,7 +268,7 @@ def test_no_credential_shape_appears_under_the_session_or_the_daemon_log(
     for name, blob in _all_bytes(session.root).items():
         assert value not in blob, f"{credential} leaked into {name}"
 
-    daemon_log = wfrec_home / "daemon.log"
+    daemon_log = autocab_home / "daemon.log"
     if daemon_log.exists():
         assert value not in daemon_log.read_bytes()
 
@@ -280,7 +280,7 @@ def test_the_audit_writer_scrubs_a_credential_that_somehow_reaches_it():
     surrogates. This exists because "should never" is not a control.
     """
 
-    from wfrec.seal import _scrub_secrets
+    from autocab.recording.seal import _scrub_secrets
 
     for value in CREDENTIALS.values():
         out = _scrub_secrets(f'{{"field": "note", "detail": "{value}"}}')

@@ -1,4 +1,4 @@
-"""De-identification for AutoCAB and wfrec.
+"""De-identification shared by the AutoCAB pipeline and recorder.
 
 One detector, one taxonomy, one offset convention. The pipeline's
 ``SensitiveDataRedactor`` and the recorder's inline capture path both come

@@ -13,14 +13,35 @@ import json
 import sys
 from pathlib import Path
 
+from autocab.output import (
+    console,
+    data_table,
+    emit_json,
+    error,
+    info,
+    mapping_summary,
+    plain_text,
+    success,
+    summary,
+    warning,
+)
+
 from .engines.base import EngineUnavailable
 from .engines.registry import ENGINE_CHOICES
 from .eval import corpus as corpus_mod
 from .eval import benchmark, comparison, generate, report
 from .eval.generate import DEFAULT_SEED, DIFFICULTIES
+from .models import (
+    DOWNLOAD_PROGRESS_NOTE,
+    MODEL_CHOICES,
+    ModelWeightsError,
+    fetch_weights,
+    load_bundle,
+    verify_weights,
+)
 
-EXPERIMENTAL_ENGINE_CHOICES = ("gliner2-pii-only", "gliner2-pii")
-EVAL_ENGINE_CHOICES = (*ENGINE_CHOICES, "gliner-only", *EXPERIMENTAL_ENGINE_CHOICES)
+DIAGNOSTIC_ENGINE_CHOICES = ("gliner-only", "gliner2-pii-only")
+EVAL_ENGINE_CHOICES = (*ENGINE_CHOICES, *DIAGNOSTIC_ENGINE_CHOICES)
 
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
@@ -86,7 +107,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
     )
     bench.add_argument(
         "--engine",
-        choices=("regex", "gliner-only", "gliner", *EXPERIMENTAL_ENGINE_CHOICES),
+        choices=("regex", "gliner-only", "gliner", "gliner2-pii-only", "gliner2-pii"),
         action="append",
         dest="engines",
         help="Engine to measure. Repeatable. Default: regex, gliner-only, and gliner.",
@@ -95,6 +116,19 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
     bench.add_argument("--repeats", type=int, default=benchmark.DEFAULT_REPEATS)
     bench.add_argument("--output", type=Path, help="Optional JSON output path.")
     bench.add_argument("--plot", type=Path, help="Optional SVG performance plot path.")
+
+    fetch = verbs.add_parser("fetch", help="Download and verify pinned model weights.")
+    fetch.add_argument("--model", choices=MODEL_CHOICES, default="gliner")
+    fetch.add_argument("--bundle", type=Path, help="Write an offline ZIP instead of installing.")
+
+    load = verbs.add_parser("load", help="Verify and install an offline model ZIP.")
+    load.add_argument("bundle", type=Path)
+    load.add_argument("--model", choices=MODEL_CHOICES, default="gliner")
+
+    verify = verbs.add_parser(
+        "verify", help="Verify installed model weights without a network call."
+    )
+    verify.add_argument("--model", choices=MODEL_CHOICES, default="gliner")
 
     verbs.add_parser("labels", help="Print the taxonomy and its HIPAA rollup.")
     return deid
@@ -111,10 +145,55 @@ def run(args: argparse.Namespace) -> int:
         return _eval(args)
     if args.deid_command == "benchmark":
         return _benchmark(args)
+    if args.deid_command == "fetch":
+        return _fetch(args)
+    if args.deid_command == "load":
+        return _load(args)
+    if args.deid_command == "verify":
+        return _verify(args)
     if args.deid_command == "labels":
         return _labels()
-    print(f"autocab deid: unknown command {args.deid_command!r}", file=sys.stderr)
+    error(f"deid: unknown command {args.deid_command!r}")
     return 2
+
+
+def _fetch(args: argparse.Namespace) -> int:
+    info(DOWNLOAD_PROGRESS_NOTE, stderr=True)
+    try:
+        result = fetch_weights(args.bundle, model=args.model)
+    except ModelWeightsError as exc:
+        error(f"deid fetch: {exc}")
+        return 1
+    if isinstance(result, Path):
+        success(f"Created offline model bundle: {result}")
+    else:
+        success(f"Downloaded and verified model: {result.path}")
+    return 0
+
+
+def _load(args: argparse.Namespace) -> int:
+    try:
+        status = load_bundle(args.bundle, model=args.model)
+    except ModelWeightsError as exc:
+        error(f"deid load: {exc}")
+        return 1
+    success(f"Installed and verified model: {status.path}")
+    return 0
+
+
+def _verify(args: argparse.Namespace) -> int:
+    status = verify_weights(model=args.model)
+    if status.valid:
+        success(f"Verified model: {status.path}")
+        return 0
+    error(f"Model verification failed at {status.path}")
+    for problem in status.problems:
+        warning(problem)
+    info(
+        f"Run `autocab deid fetch --model {args.model}` to install or repair it.",
+        stderr=True,
+    )
+    return 1
 
 
 def _gen_corpus(args: argparse.Namespace) -> int:
@@ -122,25 +201,25 @@ def _gen_corpus(args: argparse.Namespace) -> int:
     if args.check:
         problems = generate.check_corpus(root, args.seed)
         if problems:
-            print("autocab deid gen-corpus --check FAILED:", file=sys.stderr)
+            error("Corpus does not match its deterministic source.")
             for problem in problems:
-                print(f"  - {problem}", file=sys.stderr)
+                warning(problem)
             return 1
         loaded = corpus_mod.load(root)
         structural = corpus_mod.validate(loaded)
         if structural:
-            print("autocab deid gen-corpus --check FAILED (structural):", file=sys.stderr)
+            error("Corpus validation failed.")
             for problem in structural[:40]:
-                print(f"  - {problem}", file=sys.stderr)
+                warning(problem)
             return 1
-        print(
-            f"corpus reproduces byte-for-byte: {len(loaded)} records, "
+        success(
+            f"Corpus reproduces byte-for-byte: {len(loaded)} records, "
             f"fingerprint {loaded.fingerprint[:16]}"
         )
         return 0
 
     summary = generate.write_corpus(root, args.seed)
-    print(json.dumps(summary, indent=2))
+    emit_json(summary)
     return 0
 
 
@@ -155,7 +234,7 @@ def _eval(args: argparse.Namespace) -> int:
     try:
         predictions, latency = report.predict(loaded, engine=args.engine)
     except EngineUnavailable as exc:
-        print(f"autocab deid eval: {report.unavailable_message(exc)}", file=sys.stderr)
+        error(f"deid eval: {report.unavailable_message(exc)}")
         return 1
 
     from .eval.scorer import score
@@ -167,46 +246,55 @@ def _eval(args: argparse.Namespace) -> int:
         payload = card.to_dict()
         if args.report_latency:
             payload["latency"] = latency.to_dict()
-        print(json.dumps(payload, indent=2, sort_keys=True))
+        sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
     else:
         head = card.headline()
-        for key, value in head.items():
-            print(f"{key:44s} {value}")
-        print()
-        print(f"{'label':20s} {'gold':>5s} {'strict':>8s} {'partial':>8s} {'floor':>7s}")
+        mapping_summary("De-identification evaluation", head)
+        table = data_table("Label", "Gold", "Strict", "Partial", "Floor", "Gated")
+        for column in table.columns[1:5]:
+            column.justify = "right"
         floors = thresholds.get("engines", {}).get(args.engine, {})
         floors = floors.get("per_label_recall_strict", {}) if isinstance(floors, dict) else {}
         for label in sorted(card.by_label):
             row = card.by_label[label]
             gated = card.by_label_gated.get(label)
             floor = floors.get(label)
-            print(
-                f"{label:20s} {row.gold:5d} {row.recall_strict:8.3f} "
-                f"{row.recall_partial:8.3f} {floor if floor is not None else '-':>7}"
-                + ("" if gated is None else f"   (gated {gated.recall_strict:.3f})")
+            table.add_row(
+                plain_text(label),
+                plain_text(row.gold),
+                plain_text(f"{row.recall_strict:.3f}"),
+                plain_text(f"{row.recall_partial:.3f}"),
+                plain_text(floor if floor is not None else "-"),
+                plain_text("-" if gated is None else f"{gated.recall_strict:.3f}"),
             )
+        console.print(table)
         if args.report_latency:
-            print()
-            print(f"latency: {latency.ms_per_kb:.2f} ms/KB over {latency.kilobytes:.1f} KB")
+            summary(
+                "Latency",
+                [
+                    ("Rate", f"{latency.ms_per_kb:.2f} ms/KB"),
+                    ("Evaluated", f"{latency.kilobytes:.1f} KB"),
+                ],
+            )
 
     exit_code = 0
     if args.check_thresholds:
         failures = report.check_thresholds(card, thresholds)
         if failures:
-            print("\nthreshold failures:", file=sys.stderr)
+            error("Threshold checks failed.")
             for failure in failures:
-                print(f"  - {failure}", file=sys.stderr)
+                warning(failure)
             exit_code = 1
         else:
-            print("\nall thresholds satisfied")
+            success("All thresholds satisfied.")
 
     if args.write_scorecard:
         path = report.write_scorecard(card, root)
-        print(f"\nwrote {path}")
+        success(f"Wrote {path}")
         docs = Path(__file__).resolve().parents[3] / "docs"
         report_path, plot_path = comparison.write_accuracy_artifacts(root, docs)
-        print(f"wrote {report_path}")
-        print(f"wrote {plot_path}")
+        success(f"Wrote {report_path}")
+        success(f"Wrote {plot_path}")
 
     return exit_code
 
@@ -223,39 +311,50 @@ def _benchmark(args: argparse.Namespace) -> int:
         message = (
             report.unavailable_message(exc) if isinstance(exc, EngineUnavailable) else str(exc)
         )
-        print(f"autocab deid benchmark: {message}", file=sys.stderr)
+        error(f"deid benchmark: {message}")
         return 1
 
     payload = json.dumps([result.to_dict() for result in results], indent=2, sort_keys=True)
     if args.output:
         benchmark.write_json(results, args.output)
-        print(f"wrote {args.output}")
+        success(f"Wrote {args.output}")
     else:
         print(payload)
     if args.plot:
         args.plot.parent.mkdir(parents=True, exist_ok=True)
         args.plot.write_text(comparison.render_performance_svg(results), encoding="utf-8")
-        print(f"wrote {args.plot}")
+        success(f"Wrote {args.plot}")
     return 0
 
 
 def _labels() -> int:
     from .labels import SPECS, hipaa_rollup
 
-    print(f"{'label':18s} {'HIPAA':>5s} {'prefix':7s} rank  zero-shot description")
+    labels = data_table("Label", "HIPAA", "Prefix", "Rank", "Zero-shot description")
+    labels.columns[1].justify = "right"
+    labels.columns[3].justify = "right"
     for spec in SPECS.values():
         hipaa = spec.hipaa if spec.hipaa is not None else "-"
-        print(
-            f"{spec.label.value:18s} {str(hipaa):>5s} {spec.prefix:7s} {spec.rank:4d}  "
-            f"{spec.description}"
+        labels.add_row(
+            plain_text(spec.label.value),
+            plain_text(hipaa),
+            plain_text(spec.prefix),
+            plain_text(spec.rank),
+            plain_text(spec.description),
         )
-    print("\nHIPAA Safe Harbor rollup:")
+    console.print(labels)
+
+    safe_harbor = data_table("HIPAA Safe Harbor", "Labels")
+    safe_harbor.columns[0].justify = "right"
     rollup = hipaa_rollup()
     for identifier in range(1, 19):
-        labels = rollup.get(identifier)
-        status = ", ".join(labels) if labels else "NOT COVERED"
-        print(f"  {identifier:2d}  {status}")
+        covered_labels = rollup.get(identifier)
+        status = ", ".join(covered_labels) if covered_labels else "NOT COVERED"
+        safe_harbor.add_row(plain_text(identifier), plain_text(status))
     unmapped = rollup.get(None)
     if unmapped:
-        print(f"  --  not a Safe Harbor identifier: {', '.join(unmapped)}")
+        safe_harbor.add_row(
+            "--", plain_text(f"Not a Safe Harbor identifier: {', '.join(unmapped)}")
+        )
+    console.print(safe_harbor)
     return 0

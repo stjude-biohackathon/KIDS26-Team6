@@ -20,7 +20,7 @@ class EngineUnavailable(RuntimeError):
     """Raised when an engine cannot run.
 
     The seal converts this into a refusal to produce a sealed artifact.
-    ``wfrec.redaction.Redacted.available``'s degraded mode is right for
+    ``autocab.recording.redaction.Redacted.available``'s degraded mode is right for
     *capture* -- losing a frame's redaction is better than losing the recorder --
     and wrong for a *seal*, where the whole point is the guarantee.
     """

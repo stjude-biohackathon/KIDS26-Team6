@@ -15,8 +15,8 @@ import hashlib
 
 import pytest
 
-from wfrec.events import Event
-from wfrec.seal import (
+from autocab.recording.events import Event
+from autocab.recording.seal import (
     MAX_TAIL_EVENTS,
     MAX_TAIL_RETRIES,
     STATE_COMMITTED,
@@ -214,7 +214,7 @@ def test_recovery_is_re_entrant_safe(populated):
     _stage_a_fake_seal(populated, state=STATE_COMMITTING)
     recover(populated.root)
 
-    from wfrec.session import Session
+    from autocab.recording.session import Session
 
     reloaded = Session.load(populated.session_id)  # must not recurse
     assert reloaded.writer.sealed
@@ -233,7 +233,7 @@ def test_an_interrupted_seal_is_recovered_by_the_next_seal(populated):
 def test_an_interrupted_seal_is_recovered_by_the_export_gate(populated):
     _stage_a_fake_seal(populated, state=STATE_COMMITTING)
 
-    from wfrec.seal import require_sealed
+    from autocab.recording.seal import require_sealed
 
     record = require_sealed(populated.root, what="test")
 
@@ -295,7 +295,7 @@ def test_the_scrub_phase_does_not_hold_the_events_lock(populated):
     """
 
     from autocab.deid.spans import DetectorInfo
-    from wfrec.locking import file_lock
+    from autocab.recording.locking import file_lock
 
     acquired = threading.Event()
     release = threading.Event()
@@ -403,9 +403,9 @@ def test_the_tail_catch_up_is_bounded(store, monkeypatch, bound):
     for.
     """
 
-    import wfrec.seal as sealmod
+    import autocab.recording.seal as sealmod
     from autocab.deid.spans import DetectorInfo
-    from wfrec.seal import SealAborted
+    from autocab.recording.seal import SealAborted
 
     session, _ = store.start(title="A", analyst="a")
     session.writer.append(
