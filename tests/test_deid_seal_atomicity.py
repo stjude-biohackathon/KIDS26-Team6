@@ -23,6 +23,7 @@ from autocab.recording.seal import (
     STATE_COMMITTING,
     STATE_PLANNING,
     STATE_STAGING,
+    SealAborted,
     _commit_staged,
     guard_readers,
     is_sealed,
@@ -157,7 +158,10 @@ def test_recovery_from_committing_rolls_forward(populated):
 
 
 def test_recovery_from_committed_writes_the_marker_and_cleans_up(populated):
-    _stage_a_fake_seal(populated, state=STATE_COMMITTED, with_files=False)
+    journal = _stage_a_fake_seal(populated, state=STATE_COMMITTING)
+    _commit_staged(populated.root, journal)
+    journal["state"] = STATE_COMMITTED
+    write_journal(populated.root, journal)
 
     result = recover(populated.root)
 
@@ -183,7 +187,7 @@ def test_a_torn_journal_is_treated_as_planning(populated):
 
 
 def test_the_commit_loop_is_idempotent(populated):
-    """The disappearance of a staged file *is* its per-file commit record."""
+    """A missing staged file is safe when its destination has the final digest."""
 
     journal = _stage_a_fake_seal(populated, state=STATE_COMMITTING)
 
@@ -193,6 +197,29 @@ def test_the_commit_loop_is_idempotent(populated):
 
     assert first == ["events.jsonl", "manifest.json", "deid/audit.jsonl", "jobs/1.out"]
     assert second == [] and third == []
+    assert (populated.root / "jobs" / "1.out").read_text(encoding="utf-8") == "MRN_deadbeefcafe\n"
+
+
+def test_recovery_refuses_a_missing_staged_file_that_was_not_committed(populated):
+    _stage_a_fake_seal(populated, state=STATE_COMMITTING)
+    (staged_dir(populated.root) / "jobs" / "1.out").unlink()
+
+    with pytest.raises(SealAborted, match="destination jobs/1.out"):
+        recover(populated.root)
+
+    assert not marker_path(populated.root).exists()
+    assert read_journal(populated.root)["state"] == STATE_COMMITTING
+
+
+def test_recovery_accepts_a_missing_staged_file_that_was_already_committed(populated):
+    _stage_a_fake_seal(populated, state=STATE_COMMITTING)
+    source = staged_dir(populated.root) / "jobs" / "1.out"
+    os.replace(source, populated.root / "jobs" / "1.out")
+
+    result = recover(populated.root)
+
+    assert result == {"recovered": STATE_COMMITTING, "action": "rolled-forward"}
+    assert marker_path(populated.root).exists()
     assert (populated.root / "jobs" / "1.out").read_text(encoding="utf-8") == "MRN_deadbeefcafe\n"
 
 
