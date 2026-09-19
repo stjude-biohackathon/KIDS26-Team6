@@ -109,8 +109,12 @@ def test_endpoints_require_the_token(wfrec_home):
     with TestClient(create_app(recorder, token="test-token")) as anon:
         assert anon.get("/styles.css").status_code == 200
         assert anon.get("/dashboard.css").status_code == 200
+        assert anon.get("/provenance.css").status_code == 200
+        assert anon.get("/settings.css").status_code == 200
         assert anon.get("/app.js").status_code == 200
         assert anon.get("/dashboard.js").status_code == 200
+        assert anon.get("/provenance.js").status_code == 200
+        assert anon.get("/settings.js").status_code == 200
         assert anon.get("/status").status_code == 401
         assert anon.get("/status", headers={"Authorization": "Bearer wrong"}).status_code == 401
         assert (
@@ -591,13 +595,21 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert '<meta name="wfrec-token" content="test-token">' in body
     assert '<link rel="stylesheet" href="/styles.css">' in body
     assert '<link rel="stylesheet" href="/dashboard.css">' in body
+    assert '<link rel="stylesheet" href="/provenance.css">' in body
+    assert '<link rel="stylesheet" href="/session-metadata.css">' in body
+    assert '<link rel="stylesheet" href="/settings.css">' in body
     assert '<script src="/dashboard.js" defer></script>' in body
+    assert '<script src="/provenance.js" defer></script>' in body
+    assert '<script src="/session-metadata.js" defer></script>' in body
+    assert '<script src="/settings.js" defer></script>' in body
     assert '<script src="/app.js" defer></script>' in body
     assert "<style>" not in body
     assert "<script>" not in body
     assert "Recent Events Log" in body
     assert "<title>AutoCAB Activity Dashboard</title>" in body
-    assert "<h1>AutoCAB</h1>" in body
+    assert '<h1>AutoCAB <span class="app-version ui-pill">v0.1.0</span></h1>' in body
+    assert '<span id="badge" class="badge ui-pill">' in body
+    assert "@AUTOCAB_VERSION@" not in body
     assert "Commands appear after they finish." in body
     assert 'id="session-title"' in body
     assert 'id="stats" aria-label="Session details"' in body
@@ -620,6 +632,11 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert ">Select Folder</button>" in body
     assert '<label for="title">Session title</label>' in body
     assert '<label for="analyst">Analyst name or ID</label>' in body
+    assert "<summary>More details</summary>" not in body
+    assert '<label for="workflow-family">Workflow name (optional)</label>' in body
+    assert '<label for="session-tags">Tags (optional)</label>' in body
+    assert "Separate tags with commas." in body
+    assert 'id="session-metadata" class="session-metadata"' in body
     assert '<label for="note">Session note</label>' in body
     assert '<textarea id="note"' in body
     assert 'class="row note-actions"' in body
@@ -629,7 +646,7 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert "Load older events" in body
     assert 'id="session-list" class="session-list"' in body
     assert 'id="session-mobile" class="session-mobile"' in body
-    assert 'id="activity-dashboard-heading"' in body
+    assert 'id="activity-dashboard-heading" class="sr-only"' in body
     assert 'id="activity-dashboard" class="activity-dashboard"' in body
     assert 'id="dash-timeline-summary"' in body
     assert 'class="activity-timeline-chart" id="dash-timeline"' in body
@@ -640,6 +657,16 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert 'aria-label="Open session folder"' in body
     assert 'class="session-folder-control"' in body
     assert 'id="live-updates"' in body
+    assert 'id="navbar-analyst"' not in body
+    assert 'id="provenance-button"' in body
+    assert 'aria-label="View session provenance"' in body
+    assert 'id="provenance-dialog"' in body
+    assert ">Session provenance</h2>" in body
+    assert 'id="settings-button"' in body
+    assert 'aria-label="Open settings"' in body
+    assert 'id="settings-dialog"' in body
+    assert 'for="default-analyst"' in body
+    assert "Existing sessions will not change." in body
     assert 'aria-pressed="true"' in body
     assert 'id="theme-toggle"' in body
     assert 'id="theme-icon-moon"' in body
@@ -651,6 +678,9 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert "Screen events JSON" in body
     assert "Export Session" in body
     assert 'aria-label="Export session"' in body
+    assert 'id="export-help"' not in body
+    assert 'id="archive-session" onclick="act(\'stop\')"' in body
+    assert 'id="archive-session" class="danger-quiet"' not in body
     assert "Export Events" not in body
     assert "AutoCAB inputs" not in body
     assert 'class="skip-link" href="#main-content"' in body
@@ -671,9 +701,15 @@ def test_ui_serves_packaged_stylesheet(client):
     assert "button.danger-quiet:not(:disabled)" in response.text
     assert ".app-header-actions > button {" in response.text
     assert ".session-folder-control {" in response.text
-    assert "grid-template-columns: auto minmax(0, 640px)" in response.text
+    assert '"summary actions"' in response.text
+    assert '"properties properties"' in response.text
+    assert ".session-properties {" in response.text
     assert "background: color-mix(in srgb, var(--dim) 9%, transparent)" in response.text
     assert ".session-title-form {" in response.text
+    assert ".ui-pill {" in response.text
+    assert ".app-version {" in response.text
+    assert ".export-block {" not in response.text
+    assert ".action-help {" not in response.text
     assert ".session-stat--phi-pending {" in response.text
     assert ".session-stat--phi-applied {" in response.text
     assert ".event-detail-content.formatted.collapsed {" in response.text
@@ -715,6 +751,9 @@ def test_ui_serves_packaged_javascript_without_credentials(client):
     assert "active:'Recording'" in source
     assert "paused:'Paused'" in source
     assert "function showRenameSessionForm()" in source
+    assert "function sessionTags(value)" in source
+    assert "workflow_family: document.getElementById('workflow-family').value.trim()" in source
+    assert "tags:sessionTags(document.getElementById('session-tags').value)" in source
     assert "function cancelRenameSession()" in source
     assert "function renameSession(event)" in source
     assert "function trashSelectedSession()" in source
@@ -780,12 +819,24 @@ def test_ui_serves_packaged_javascript_without_credentials(client):
     assert "const DASHBOARD_CACHE = new Map()" in source
     assert "function dashboardEvents(sessionId, expectedTotal)" in source
     assert "function sessionStat(value, modifier='')" in source
+    assert "chip.className = `ui-pill session-stat" in source
+    assert "badge.className = 'badge ui-pill '" in source
+    assert "function phiPendingIcon()" in source
+    assert "icon.setAttribute('aria-hidden', 'true')" in source
     assert "dateTimeLabel:eventDateTime" in source
     assert "limit=100000" not in source
     assert "session.sealed ? 'PHI redaction applied'" in source
     assert "'PHI redaction pending'" in source
     assert "Pause or archive the session before exporting events." in source
+    assert "control.title = help" in source
+    assert "Pause or archive to export." not in source
     assert "Preparing a pattern-checked export." in source
+    assert "Analyst · ${session.analyst}" in source
+    assert "paused total" in source
+    assert "navbar-analyst" not in source
+    assert (
+        "return `${session.events} events · ${sessionDuration(session.active_seconds)}`;" in source
+    )
 
 
 def test_ui_serves_component_scoped_dashboard_styles(client):
@@ -802,6 +853,59 @@ def test_ui_serves_component_scoped_dashboard_styles(client):
     assert ".activity-timeline-chart__tooltip" in source
     assert ".dash-pie" not in source
     assert ".dash-timeline .bucket" not in source
+
+
+def test_ui_serves_component_scoped_provenance_assets(client):
+    stylesheet = client.get("/provenance.css")
+    javascript = client.get("/provenance.js")
+
+    assert stylesheet.status_code == 200
+    assert stylesheet.headers["content-type"].startswith("text/css")
+    assert ".provenance-dialog" in stylesheet.text
+    assert ".provenance-list" in stylesheet.text
+    assert "@media (max-width: 560px)" in stylesheet.text
+    assert javascript.status_code == 200
+    assert javascript.headers["content-type"].startswith("application/javascript")
+    assert "function provenanceModule(global)" in javascript.text
+    assert "function render(data, host)" in javascript.text
+    assert "function versionSummary(environment)" in javascript.text
+    assert "(started)" in javascript.text
+    assert "(current)" in javascript.text
+    assert "weights_path" not in javascript.text
+
+
+def test_ui_serves_component_scoped_session_metadata_assets(client):
+    stylesheet = client.get("/session-metadata.css")
+    javascript = client.get("/session-metadata.js")
+
+    assert stylesheet.status_code == 200
+    assert javascript.status_code == 200
+    assert ".session-metadata__field" in stylesheet.text
+    assert "display: flex" in stylesheet.text
+    assert ".session-metadata__editor" in stylesheet.text
+    assert "flex: 0 0 100%" in stylesheet.text
+    assert "function sessionMetadataModule(global)" in javascript.text
+    assert "function metadataEditor()" in javascript.text
+    assert "'ui-pill session-metadata__value'" in javascript.text
+    assert "'ui-pill session-metadata__chip'" in javascript.text
+    assert "Remove tag" in javascript.text
+    assert "'Not set'" in javascript.text
+
+
+def test_ui_serves_component_scoped_settings_assets(client):
+    stylesheet = client.get("/settings.css")
+    javascript = client.get("/settings.js")
+
+    assert stylesheet.status_code == 200
+    assert javascript.status_code == 200
+    assert ".settings-dialog" in stylesheet.text
+    assert ".settings-dialog__message" in stylesheet.text
+    assert "function settingsModule(global)" in javascript.text
+    assert "function create({button, dialog, form, input, message, load, save, onSaved})" in (
+        javascript.text
+    )
+    assert "input.focus({preventScroll:true})" in javascript.text
+    assert "button.focus({preventScroll:true})" in javascript.text
 
 
 def test_ui_serves_interactive_dashboard_javascript_without_credentials(client):
@@ -823,6 +927,10 @@ def test_ui_serves_interactive_dashboard_javascript_without_credentials(client):
     assert "ArrowRight" in source
     assert "focus({preventScroll:true})" in source
     assert "segment.style.flexGrow = count" in source
+    assert "['Shell commands'" not in source
+    assert "['Agent messages'" not in source
+    assert "Mostly ${CATEGORIES[topIndex].label.toLowerCase()} activity" in source
+    assert "in this session, mostly" not in source
 
 
 def test_export_endpoint_writes_files(client):
