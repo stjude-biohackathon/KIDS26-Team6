@@ -365,7 +365,9 @@ def evaluate(
             f"zero_data_retention_confirmed={ack.zero_data_retention_confirmed}"
         )
     layers.append(
-        LayerResult(2, "org acknowledgement", required=2 in needed, satisfied=ack_ok, detail=ack_detail)
+        LayerResult(
+            2, "org acknowledgement", required=2 in needed, satisfied=ack_ok, detail=ack_detail
+        )
     )
 
     # -- layer 3: config flag ----------------------------------------------
@@ -459,7 +461,10 @@ def evaluate(
                     f"exceeded ({total} chars)"
                 )
 
-    if llm.max_chars_per_session and (chars_sent_so_far + chars_to_send) > llm.max_chars_per_session:
+    if (
+        llm.max_chars_per_session
+        and (chars_sent_so_far + chars_to_send) > llm.max_chars_per_session
+    ):
         refusals.append(
             f"[deid.llm] max_chars_per_session {llm.max_chars_per_session} would be "
             f"exceeded ({chars_sent_so_far + chars_to_send} chars)"
@@ -555,9 +560,7 @@ def _endpoint_allowed(egress: Classification, allowed: Sequence[str]) -> bool:
 
     if matches(target.host):
         return True
-    return bool(egress.resolved) and all(
-        matches(address) for address in egress.resolved
-    )
+    return bool(egress.resolved) and all(matches(address) for address in egress.resolved)
 
 
 def _consent_payload(

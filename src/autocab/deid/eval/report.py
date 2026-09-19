@@ -95,9 +95,7 @@ def predict(
     allowlist = allowlist or Allowlist.default()
 
     started = time.perf_counter()
-    all_spans = detect(
-        texts, detectors=detectors, deny_terms=deny_terms, allowlist=allowlist
-    )
+    all_spans = detect(texts, detectors=detectors, deny_terms=deny_terms, allowlist=allowlist)
     elapsed = time.perf_counter() - started
 
     predictions: list[Prediction] = []
@@ -186,9 +184,7 @@ def check_thresholds(
 
     safe_floor = spec.get("safe_record_rate")
     if safe_floor is not None and card.safe_record_rate + 1e-9 < float(safe_floor):
-        failures.append(
-            f"safe_record_rate {card.safe_record_rate:.4f} < floor {safe_floor}"
-        )
+        failures.append(f"safe_record_rate {card.safe_record_rate:.4f} < floor {safe_floor}")
 
     ceiling = spec.get("max_over_redaction_rate")
     if ceiling is not None and card.over_redaction_rate > float(ceiling) + 1e-9:
@@ -209,9 +205,7 @@ def check_thresholds(
 
     allowed_violations = spec.get("must_survive_violations", 0)
     if len(card.must_survive_violations) > int(allowed_violations):
-        names = ", ".join(
-            sorted({item["text"] for item in card.must_survive_violations})[:8]
-        )
+        names = ", ".join(sorted({item["text"] for item in card.must_survive_violations})[:8])
         failures.append(
             f"must_survive_violations {len(card.must_survive_violations)} > "
             f"{allowed_violations}: {names}"
@@ -256,9 +250,7 @@ def compare_scorecard(card: Scorecard, root: Path | None = None) -> list[str]:
     new_head = fresh["headline"]
     for key in sorted(set(old_head) | set(new_head)):  # type: ignore[arg-type]
         if old_head.get(key) != new_head.get(key):  # type: ignore[union-attr]
-            problems.append(
-                f"headline.{key}: {old_head.get(key)!r} -> {new_head.get(key)!r}"
-            )
+            problems.append(f"headline.{key}: {old_head.get(key)!r} -> {new_head.get(key)!r}")
 
     def label_map(payload: dict[str, object]) -> dict[str, dict[str, object]]:
         rows = payload.get("by_label", [])
@@ -385,7 +377,13 @@ def render_markdown(
             f"{row.label_accuracy:.3f} | {floor if floor is not None else '-'} | {margin} |"
         )
 
-    out += ["", "### By difficulty", "", "| Difficulty | Gold | `recall_strict` | `recall_partial` | Gated |", "| --- | --- | --- | --- | --- |"]
+    out += [
+        "",
+        "### By difficulty",
+        "",
+        "| Difficulty | Gold | `recall_strict` | `recall_partial` | Gated |",
+        "| --- | --- | --- | --- | --- |",
+    ]
     for key in sorted(card.by_difficulty):
         row = card.by_difficulty[key]
         out.append(
@@ -428,10 +426,7 @@ def render_markdown(
         )
     missing = sorted(set(range(1, 19)) - {key for key in rollup if isinstance(key, int)})
     if missing:
-        out.append(
-            f"| {', '.join(str(item) for item in missing)} | *none* | 0 | "
-            "**not covered** |"
-        )
+        out.append(f"| {', '.join(str(item) for item in missing)} | *none* | 0 | **not covered** |")
 
     if latency:
         out += [

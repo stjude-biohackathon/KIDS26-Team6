@@ -150,7 +150,7 @@ def test_class_none_needs_only_the_install_and_the_consent_event():
 
 
 def test_a_loopback_call_still_writes_a_consent_event():
-    """"Which model saw this session" is an audit question independent of
+    """ "Which model saw this session" is an audit question independent of
     whether anything left the machine."""
 
     decision = evaluate(
@@ -276,8 +276,7 @@ def test_a_non_loopback_base_url_does_not_inherit_loopbacks_exemption(tmp_path):
 
     assert not decision.allowed
     assert any(
-        layer.number == 2 and layer.required and not layer.satisfied
-        for layer in decision.layers
+        layer.number == 2 and layer.required and not layer.satisfied for layer in decision.layers
     )
 
 
@@ -444,7 +443,7 @@ def test_the_happy_path_actually_allows(tmp_path):
 
 
 def test_deny_egress_classes_holds_for_every_provider_and_future_flag(tmp_path):
-    """"Loopback only, ever" written once."""
+    """ "Loopback only, ever" written once."""
 
     decision = allowed_decision(
         tmp_path, ack_overrides={"deny_egress_classes": ["external", "internal"]}
@@ -455,9 +454,7 @@ def test_deny_egress_classes_holds_for_every_provider_and_future_flag(tmp_path):
 
 
 def test_deny_hosts_refuses(tmp_path):
-    decision = allowed_decision(
-        tmp_path, ack_overrides={"deny_hosts": ["api.vendor.test"]}
-    )
+    decision = allowed_decision(tmp_path, ack_overrides={"deny_hosts": ["api.vendor.test"]})
 
     assert not decision.allowed
     assert any("deny_hosts" in reason for reason in decision.refusals)
@@ -687,9 +684,7 @@ def test_a_key_pasted_under_an_innocuous_name_is_still_caught(tmp_path, shape):
 
 
 def test_credential_scanning_is_recursive(tmp_path):
-    problems = scan_for_credentials(
-        {"a": {"b": {"c": [{"auth_token": "x"}]}}}
-    )
+    problems = scan_for_credentials({"a": {"b": {"c": [{"auth_token": "x"}]}}})
 
     assert problems and "auth_token" in problems[0]
 

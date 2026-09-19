@@ -46,7 +46,9 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
             "differ byte-for-byte. This is the CI gate."
         ),
     )
-    gen.add_argument("--root", type=Path, default=None, help="Corpus root. Defaults to data/deid-eval.")
+    gen.add_argument(
+        "--root", type=Path, default=None, help="Corpus root. Defaults to data/deid-eval."
+    )
 
     ev = verbs.add_parser("eval", help="Score an engine against the corpus.")
     ev.add_argument("--engine", choices=ENGINE_CHOICES, default="regex")

@@ -83,7 +83,9 @@ def test_endpoints_require_the_token(wfrec_home):
         assert anon.get("/dashboard.js").status_code == 200
         assert anon.get("/status").status_code == 401
         assert anon.get("/status", headers={"Authorization": "Bearer wrong"}).status_code == 401
-        assert anon.get("/status", headers={"Authorization": "Bearer test-token"}).status_code == 200
+        assert (
+            anon.get("/status", headers={"Authorization": "Bearer test-token"}).status_code == 200
+        )
     recorder.shutdown()
 
 
@@ -160,9 +162,7 @@ def test_events_endpoint_paginates(client):
     assert page["total"] >= 12
     assert page["offset"] == 0
 
-    tail = client.get(
-        f"/sessions/{session_id}/events?limit=3&offset=0&tail=true"
-    ).json()
+    tail = client.get(f"/sessions/{session_id}/events?limit=3&offset=0&tail=true").json()
     assert tail["offset"] == tail["total"] - 3
     assert [event["payload"]["label"] for event in tail["events"]] == [
         "m7",
@@ -240,9 +240,7 @@ def test_rename_active_session_updates_live_and_persisted_titles(client):
     started = client.post("/sessions/start", json={"title": "Original"}).json()
     session_id = started["session"]["id"]
 
-    response = client.patch(
-        f"/sessions/{session_id}", json={"title": "  Updated title  "}
-    )
+    response = client.patch(f"/sessions/{session_id}", json={"title": "  Updated title  "})
 
     assert response.status_code == 200
     assert response.json() == {"id": session_id, "title": "Updated title"}
@@ -255,9 +253,7 @@ def test_rename_archived_unsealed_session(client):
     session_id = started["session"]["id"]
     client.post("/sessions/stop", json={"session_id": session_id})
 
-    response = client.patch(
-        f"/sessions/{session_id}", json={"title": "Archived title"}
-    )
+    response = client.patch(f"/sessions/{session_id}", json={"title": "Archived title"})
     sessions = client.get("/sessions").json()["sessions"]
 
     assert response.status_code == 200
@@ -275,9 +271,7 @@ def test_rename_session_rejects_blank_title(client):
     assert response.status_code == 400
     assert response.json()["detail"] == "Session title cannot be empty."
 
-    too_long = client.patch(
-        f"/sessions/{session_id}", json={"title": "x" * 201}
-    )
+    too_long = client.patch(f"/sessions/{session_id}", json={"title": "x" * 201})
     assert too_long.status_code == 422
 
 
@@ -287,9 +281,7 @@ def test_rename_session_rejects_sealed_session(client):
     client.post("/sessions/stop", json={"session_id": session_id})
     client.post("/sessions/seal", json={"session_id": session_id})
 
-    response = client.patch(
-        f"/sessions/{session_id}", json={"title": "Changed after sealing"}
-    )
+    response = client.patch(f"/sessions/{session_id}", json={"title": "Changed after sealing"})
 
     assert response.status_code == 409
     assert "sealed and cannot be renamed" in response.json()["detail"]
@@ -304,9 +296,7 @@ def test_trash_archived_session_hides_only_the_dashboard_entry(client):
     events_before = (session_root / "events.jsonl").read_bytes()
 
     response = client.post(f"/sessions/{session_id}/trash")
-    visible_ids = {
-        session["id"] for session in client.get("/sessions").json()["sessions"]
-    }
+    visible_ids = {session["id"] for session in client.get("/sessions").json()["sessions"]}
 
     assert response.status_code == 200
     assert response.json() == {"id": session_id, "trashed": True}
@@ -362,9 +352,7 @@ def test_open_folder_rejects_a_remote_request(client):
     response = client.post(f"/sessions/{session_id}/open-folder")
 
     assert response.status_code == 409
-    assert response.json()["detail"] == (
-        "Session folders can only be opened from the daemon host."
-    )
+    assert response.json()["detail"] == ("Session folders can only be opened from the daemon host.")
 
 
 @pytest.mark.parametrize("transition", [None, "pause"])
@@ -415,10 +403,7 @@ def test_sessions_support_read_only_historical_selection(client):
     ).json()
     second_id = second["session"]["id"]
 
-    summaries = {
-        session["id"]: session
-        for session in client.get("/sessions").json()["sessions"]
-    }
+    summaries = {session["id"]: session for session in client.get("/sessions").json()["sessions"]}
     selected = client.get(f"/status?session_id={first_id}").json()
 
     assert summaries[first_id]["status"] == "paused"
@@ -551,7 +536,7 @@ def test_ui_serves_packaged_javascript_without_credentials(client):
     assert response.headers["cache-control"] == "no-cache"
     assert "test-token" not in source
     assert "@WFREC_TOKEN@" not in source
-    assert "meta[name=\"wfrec-token\"]" in source
+    assert 'meta[name="wfrec-token"]' in source
     assert "Codex, Claude Code" in source
     assert "providers:" in source
     assert "Latest ${events.length} of ${total} events" in source
@@ -947,19 +932,13 @@ def test_cli_lists_sessions_and_events_in_tables(wfrec_home, capsys):
     assert main(["sessions"]) == 0
     sessions_output = capsys.readouterr().out
     assert "Sessions" in sessions_output
-    assert all(
-        heading in sessions_output
-        for heading in ("Session", "Status", "Analyst", "Title")
-    )
+    assert all(heading in sessions_output for heading in ("Session", "Status", "Analyst", "Title"))
     assert "Table test" in sessions_output
 
     assert main(["events"]) == 0
     events_output = capsys.readouterr().out
     assert "Timeline events" in events_output
-    assert all(
-        heading in events_output
-        for heading in ("Seq", "Time", "Type", "Summary")
-    )
+    assert all(heading in events_output for heading in ("Seq", "Time", "Type", "Summary"))
 
 
 def test_cli_renders_user_text_literally(wfrec_home, capsys):
@@ -1013,9 +992,7 @@ def test_cli_powershell_hook_installs_both_profile_generations(
         assert "wfrec.ps1" in profile
 
     powershell_status = next(
-        entry
-        for entry in hookinstall.status()
-        if entry["shell"] == "powershell"
+        entry for entry in hookinstall.status() if entry["shell"] == "powershell"
     )
     assert powershell_status["installed"] is True
     assert powershell_status["missing_rc_files"] == []
@@ -1036,20 +1013,14 @@ def test_powershell_hook_status_reports_a_missing_profile(
 
     assert main(["hooks", "install", "--shell", "powershell"]) == 0
     capsys.readouterr()
-    windows_powershell_profile = (
-        fake_home / "Documents/WindowsPowerShell/profile.ps1"
-    )
+    windows_powershell_profile = fake_home / "Documents/WindowsPowerShell/profile.ps1"
     windows_powershell_profile.unlink()
 
     powershell_status = next(
-        entry
-        for entry in hookinstall.status()
-        if entry["shell"] == "powershell"
+        entry for entry in hookinstall.status() if entry["shell"] == "powershell"
     )
     assert powershell_status["installed"] is False
-    assert powershell_status["missing_rc_files"] == [
-        str(windows_powershell_profile)
-    ]
+    assert powershell_status["missing_rc_files"] == [str(windows_powershell_profile)]
 
 
 def test_cli_doctor_renders(wfrec_home, capsys):

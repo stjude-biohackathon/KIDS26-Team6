@@ -81,7 +81,7 @@ def test_multiline_commands_are_flattened_not_dropped(store):
     _record_commands(session, ["python <<EOF\nprint(1)\nEOF"])
 
     body, _count = build_terminal_log(session)
-    parsed = parse_terminal_session(body)   # must not raise
+    parsed = parse_terminal_session(body)  # must not raise
     assert len(parsed.commands) == 1
     assert "\n" not in parsed.commands[0][1]
     assert "print(1)" in parsed.commands[0][1]
@@ -126,8 +126,12 @@ def test_screen_capture_export_loads_through_existing_adapter(store):
     session, _ = store.start(title="A", analyst="mgatta42")
     session.writer.extend(
         [
-            Event(source="screen", type="screen.ocr", payload={"ocr_text": "samtools flagstat output"}),
-            Event(source="screen", type="screen.window", payload={"window_title": "iTerm2 - hg008"}),
+            Event(
+                source="screen", type="screen.ocr", payload={"ocr_text": "samtools flagstat output"}
+            ),
+            Event(
+                source="screen", type="screen.window", payload={"window_title": "iTerm2 - hg008"}
+            ),
         ]
     )
     _record_commands(session, ["samtools flagstat HG008.bam"])
@@ -177,9 +181,7 @@ def test_events_json_preserves_the_complete_sealed_session(store):
     assert document["session"]["session_id"] == session.session_id
     assert document["session"]["title"] == "Variant QC"
     assert document["seal"]["generation"] == seal.record["generation"]
-    assert document["events"] == [
-        event.to_dict() for event in session.writer.read()
-    ]
+    assert document["events"] == [event.to_dict() for event in session.writer.read()]
     assert result["details"]["events"]["events"] == len(document["events"])
 
 
@@ -189,8 +191,16 @@ def test_waits_become_workflow_steps(store):
     session, _ = store.start(title="A", analyst="a")
     session.writer.extend(
         [
-            Event(source="session", type="session.paused", payload={"reason": "bwa align", "expect": "6h"}),
-            Event(source="session", type="session.waiting", payload={"reason": "bwa align", "elapsed_ms": 3600000}),
+            Event(
+                source="session",
+                type="session.paused",
+                payload={"reason": "bwa align", "expect": "6h"},
+            ),
+            Event(
+                source="session",
+                type="session.waiting",
+                payload={"reason": "bwa align", "elapsed_ms": 3600000},
+            ),
             Event(source="session", type="session.resumed", payload={"gap_ms": 21600000}),
         ]
     )
@@ -200,11 +210,157 @@ def test_waits_become_workflow_steps(store):
     assert "bwa align" in waits[0]["detail"]
 
 
+def test_trace_projects_each_supported_event_without_changing_details(store):
+    session, _ = store.start(title="A", analyst="a")
+    session.writer.extend(
+        [
+            Event(
+                source="shell",
+                type="shell.command.completed",
+                ts="2030-01-01T00:00:01.000Z",
+                host="node1",
+                origin="remote",
+                payload={
+                    "command": "bwa mem ref.fa reads.fq",
+                    "cwd": "/data",
+                    "exit_code": 0,
+                    "duration_ms": 15,
+                },
+            ),
+            Event(
+                source="screen",
+                type="screen.ocr",
+                ts="2030-01-01T00:00:02.000Z",
+                payload={"ocr_text": "screen text"},
+            ),
+            Event(
+                source="notes",
+                type="context.note",
+                ts="2030-01-01T00:00:03.000Z",
+                payload={"label": "decision", "text": "keep sample"},
+            ),
+            Event(
+                source="agents",
+                type="agent.message",
+                ts="2030-01-01T00:00:04.000Z",
+                payload={
+                    "tool": "codex",
+                    "role": "assistant",
+                    "text": "inspect output",
+                },
+            ),
+            Event(
+                source="files",
+                type="file.diff",
+                ts="2030-01-01T00:00:05.000Z",
+                payload={"path": "workflow.py", "added": 3, "deleted": 1},
+            ),
+            Event(
+                source="files",
+                type="git.snapshot",
+                ts="2030-01-01T00:00:06.000Z",
+                payload={"trigger": "manual", "branch": "main", "changed_count": 2},
+            ),
+            Event(
+                source="jobs",
+                type="job.submitted",
+                ts="2030-01-01T00:00:07.000Z",
+                payload={
+                    "scheduler": "slurm",
+                    "job_id": "42",
+                    "jobname": "align",
+                    "workdir": "/work",
+                },
+            ),
+            Event(
+                source="session",
+                type="session.paused",
+                ts="2030-01-01T00:00:08.000Z",
+                payload={"reason": "wait", "expect": "6h"},
+            ),
+            Event(
+                source="session",
+                type="session.resumed",
+                ts="2030-01-01T00:00:09.000Z",
+                payload={"gap_ms": 5000},
+            ),
+            Event(
+                source="session",
+                type="session.waiting",
+                ts="2030-01-01T00:00:10.000Z",
+                payload={"reason": "wait", "elapsed_ms": 1000},
+            ),
+            Event(
+                source="notes",
+                type="marker.user",
+                ts="2030-01-01T00:00:11.000Z",
+                payload={"label": "review", "detail": "accepted"},
+            ),
+            Event(
+                source="deid",
+                type="deid.sealed",
+                ts="2030-01-01T00:00:12.000Z",
+            ),
+            Event(
+                source="screen",
+                type="screen.window",
+                ts="2030-01-01T00:00:13.000Z",
+            ),
+        ]
+    )
+
+    trace, step_count = build_trace(session)
+
+    assert step_count == 11
+    assert [
+        {key: step[key] for key in ("tool", "action", "detail")} for step in trace["steps"]
+    ] == [
+        {
+            "tool": "terminal",
+            "action": "align",
+            "detail": (
+                "Executed command: bwa mem ref.fa reads.fq cwd=/data exit=0 "
+                "duration=15ms host=node1"
+            ),
+        },
+        {"tool": "screen", "action": "observe", "detail": "Screen text: screen text"},
+        {
+            "tool": "notes",
+            "action": "annotate",
+            "detail": "Analyst note (decision): keep sample",
+        },
+        {"tool": "codex", "action": "converse", "detail": "assistant: inspect output"},
+        {"tool": "editor", "action": "edit", "detail": "Edited workflow.py (+3/-1)"},
+        {
+            "tool": "git",
+            "action": "version",
+            "detail": "Git snapshot (manual) on branch main: 2 changed paths",
+        },
+        {
+            "tool": "scheduler",
+            "action": "submit",
+            "detail": "Submitted slurm job 42 align workdir=/work",
+        },
+        {"tool": "session", "action": "wait", "detail": "Paused: wait (expected 6h)"},
+        {"tool": "session", "action": "wait", "detail": "Resumed after 5000ms"},
+        {
+            "tool": "session",
+            "action": "wait",
+            "detail": "Still waiting (wait) after 1000ms",
+        },
+        {"tool": "notes", "action": "mark", "detail": "Marker review: accepted"},
+    ]
+
+
 def test_action_hints_map_bioinformatics_tools(store):
     session, _ = store.start(title="A", analyst="a")
     _record_commands(session, ["bwa mem ref.fa r1.fq", "sbatch job.sh", "samtools sort in.bam"])
     trace, _ = build_trace(session)
-    actions = {s["detail"].split(":")[1].strip().split()[0]: s["action"] for s in trace["steps"] if s["tool"] == "terminal"}
+    actions = {
+        s["detail"].split(":")[1].strip().split()[0]: s["action"]
+        for s in trace["steps"]
+        if s["tool"] == "terminal"
+    }
     assert actions["bwa"] == "align"
     assert actions["sbatch"] == "submit"
     assert actions["samtools"] == "analyze"
@@ -314,12 +470,24 @@ def test_exports_are_chronological_even_when_the_file_is_not(store):
     # Written out of order on purpose, exactly as concurrent collectors would.
     session.writer.extend(
         [
-            Event(source="screen", type="screen.ocr", ts="2026-03-11T09:00:10.000Z",
-                  payload={"ocr_text": "later frame"}),
-            Event(source="shell", type="shell.command.completed", ts="2026-03-11T09:00:05.000Z",
-                  payload={"command": "earlier_command"}),
-            Event(source="shell", type="shell.command.completed", ts="2026-03-11T09:00:07.000Z",
-                  payload={"command": "middle_command"}),
+            Event(
+                source="screen",
+                type="screen.ocr",
+                ts="2026-03-11T09:00:10.000Z",
+                payload={"ocr_text": "later frame"},
+            ),
+            Event(
+                source="shell",
+                type="shell.command.completed",
+                ts="2026-03-11T09:00:05.000Z",
+                payload={"command": "earlier_command"},
+            ),
+            Event(
+                source="shell",
+                type="shell.command.completed",
+                ts="2026-03-11T09:00:07.000Z",
+                payload={"command": "middle_command"},
+            ),
         ]
     )
 
@@ -327,11 +495,7 @@ def test_exports_are_chronological_even_when_the_file_is_not(store):
     assert raw != sorted(raw), "fixture must actually be out of order"
 
     body, _ = build_terminal_log(session)
-    stamps = [
-        line.split(" ", 1)[0]
-        for line in body.splitlines()
-        if not line.startswith("#")
-    ]
+    stamps = [line.split(" ", 1)[0] for line in body.splitlines() if not line.startswith("#")]
     assert stamps == sorted(stamps)
 
     trace, _ = build_trace(session)

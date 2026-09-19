@@ -135,11 +135,7 @@ def materialize_hook(target: ShellTarget) -> Path:
 
     hooks = paths.hooks_dir()
     hooks.mkdir(parents=True, exist_ok=True)
-    body = (
-        resources.files("wfrec.hooks")
-        .joinpath(target.hook_resource)
-        .read_text(encoding="utf-8")
-    )
+    body = resources.files("wfrec.hooks").joinpath(target.hook_resource).read_text(encoding="utf-8")
     body = body.replace("@WFREC_RUN@", str(paths.runtime_dir()))
     destination = hooks / target.hook_filename
     destination.write_text(body, encoding="utf-8")
@@ -187,9 +183,7 @@ def install(shells: list[str] | None = None) -> list[dict[str, str]]:
             existing = rc.read_text(encoding="utf-8") if rc.exists() else ""
 
             if existing:
-                backup = rc.with_name(
-                    f"{rc.name}.wfrec-backup-{int(time.time())}"
-                )
+                backup = rc.with_name(f"{rc.name}.wfrec-backup-{int(time.time())}")
                 backup.write_text(existing, encoding="utf-8")
             else:
                 backup = None

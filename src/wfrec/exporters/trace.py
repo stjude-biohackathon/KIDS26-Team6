@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 from ..events import (
-    DEID_SEALED,
     AGENT_MESSAGE,
     CONTEXT_NOTE,
     FILE_DIFF,
@@ -25,18 +25,43 @@ from ..events import (
     SESSION_RESUMED,
     SESSION_WAITING,
     SHELL_COMMAND,
+    Event,
 )
+from ..session import Session
 
 ACTION_HINTS = {
-    "python": "run", "python3": "run", "bash": "run", "sh": "run",
-    "snakemake": "workflow", "nextflow": "workflow", "Rscript": "run",
-    "jupyter": "notebook", "grep": "inspect", "cat": "inspect",
-    "less": "inspect", "head": "inspect", "tail": "inspect", "ls": "inspect",
-    "find": "inspect", "samtools": "analyze", "bcftools": "analyze",
-    "bedtools": "analyze", "awk": "transform", "sed": "transform",
-    "cp": "bundle", "mv": "bundle", "tar": "bundle", "zip": "bundle",
-    "sbatch": "submit", "srun": "submit", "bwa": "align", "minimap2": "align",
-    "star": "align", "salmon": "quantify", "fastqc": "qc", "multiqc": "qc",
+    "python": "run",
+    "python3": "run",
+    "bash": "run",
+    "sh": "run",
+    "snakemake": "workflow",
+    "nextflow": "workflow",
+    "Rscript": "run",
+    "jupyter": "notebook",
+    "grep": "inspect",
+    "cat": "inspect",
+    "less": "inspect",
+    "head": "inspect",
+    "tail": "inspect",
+    "ls": "inspect",
+    "find": "inspect",
+    "samtools": "analyze",
+    "bcftools": "analyze",
+    "bedtools": "analyze",
+    "awk": "transform",
+    "sed": "transform",
+    "cp": "bundle",
+    "mv": "bundle",
+    "tar": "bundle",
+    "zip": "bundle",
+    "sbatch": "submit",
+    "srun": "submit",
+    "bwa": "align",
+    "minimap2": "align",
+    "star": "align",
+    "salmon": "quantify",
+    "fastqc": "qc",
+    "multiqc": "qc",
     "git": "version",
 }
 
@@ -93,98 +118,187 @@ def infer_tags(text: str, existing: list[str]) -> list[str]:
     return tags[:8]
 
 
-def build_trace(session) -> tuple[dict, int]:
+_TraceProjection = tuple[dict[str, str], str | None]
+_EventProjector = Callable[[Event], _TraceProjection | None]
+
+
+def _projection(
+    event: Event,
+    *,
+    tool: str,
+    action: str,
+    detail: str,
+    corpus_text: str | None = None,
+) -> _TraceProjection:
+    """Keep the shared trace-step shape separate from event-specific parsing."""
+
+    return (
+        {
+            "timestamp": event.ts,
+            "tool": tool,
+            "action": action,
+            "detail": detail,
+        },
+        corpus_text,
+    )
+
+
+def _project_shell_command(event: Event) -> _TraceProjection | None:
+    payload = event.payload
+    command = str(payload.get("command") or "")
+    if not command:
+        return None
+
+    detail_parts = [f"Executed command: {command}"]
+    if payload.get("cwd"):
+        detail_parts.append(f"cwd={payload['cwd']}")
+    if payload.get("exit_code") not in (None, ""):
+        detail_parts.append(f"exit={payload['exit_code']}")
+    if payload.get("duration_ms") not in (None, ""):
+        detail_parts.append(f"duration={payload['duration_ms']}ms")
+    if payload.get("origin") or event.origin != "local":
+        detail_parts.append(f"host={event.host}")
+    return _projection(
+        event,
+        tool="terminal",
+        action=_action_for(command),
+        detail=" ".join(detail_parts),
+        corpus_text=command,
+    )
+
+
+def _project_screen_ocr(event: Event) -> _TraceProjection:
+    text = event.payload.get("ocr_text", "")
+    return _projection(
+        event,
+        tool="screen",
+        action="observe",
+        detail=f"Screen text: {text[:1200]}",
+        corpus_text=str(text or ""),
+    )
+
+
+def _project_context_note(event: Event) -> _TraceProjection:
+    payload = event.payload
+    text = payload.get("text", "")
+    return _projection(
+        event,
+        tool="notes",
+        action="annotate",
+        detail=f"Analyst note ({payload.get('label') or 'context'}): {text[:1200]}",
+        corpus_text=str(text or ""),
+    )
+
+
+def _project_agent_message(event: Event) -> _TraceProjection:
+    payload = event.payload
+    text = str(payload.get("text") or "")
+    return _projection(
+        event,
+        tool=str(payload.get("tool") or "agent"),
+        action="converse",
+        detail=f"{payload.get('role')}: {text[:1200]}",
+        corpus_text=text,
+    )
+
+
+def _project_file_diff(event: Event) -> _TraceProjection:
+    payload = event.payload
+    path = str(payload.get("path") or "")
+    return _projection(
+        event,
+        tool="editor",
+        action="edit",
+        detail=(
+            f"Edited {payload.get('path')} (+{payload.get('added')}/-{payload.get('deleted')})"
+        ),
+        corpus_text=path,
+    )
+
+
+def _project_git_snapshot(event: Event) -> _TraceProjection | None:
+    payload = event.payload
+    if not payload.get("changed_count"):
+        return None
+    return _projection(
+        event,
+        tool="git",
+        action="version",
+        detail=(
+            f"Git snapshot ({payload.get('trigger')}) on branch "
+            f"{payload.get('branch')}: {payload.get('changed_count')} changed paths"
+        ),
+    )
+
+
+def _project_job_submission(event: Event) -> _TraceProjection:
+    payload = event.payload
+    detail = (
+        f"Submitted {payload.get('scheduler')} job {payload.get('job_id')} "
+        f"{payload.get('jobname', '')} workdir={payload.get('workdir', '')}"
+    ).strip()
+    return _projection(
+        event,
+        tool="scheduler",
+        action="submit",
+        detail=detail,
+        corpus_text=detail,
+    )
+
+
+def _project_session_wait(event: Event) -> _TraceProjection:
+    payload = event.payload
+    if event.type == SESSION_PAUSED:
+        detail = (
+            f"Paused: {payload.get('reason') or 'no reason given'} "
+            f"(expected {payload.get('expect') or 'unknown'})"
+        )
+    elif event.type == SESSION_RESUMED:
+        detail = f"Resumed after {payload.get('gap_ms') or 0}ms"
+    else:
+        detail = f"Still waiting ({payload.get('reason')}) after {payload.get('elapsed_ms', 0)}ms"
+    return _projection(event, tool="session", action="wait", detail=detail)
+
+
+def _project_marker(event: Event) -> _TraceProjection:
+    payload = event.payload
+    detail = f"Marker {payload.get('label')}: {payload.get('detail', '')}".strip()
+    return _projection(event, tool="notes", action="mark", detail=detail)
+
+
+_EVENT_PROJECTORS: dict[str, _EventProjector] = {
+    SHELL_COMMAND: _project_shell_command,
+    SCREEN_OCR: _project_screen_ocr,
+    CONTEXT_NOTE: _project_context_note,
+    AGENT_MESSAGE: _project_agent_message,
+    FILE_DIFF: _project_file_diff,
+    GIT_SNAPSHOT: _project_git_snapshot,
+    JOB_SUBMITTED: _project_job_submission,
+    SESSION_PAUSED: _project_session_wait,
+    SESSION_RESUMED: _project_session_wait,
+    SESSION_WAITING: _project_session_wait,
+    MARKER_USER: _project_marker,
+}
+
+
+def build_trace(session: Session) -> tuple[dict[str, object], int]:
     manifest = session.manifest
     steps: list[dict[str, str]] = []
     corpus: list[str] = []
 
     for event in session.writer.read_sorted():
-        payload = event.payload
-        detail = ""
-        tool = event.source
-        action = "observe"
-
-        if event.type == DEID_SEALED:
-            # The seal's own self-documenting event. It is a statement *about*
-            # the timeline, not a workflow step, so it must not become one --
-            # otherwise every sealed session grows a phantom step and the
-            # clusterer's lexical matching sees it in every family.
+        projector = _EVENT_PROJECTORS.get(event.type)
+        if projector is None:
+            # Unsupported events and the seal record are timeline metadata,
+            # not workflow steps.
             continue
-
-        if event.type == SHELL_COMMAND:
-            command = str(payload.get("command") or "")
-            if not command:
-                continue
-            tool, action = "terminal", _action_for(command)
-            bits = [f"Executed command: {command}"]
-            if payload.get("cwd"):
-                bits.append(f"cwd={payload['cwd']}")
-            if payload.get("exit_code") not in (None, ""):
-                bits.append(f"exit={payload['exit_code']}")
-            if payload.get("duration_ms") not in (None, ""):
-                bits.append(f"duration={payload['duration_ms']}ms")
-            if payload.get("origin") or event.origin != "local":
-                bits.append(f"host={event.host}")
-            detail = " ".join(bits)
-            corpus.append(command)
-        elif event.type == SCREEN_OCR:
-            tool, action = "screen", "observe"
-            detail = f"Screen text: {payload.get('ocr_text', '')[:1200]}"
-            corpus.append(str(payload.get("ocr_text") or ""))
-        elif event.type == CONTEXT_NOTE:
-            tool, action = "notes", "annotate"
-            detail = f"Analyst note ({payload.get('label') or 'context'}): {payload.get('text', '')[:1200]}"
-            corpus.append(str(payload.get("text") or ""))
-        elif event.type == AGENT_MESSAGE:
-            tool, action = str(payload.get("tool") or "agent"), "converse"
-            detail = f"{payload.get('role')}: {str(payload.get('text') or '')[:1200]}"
-            corpus.append(str(payload.get("text") or ""))
-        elif event.type == FILE_DIFF:
-            tool, action = "editor", "edit"
-            detail = (
-                f"Edited {payload.get('path')} (+{payload.get('added')}/"
-                f"-{payload.get('deleted')})"
-            )
-            corpus.append(str(payload.get("path") or ""))
-        elif event.type == GIT_SNAPSHOT:
-            if not payload.get("changed_count"):
-                continue
-            tool, action = "git", "version"
-            detail = (
-                f"Git snapshot ({payload.get('trigger')}) on branch "
-                f"{payload.get('branch')}: {payload.get('changed_count')} changed paths"
-            )
-        elif event.type == JOB_SUBMITTED:
-            tool, action = "scheduler", "submit"
-            detail = (
-                f"Submitted {payload.get('scheduler')} job {payload.get('job_id')} "
-                f"{payload.get('jobname', '')} workdir={payload.get('workdir', '')}"
-            ).strip()
-            corpus.append(detail)
-        elif event.type in (SESSION_PAUSED, SESSION_RESUMED, SESSION_WAITING):
-            # Waits are workflow signal: "the analyst blocked six hours on an
-            # alignment" is exactly the kind of step a skill should encode.
-            tool, action = "session", "wait"
-            if event.type == SESSION_PAUSED:
-                detail = f"Paused: {payload.get('reason') or 'no reason given'} (expected {payload.get('expect') or 'unknown'})"
-            elif event.type == SESSION_RESUMED:
-                detail = f"Resumed after {payload.get('gap_ms') or 0}ms"
-            else:
-                detail = f"Still waiting ({payload.get('reason')}) after {payload.get('elapsed_ms', 0)}ms"
-        elif event.type == MARKER_USER:
-            tool, action = "notes", "mark"
-            detail = f"Marker {payload.get('label')}: {payload.get('detail', '')}".strip()
-        else:
+        projection = projector(event)
+        if projection is None:
             continue
-
-        steps.append(
-            {
-                "timestamp": event.ts,
-                "tool": tool,
-                "action": action,
-                "detail": detail,
-            }
-        )
+        step, corpus_text = projection
+        steps.append(step)
+        if corpus_text is not None:
+            corpus.append(corpus_text)
 
     title = manifest.title or f"Session {session.session_id}"
     joined = " ".join(corpus)
@@ -206,7 +320,10 @@ def build_trace(session) -> tuple[dict, int]:
     return trace, len(steps)
 
 
-def write_trace(session, destination: Path | None = None) -> tuple[Path, int]:
+def write_trace(
+    session: Session,
+    destination: Path | None = None,
+) -> tuple[Path, int]:
     """Write ``exports/workflow-trace.json`` as a one-element array, matching
     ``autocab.demo_data.load_workflow_traces``."""
 

@@ -19,9 +19,7 @@ def test_open_directory_uses_finder_on_macos(tmp_path: Path, monkeypatch) -> Non
     assert commands == [["open", str(tmp_path.resolve())]]
 
 
-def test_open_directory_uses_explorer_on_windows(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_open_directory_uses_explorer_on_windows(tmp_path: Path, monkeypatch) -> None:
     opened: list[str] = []
     monkeypatch.setattr(desktop.sys, "platform", "win32")
     monkeypatch.setattr(desktop.os, "startfile", opened.append, raising=False)
@@ -31,9 +29,7 @@ def test_open_directory_uses_explorer_on_windows(
     assert opened == [str(tmp_path.resolve())]
 
 
-def test_open_directory_uses_xdg_open_on_linux(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_open_directory_uses_xdg_open_on_linux(tmp_path: Path, monkeypatch) -> None:
     commands: list[list[str]] = []
     monkeypatch.setattr(desktop.sys, "platform", "linux")
     monkeypatch.setenv("DISPLAY", ":0")
@@ -45,9 +41,7 @@ def test_open_directory_uses_xdg_open_on_linux(
     assert commands == [["/usr/bin/xdg-open", str(tmp_path.resolve())]]
 
 
-def test_open_directory_rejects_a_headless_linux_host(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_open_directory_rejects_a_headless_linux_host(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(desktop.sys, "platform", "linux")
     monkeypatch.delenv("DISPLAY", raising=False)
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)

@@ -155,9 +155,7 @@ def diagnose() -> dict[str, Any]:
             "shell_output": False,
             "shell_output_requested": state.shell_output,
             "shell_output_available": False,
-            "shell_output_reason": shell_output_unavailable_reason(
-                state.shell_backend
-            ),
+            "shell_output_reason": shell_output_unavailable_reason(state.shell_backend),
             "shell_backend": state.shell_backend,
         },
         "sentinel": None,
@@ -244,18 +242,11 @@ def diagnose() -> dict[str, Any]:
         from .hookinstall import status as hook_status
 
         report["hooks"] = hook_status()
-        hooks_available = any(
-            entry.get("installed", False) for entry in report["hooks"]
-        )
+        hooks_available = any(entry.get("installed", False) for entry in report["hooks"])
         report["sources"]["shell"]["fallback"] = (
-            "hook-spool available"
-            if hooks_available
-            else "hook-spool not installed"
+            "hook-spool available" if hooks_available else "hook-spool not installed"
         )
-        if (
-            shell_selection.name != SHELL_BACKEND_DEVSQL
-            and not hooks_available
-        ):
+        if shell_selection.name != SHELL_BACKEND_DEVSQL and not hooks_available:
             report["sources"]["shell"].update(
                 available=False,
                 reason="no-shell-hooks",
@@ -331,19 +322,14 @@ def _files_status(libs: dict) -> dict[str, Any]:
 def _shell_status(selection: ShellBackendSelection) -> dict[str, Any]:
     """Describe the selected shell backend without reading command rows."""
 
-    available = (
-        selection.name != SHELL_BACKEND_DEVSQL
-        or selection.client is not None
-    )
+    available = selection.name != SHELL_BACKEND_DEVSQL or selection.client is not None
     return {
         "backend": selection.name,
         "available": available,
         "provider": selection.provider,
         "version": selection.devsql_version,
         "shell_output_available": False,
-        "shell_output_reason": shell_output_unavailable_reason(
-            selection.name
-        ),
+        "shell_output_reason": shell_output_unavailable_reason(selection.name),
         "reason": "" if available else "devsql-unavailable",
         "detail": selection.detail,
     }
@@ -400,8 +386,7 @@ def render(report: dict[str, Any]) -> Group:
     system.add_row(
         "Host",
         _plain_text(
-            f"{platform_info['system']} {platform_info['release']} "
-            f"{platform_info['machine']}"
+            f"{platform_info['system']} {platform_info['release']} {platform_info['machine']}"
         ),
     )
     system.add_row("Display", _plain_text(platform_info["display_server"]))
@@ -410,18 +395,14 @@ def render(report: dict[str, Any]) -> Group:
     daemon = report.get("daemon")
     system.add_row(
         "Daemon",
-        _plain_text(daemon["url"], "cyan")
-        if daemon
-        else Text("Not running", style="yellow"),
+        _plain_text(daemon["url"], "cyan") if daemon else Text("Not running", style="yellow"),
     )
 
     state = report["state"]
     active_session = state["active_session"]
     system.add_row(
         "Session",
-        _plain_text(active_session)
-        if active_session
-        else Text("None", style="dim"),
+        _plain_text(active_session) if active_session else Text("None", style="dim"),
     )
     if report.get("sentinel"):
         system.add_row(
@@ -458,9 +439,7 @@ def render(report: dict[str, Any]) -> Group:
         hooks.add_row(
             _status_text(installed),
             _plain_text(entry["shell"]),
-            _plain_text(location)
-            if location
-            else Text("Not installed", style="dim"),
+            _plain_text(location) if location else Text("Not installed", style="dim"),
         )
 
     sections: list[Any] = [
@@ -484,9 +463,7 @@ def render(report: dict[str, Any]) -> Group:
                 Text("!", style="bold yellow"),
                 _plain_text(warning),
             )
-        sections.extend(
-            [Text(""), Text("Warnings", style="bold yellow"), warnings]
-        )
+        sections.extend([Text(""), Text("Warnings", style="bold yellow"), warnings])
     return Group(*sections)
 
 

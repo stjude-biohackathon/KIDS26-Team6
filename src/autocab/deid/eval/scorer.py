@@ -192,9 +192,7 @@ class Scorecard:
         alongside it for the other reading; only this one is gated."""
 
         return (
-            self.over_redacted_characters / self.total_characters
-            if self.total_characters
-            else 0.0
+            self.over_redacted_characters / self.total_characters if self.total_characters else 0.0
         )
 
     @property
@@ -225,9 +223,7 @@ class Scorecard:
             "recall_strict_overall": round(self.recall_strict, 4),
             "recall_strict_gated": round(self.recall_strict_gated, 4),
             "over_redaction_rate": round(self.over_redaction_rate, 4),
-            "over_redaction_share_of_predicted": round(
-                self.over_redaction_share_of_predicted, 4
-            ),
+            "over_redaction_share_of_predicted": round(self.over_redaction_share_of_predicted, 4),
             "false_positive_spans_per_negative_record": round(
                 self.false_positive_spans_per_negative_record, 4
             ),
@@ -249,9 +245,10 @@ class Scorecard:
             "must_survive_violations": sorted(
                 self.must_survive_violations, key=lambda item: (item["record_id"], item["text"])
             ),
-            "leaks": [leak.to_dict() for leak in sorted(
-                self.leaks, key=lambda leak: (leak.record_id, leak.start)
-            )],
+            "leaks": [
+                leak.to_dict()
+                for leak in sorted(self.leaks, key=lambda leak: (leak.record_id, leak.start))
+            ],
         }
 
 
@@ -374,9 +371,7 @@ def score(
 
         if record.channel == "negatives":
             card.negative_records += 1
-            card.negative_false_positive_spans += sum(
-                1 for span in predicted if not span.protect
-            )
+            card.negative_false_positive_spans += sum(1 for span in predicted if not span.protect)
 
         for survivor in record.must_survive:
             card.must_survive_total += 1

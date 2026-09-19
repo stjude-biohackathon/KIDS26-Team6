@@ -7,14 +7,8 @@ import pytest
 
 
 REPOSITORY_ROOT = Path(__file__).parents[1]
-UNINSTALLER = (
-    REPOSITORY_ROOT
-    / "skills/setup-activity-tracking/scripts/uninstall_dependencies.sh"
-)
-INSTALLER = (
-    REPOSITORY_ROOT
-    / "skills/setup-activity-tracking/scripts/install_dependencies.sh"
-)
+UNINSTALLER = REPOSITORY_ROOT / "skills/setup-activity-tracking/scripts/uninstall_dependencies.sh"
+INSTALLER = REPOSITORY_ROOT / "skills/setup-activity-tracking/scripts/install_dependencies.sh"
 ARTIFACT_SUFFIXES = {
     "devsql": ".cargo/bin/devsql",
     "devsql_receipt": ".config/devsql/devsql-receipt.json",
@@ -29,10 +23,7 @@ CONFIRMATION_PHRASE = "REMOVE AUTOCAB ACTIVITY TRACKING"
 def artifact_paths(home_directory: Path) -> dict[str, Path]:
     """Return the fixed paths the installer is allowed to own."""
 
-    return {
-        key: home_directory / suffix
-        for key, suffix in ARTIFACT_SUFFIXES.items()
-    }
+    return {key: home_directory / suffix for key, suffix in ARTIFACT_SUFFIXES.items()}
 
 
 def create_artifacts(home_directory: Path) -> dict[str, Path]:
@@ -78,9 +69,7 @@ def write_receipt(
                 )
             )
         )
-    receipt_path = (
-        home_directory / ".local/state/autocab/activity-tracking-install.receipt"
-    )
+    receipt_path = home_directory / ".local/state/autocab/activity-tracking-install.receipt"
     receipt_path.parent.mkdir(parents=True)
     receipt_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     receipt_path.chmod(0o600)
@@ -194,9 +183,7 @@ esac
     )
 
     assert install_result.returncode == 0, install_result.stderr
-    receipt_path = (
-        tmp_path / ".local/state/autocab/activity-tracking-install.receipt"
-    )
+    receipt_path = tmp_path / ".local/state/autocab/activity-tracking-install.receipt"
     receipt = receipt_path.read_text(encoding="utf-8")
     assert f"artifact|{tmp_path / '.cargo/bin/devsql'}|" in receipt
     assert f"artifact|{tmp_path / '.atuin/bin/atuin'}|" in receipt

@@ -54,6 +54,7 @@ STATUS_ACTIVE = "active"
 STATUS_PAUSED = "paused"
 STATUS_STOPPED = "stopped"
 
+
 def new_session_id() -> str:
     """Return a sortable UTC timestamp with a globally unique UUIDv4 suffix.
 
@@ -79,9 +80,7 @@ class Manifest:
     status: str = STATUS_CREATED
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
-    sources: dict[str, bool] = field(
-        default_factory=lambda: dict.fromkeys(SOURCES, True)
-    )
+    sources: dict[str, bool] = field(default_factory=lambda: dict.fromkeys(SOURCES, True))
     shell_output: bool = False
     shell_backend: str = SHELL_BACKEND_SPOOL
     watch_roots: list[str] = field(default_factory=list)
@@ -271,9 +270,7 @@ class Session:
         return self.writer.append(event)
 
     def _log_lifecycle(self, action: str, detail: dict[str, Any]) -> None:
-        self.manifest.lifecycle.append(
-            {"action": action, "at": utc_now(), **detail}
-        )
+        self.manifest.lifecycle.append({"action": action, "at": utc_now(), **detail})
 
     def _accrue_time(self) -> None:
         """Attribute elapsed wall clock to active or paused, then reset the mark.
@@ -332,9 +329,7 @@ class Session:
             )
         else:
             self._log_lifecycle("paused", {"reason": reason, "expect": expect})
-            event = self.record(
-                SESSION_PAUSED, payload={"reason": reason, "expect": expect}
-            )
+            event = self.record(SESSION_PAUSED, payload={"reason": reason, "expect": expect})
         self.save()
         return event
 
@@ -359,9 +354,7 @@ class Session:
         from the analyst walking away, and the wait is itself workflow signal.
         """
 
-        return self.record(
-            SESSION_WAITING, payload={"reason": reason, "elapsed_ms": elapsed_ms}
-        )
+        return self.record(SESSION_WAITING, payload={"reason": reason, "elapsed_ms": elapsed_ms})
 
     # ----------------------------------------------------------------- toggles
     def set_source(self, source: str, enabled: bool) -> Event:
@@ -370,9 +363,7 @@ class Session:
                 f"Unknown capture source '{source}'. Known: {', '.join(sorted(self.manifest.sources))}"
             )
         self.manifest.sources[source] = enabled
-        self.manifest.toggles.append(
-            {"source": source, "enabled": enabled, "at": utc_now()}
-        )
+        self.manifest.toggles.append({"source": source, "enabled": enabled, "at": utc_now()})
         event = self.record(
             SOURCE_ENABLED if enabled else SOURCE_DISABLED,
             source=source,
@@ -384,11 +375,7 @@ class Session:
 
     def set_shell_output(self, enabled: bool) -> Event:
         if enabled:
-            raise ValueError(
-                shell_output_unavailable_reason(
-                    self.manifest.shell_backend
-                )
-            )
+            raise ValueError(shell_output_unavailable_reason(self.manifest.shell_backend))
         self.manifest.shell_output = enabled
         self.manifest.toggles.append(
             {"source": "shell_output", "enabled": enabled, "at": utc_now()}
@@ -556,9 +543,7 @@ class SessionStore:
 
         session = self.resolve(session_id)
         if session.manifest.status == STATUS_STOPPED:
-            raise ValueError(
-                f"Session {session.session_id} is stopped and cannot be resumed."
-            )
+            raise ValueError(f"Session {session.session_id} is stopped and cannot be resumed.")
         if shell_backend is not None:
             session.set_shell_backend(shell_backend)
         gap_ms = None

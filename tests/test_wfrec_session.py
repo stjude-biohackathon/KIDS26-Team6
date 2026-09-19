@@ -72,9 +72,7 @@ def test_only_one_session_is_ever_active(store):
     assert Session.load(a.session_id).manifest.status == STATUS_PAUSED
     assert Session.load(b.session_id).manifest.status == STATUS_ACTIVE
 
-    actives = [
-        s.session_id for s in store.list_sessions() if s.manifest.status == STATUS_ACTIVE
-    ]
+    actives = [s.session_id for s in store.list_sessions() if s.manifest.status == STATUS_ACTIVE]
     assert actives == [b.session_id]
 
 
@@ -101,8 +99,7 @@ def test_pause_records_reason_and_clears_sentinel(store):
     assert read_sentinel() is None, "paused means every open shell stops recording"
 
     paused = [
-        e for e in Session.load(session.session_id).writer.read()
-        if e.type == "session.paused"
+        e for e in Session.load(session.session_id).writer.read() if e.type == "session.paused"
     ]
     assert paused[0].payload["reason"] == "waiting on alignment"
     assert paused[0].payload["expect"] == "6h"
@@ -114,7 +111,9 @@ def test_resume_from_paused_and_records_gap(store):
     resumed, _ = store.resume(session.session_id)
 
     assert resumed.manifest.status == STATUS_ACTIVE
-    events = [e for e in Session.load(session.session_id).writer.read() if e.type == "session.resumed"]
+    events = [
+        e for e in Session.load(session.session_id).writer.read() if e.type == "session.resumed"
+    ]
     assert events and "gap_ms" in events[0].payload
 
 
@@ -171,7 +170,7 @@ def test_shell_output_rejects_enable_and_clears_legacy_state(store):
 
 def test_toggle_on_inactive_session_does_not_touch_live_sentinel(store):
     a, _ = store.start(title="A")
-    b, _ = store.start(title="B")   # A is now paused
+    b, _ = store.start(title="B")  # A is now paused
     before = read_sentinel()[1]
 
     a.set_source("files", False)
@@ -191,9 +190,7 @@ def test_notes_are_redacted_before_they_touch_disk(store):
     """The paste box is the most likely place an identifier lands."""
 
     session, _ = store.start(title="A")
-    event = session.add_note(
-        "email bob@stjude.org about SJ001234 MRN 1234567", label="why"
-    )
+    event = session.add_note("email bob@stjude.org about SJ001234 MRN 1234567", label="why")
 
     assert set(event.redactions) >= {"email", "sj_id", "mrn"}
     assert "bob@stjude.org" not in event.payload["text"]
@@ -237,7 +234,10 @@ def test_batched_append_assigns_contiguous_sequence(store):
 
     session, _ = store.start(title="A")
     before = len(session.writer.read())
-    events = [Event(source="shell", type="shell.command.completed", payload={"command": f"c{i}"}) for i in range(5)]
+    events = [
+        Event(source="shell", type="shell.command.completed", payload={"command": f"c{i}"})
+        for i in range(5)
+    ]
     session.writer.extend(events)
     seqs = [e.seq for e in events]
     assert seqs == list(range(before + 1, before + 6))

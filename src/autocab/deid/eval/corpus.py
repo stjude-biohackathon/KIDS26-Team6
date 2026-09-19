@@ -243,7 +243,10 @@ def _reserved_range_problems(corpus: Corpus) -> list[str]:
         for span in record.spans:
             text = span.text
             if span.label == "EMAIL":
-                if not any(text.endswith("@" + domain) or "@" + domain in text for domain in RESERVED_EMAIL_DOMAINS):
+                if not any(
+                    text.endswith("@" + domain) or "@" + domain in text
+                    for domain in RESERVED_EMAIL_DOMAINS
+                ):
                     problems.append(f"{record.id}: EMAIL {text!r} is outside RFC 2606 space")
             elif span.label == "URL":
                 if not any(domain in text for domain in RESERVED_EMAIL_DOMAINS):
@@ -267,9 +270,7 @@ def _reserved_range_problems(corpus: Corpus) -> list[str]:
                 digits = "".join(char for char in text if char.isdigit())
                 area = digits[:3]
                 if not (area in {"000", "666"} or area.startswith("9")):
-                    problems.append(
-                        f"{record.id}: SSN {text!r} area {area!r} is an issuable range"
-                    )
+                    problems.append(f"{record.id}: SSN {text!r} area {area!r} is an issuable range")
             elif span.label == "PHONE" or span.label == "FAX":
                 digits = "".join(char for char in text if char.isdigit())
                 if "5555550" not in digits:
@@ -277,9 +278,7 @@ def _reserved_range_problems(corpus: Corpus) -> list[str]:
                         f"{record.id}: {span.label} {text!r} is outside the 555-555-01xx range"
                     )
             elif span.label == "ACCOUNT" and text not in TEST_CARDS:
-                problems.append(
-                    f"{record.id}: ACCOUNT {text!r} is not a published test card"
-                )
+                problems.append(f"{record.id}: ACCOUNT {text!r} is not a published test card")
     return problems
 
 

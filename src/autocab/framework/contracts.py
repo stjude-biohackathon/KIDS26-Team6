@@ -6,7 +6,14 @@ from pathlib import Path
 from typing import Protocol
 
 from autocab.input_sources import InputBundle
-from autocab.models import RedactionReport, ReviewDecision, SkillProposal, SkillReference, TraceCluster, WorkflowTrace
+from autocab.models import (
+    RedactionReport,
+    ReviewDecision,
+    SkillProposal,
+    SkillReference,
+    TraceCluster,
+    WorkflowTrace,
+)
 
 
 class InputAdapter(Protocol):

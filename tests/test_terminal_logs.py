@@ -1,7 +1,11 @@
 from pathlib import Path
 
 from autocab.input_sources import load_terminal_log_input
-from autocab.terminal_logs import convert_terminal_log, parse_terminal_session, terminal_session_to_trace
+from autocab.terminal_logs import (
+    convert_terminal_log,
+    parse_terminal_session,
+    terminal_session_to_trace,
+)
 
 
 def test_parse_terminal_session_reads_metadata_and_commands():

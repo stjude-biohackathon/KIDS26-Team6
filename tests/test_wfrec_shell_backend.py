@@ -222,9 +222,7 @@ def test_devsql_collector_reads_remote_without_draining_local_spool(
 
     collector._run_once()
 
-    shell_events = [
-        event for event in session.writer.read() if event.type == SHELL_COMMAND
-    ]
+    shell_events = [event for event in session.writer.read() if event.type == SHELL_COMMAND]
     assert len(shell_events) == 1
     assert shell_events[0].origin == "remote:hpc"
     assert shell_events[0].payload["command"] == "remote-command"
@@ -245,9 +243,7 @@ def _unavailable_selection(
 ) -> ShellBackendSelection:
     return ShellBackendSelection(
         name=backend or SHELL_BACKEND_SPOOL,
-        provider=(
-            DEVSQL_SHELL_SOURCE if backend == SHELL_BACKEND_DEVSQL else ""
-        ),
+        provider=(DEVSQL_SHELL_SOURCE if backend == SHELL_BACKEND_DEVSQL else ""),
         detail="DevSQL executable is not available.",
     )
 
@@ -264,11 +260,7 @@ def _devsql_client(
     ) -> subprocess.CompletedProcess[str]:
         if commands is not None:
             commands.append(command)
-        stdout = (
-            "devsql 0.5.1\n"
-            if command[-1] == "--version"
-            else json.dumps([])
-        )
+        stdout = "devsql 0.5.1\n" if command[-1] == "--version" else json.dumps([])
         return subprocess.CompletedProcess(
             args=command,
             returncode=0,

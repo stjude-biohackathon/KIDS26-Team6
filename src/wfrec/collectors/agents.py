@@ -93,7 +93,9 @@ def _flatten_content(content: Any) -> str:
                     parts.append(item["text"])
                 elif item.get("type") == "tool_use":
                     name = item.get("name", "tool")
-                    parts.append(f"[tool_use {name}] {json.dumps(item.get('input'), default=str)[:2000]}")
+                    parts.append(
+                        f"[tool_use {name}] {json.dumps(item.get('input'), default=str)[:2000]}"
+                    )
                 elif item.get("type") == "tool_result":
                     parts.append(f"[tool_result] {_flatten_content(item.get('content'))[:2000]}")
         return "\n".join(p for p in parts if p)
@@ -159,9 +161,7 @@ class DevSQLCodexAdapter(BaseAdapter):
     ) -> None:
         interval_start = parse_devsql_timestamp(since)
         if interval_start is None:
-            raise ValueError(
-                "DevSQL interval start must be a timezone-aware timestamp."
-            )
+            raise ValueError("DevSQL interval start must be a timezone-aware timestamp.")
         self.client = client
         self.interval_start = interval_start
         self._query_start = interval_start
@@ -231,18 +231,14 @@ class DevSQLCodexAdapter(BaseAdapter):
             if event.payload.get("provider") != "devsql":
                 continue
             capture_id = event.payload.get("capture_id")
-            if not isinstance(capture_id, str) or not capture_id.startswith(
-                "codex:"
-            ):
+            if not isinstance(capture_id, str) or not capture_id.startswith("codex:"):
                 continue
             occurred_at = parse_devsql_timestamp(event.ts)
             if occurred_at is not None and occurred_at >= self.interval_start:
                 self._query_start = max(self._query_start, occurred_at)
 
     @staticmethod
-    def _convert(
-        row: dict[str, Any], occurred_at: datetime
-    ) -> Turn | None:
+    def _convert(row: dict[str, Any], occurred_at: datetime) -> Turn | None:
         """Normalize one joined row and reject incomplete identities."""
 
         thread_id = row["thread_id"]
@@ -479,8 +475,7 @@ class CursorAdapter(BaseAdapter):
 
     def __init__(self) -> None:
         self.databases = [
-            root / "User" / "globalStorage" / "state.vscdb"
-            for root in app_support_dirs("Cursor")
+            root / "User" / "globalStorage" / "state.vscdb" for root in app_support_dirs("Cursor")
         ]
         self._seen: set[str] = set()
 
@@ -489,9 +484,7 @@ class CursorAdapter(BaseAdapter):
 
     @staticmethod
     def _connect(path: Path) -> sqlite3.Connection:
-        connection = sqlite3.connect(
-            f"file:{path}?mode=ro", uri=True, timeout=2.0
-        )
+        connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=2.0)
         connection.execute("PRAGMA query_only=1")
         connection.execute("PRAGMA busy_timeout=2000")
         return connection
@@ -571,9 +564,7 @@ class AgentCollector(Collector):
             capture_id
             for event in session.writer.read()
             if event.type == AGENT_MESSAGE
-            and isinstance(
-                capture_id := event.payload.get("capture_id"), str
-            )
+            and isinstance(capture_id := event.payload.get("capture_id"), str)
             and capture_id
         }
 
@@ -666,7 +657,9 @@ class AgentCollector(Collector):
         if truncated:
             head = text[: MAX_TEXT_CHARS // 2]
             tail = text[-MAX_TEXT_CHARS // 2 :]
-            text = f"{head}\n... [{len(turn.text) - MAX_TEXT_CHARS} chars elided by wfrec] ...\n{tail}"
+            text = (
+                f"{head}\n... [{len(turn.text) - MAX_TEXT_CHARS} chars elided by wfrec] ...\n{tail}"
+            )
 
         redacted = shared_redactor().apply(text)
         event = Event(

@@ -66,9 +66,7 @@ class RecorderState:
     """The recorder's cross-process state."""
 
     active_session: str | None = None
-    sources: dict[str, bool] = field(
-        default_factory=lambda: dict.fromkeys(SOURCES, True)
-    )
+    sources: dict[str, bool] = field(default_factory=lambda: dict.fromkeys(SOURCES, True))
     shell_output: bool = False
     shell_backend: str = SHELL_BACKEND_SPOOL
     paused: list[str] = field(default_factory=list)
@@ -115,9 +113,7 @@ class RecorderState:
             shell_backend=shell_backend,
             paused=list(payload.get("paused") or []),
             trashed_sessions=[
-                session_id
-                for session_id in trashed_sessions
-                if isinstance(session_id, str)
+                session_id for session_id in trashed_sessions if isinstance(session_id, str)
             ],
             api_url=payload.get("api_url"),
             api_token=payload.get("api_token"),
@@ -146,9 +142,7 @@ class RecorderState:
             for name in SOURCES
             if self.sources.get(name)
             and name in SOURCE_FLAGS
-            and not (
-                name == "shell" and self.shell_backend == SHELL_BACKEND_DEVSQL
-            )
+            and not (name == "shell" and self.shell_backend == SHELL_BACKEND_DEVSQL)
         ]
         return "".join(enabled) or "-"
 
@@ -158,9 +152,7 @@ class RecorderState:
 
         paths.ensure_home()
         self.updated_at = time.time()
-        atomic_write_text(
-            paths.state_path(), json.dumps(self.to_dict(), indent=2) + "\n"
-        )
+        atomic_write_text(paths.state_path(), json.dumps(self.to_dict(), indent=2) + "\n")
         self._write_sentinel()
 
     def _write_sentinel(self) -> None:

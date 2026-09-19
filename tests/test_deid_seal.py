@@ -164,18 +164,14 @@ def test_workforce_keys_are_kept_by_default_and_scrubbed_on_request():
     assert kept["analyst"] == "analyst-a" and kept["host"] == "node07"
     assert kept["text"] == "SCRUBBED"
 
-    scrubbed = transform_strings(
-        payload, lambda _p, _t, _i: "SCRUBBED", skip_workforce=False
-    )
+    scrubbed = transform_strings(payload, lambda _p, _t, _i: "SCRUBBED", skip_workforce=False)
     assert scrubbed["analyst"] == "SCRUBBED"
 
 
 def test_path_fields_are_flagged_for_component_wise_scrubbing():
     flags: dict[str, bool] = {}
     payload = dict.fromkeys(sorted(PATH_KEYS), "/a/b") | {"text": "/a/b"}
-    transform_strings(
-        payload, lambda path, text, is_path: flags.__setitem__(path, is_path) or text
-    )
+    transform_strings(payload, lambda path, text, is_path: flags.__setitem__(path, is_path) or text)
 
     assert all(flags[key] for key in PATH_KEYS)
     assert flags["text"] is False
@@ -188,9 +184,7 @@ def test_paths_scrub_component_wise_keeping_separators(unsealed):
         for line in (unsealed.root / "events.jsonl").read_text(encoding="utf-8").splitlines()
     ]
     cwd = next(
-        event["payload"]["cwd"]
-        for event in events
-        if event["type"] == "shell.command.completed"
+        event["payload"]["cwd"] for event in events if event["type"] == "shell.command.completed"
     )
 
     assert cwd.startswith("/data/proj/")
@@ -329,7 +323,10 @@ def test_manifest_is_sealed_alongside_the_timeline(unsealed):
     manifest = json.loads((unsealed.root / "manifest.json").read_text(encoding="utf-8"))
     assert "4419902" not in manifest["title"]
     assert "SJ-4817" not in json.dumps(manifest)
-    assert "manifest.json" in json.loads(marker_path(unsealed.root).read_text(encoding="utf-8"))["targets"]
+    assert (
+        "manifest.json"
+        in json.loads(marker_path(unsealed.root).read_text(encoding="utf-8"))["targets"]
+    )
 
 
 def test_pseudonymize_analyst_scrubs_event_metadata_and_manifest(unsealed):
@@ -471,12 +468,10 @@ def test_the_seal_itself_can_still_write_through_the_bypass(unsealed):
 
     from wfrec.events import EventWriter
 
-    writer = EventWriter(
-        unsealed.root, session_id=unsealed.session_id, allow_sealed=True
-    )
+    writer = EventWriter(unsealed.root, session_id=unsealed.session_id, allow_sealed=True)
     writer.append(Event(source="deid", type="deid.sealed", payload={"generation": 9}))
 
-    assert "\"generation\": 9" in (unsealed.root / "events.jsonl").read_text(encoding="utf-8")
+    assert '"generation": 9' in (unsealed.root / "events.jsonl").read_text(encoding="utf-8")
 
 
 # --------------------------------------------------------------------------

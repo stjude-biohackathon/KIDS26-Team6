@@ -63,16 +63,59 @@ def _redact_path_entries(
         out.append(item)
     return out, sorted(findings)
 
+
 #: Extensions never read, only recorded as metadata. Seeded from the repo's own
 #: .gitignore and extended with the rest of the common genomics binary formats.
 BINARY_EXTENSIONS = frozenset(
     {
-        ".bam", ".bai", ".cram", ".crai", ".sam", ".bcf", ".vcf", ".gvcf",
-        ".tbi", ".csi", ".fastq", ".fq", ".fasta", ".fa", ".fai", ".2bit",
-        ".bw", ".bigwig", ".bedgraph", ".loom", ".mtx", ".h5", ".h5ad",
-        ".hdf5", ".npy", ".npz", ".parquet", ".pt", ".ckpt", ".sra",
-        ".tar", ".gz", ".bz2", ".xz", ".zip", ".zst", ".pyc", ".so", ".dylib",
-        ".dll", ".o", ".a", ".png", ".jpg", ".jpeg", ".pdf", ".mp4", ".webp",
+        ".bam",
+        ".bai",
+        ".cram",
+        ".crai",
+        ".sam",
+        ".bcf",
+        ".vcf",
+        ".gvcf",
+        ".tbi",
+        ".csi",
+        ".fastq",
+        ".fq",
+        ".fasta",
+        ".fa",
+        ".fai",
+        ".2bit",
+        ".bw",
+        ".bigwig",
+        ".bedgraph",
+        ".loom",
+        ".mtx",
+        ".h5",
+        ".h5ad",
+        ".hdf5",
+        ".npy",
+        ".npz",
+        ".parquet",
+        ".pt",
+        ".ckpt",
+        ".sra",
+        ".tar",
+        ".gz",
+        ".bz2",
+        ".xz",
+        ".zip",
+        ".zst",
+        ".pyc",
+        ".so",
+        ".dylib",
+        ".dll",
+        ".o",
+        ".a",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".pdf",
+        ".mp4",
+        ".webp",
     }
 )
 
@@ -80,16 +123,35 @@ BINARY_EXTENSIONS = frozenset(
 #: watches and how a Nextflow run produces a million events.
 PRUNE_DIRS = frozenset(
     {
-        ".git", ".hg", ".svn", "__pycache__", "node_modules", ".venv", "venv",
-        "envs", ".conda", ".snakemake", ".nextflow", "work", ".terraform",
-        ".mypy_cache", ".pytest_cache", ".ruff_cache", ".ipynb_checkpoints",
-        ".zarr", "site-packages", ".tox", ".eggs", "build", "dist",
+        ".git",
+        ".hg",
+        ".svn",
+        "__pycache__",
+        "node_modules",
+        ".venv",
+        "venv",
+        "envs",
+        ".conda",
+        ".snakemake",
+        ".nextflow",
+        "work",
+        ".terraform",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".ipynb_checkpoints",
+        ".zarr",
+        "site-packages",
+        ".tox",
+        ".eggs",
+        "build",
+        "dist",
     }
 )
 
-METADATA_ONLY_BYTES = 10 * 1024 * 1024   # above this we never open the file
-DIFF_MAX_BYTES = 256 * 1024              # above this we do not attempt a diff
-DIFF_OUTPUT_MAX = 64 * 1024              # truncate a diff larger than this
+METADATA_ONLY_BYTES = 10 * 1024 * 1024  # above this we never open the file
+DIFF_MAX_BYTES = 256 * 1024  # above this we do not attempt a diff
+DIFF_OUTPUT_MAX = 64 * 1024  # truncate a diff larger than this
 TRACKED_BLOB_REFUSE = 100 * 1024 * 1024  # skip git entirely if tracked blobs exceed
 FLOOD_QUEUE_MAX = 10000
 DEBOUNCE_SECONDS = 1.0
@@ -187,10 +249,9 @@ def network_filesystem(path: Path) -> str | None:
         if len(parts) < 3:
             continue
         mount_point, fstype = parts[1], parts[2]
-        if (
-            resolved == mount_point
-            or resolved.startswith(mount_point.rstrip("/") + "/")
-        ) and (best is None or len(mount_point) > best[0]):
+        if (resolved == mount_point or resolved.startswith(mount_point.rstrip("/") + "/")) and (
+            best is None or len(mount_point) > best[0]
+        ):
             best = (len(mount_point), fstype)
     if best and best[1] in {"nfs", "nfs4", "lustre", "gpfs", "cifs", "smb3", "fuse.sshfs"}:
         return best[1]
@@ -321,9 +382,7 @@ class FileCollector(Collector):
         try:
             self._observer.start()
         except Exception as exc:  # pragma: no cover - defensive
-            self.session.record(
-                "collector.error", source=self.source, payload={"error": str(exc)}
-            )
+            self.session.record("collector.error", source=self.source, payload={"error": str(exc)})
             self._observer = None
 
     def teardown(self) -> None:
@@ -452,9 +511,7 @@ class FileCollector(Collector):
             payload["content"] = "skipped-binary-content"
         else:
             payload["content"] = "text"
-        return Event(
-            source=self.source, type=FILE_CHANGED, payload=payload, redactions=findings
-        )
+        return Event(source=self.source, type=FILE_CHANGED, payload=payload, redactions=findings)
 
     # -------------------------------------------------------------------- git
     def _git_snapshot(self, root: Path, *, trigger: str, force: bool = False) -> None:
@@ -495,9 +552,7 @@ class FileCollector(Collector):
             for line in numstat.splitlines():
                 parts = line.split("\t")
                 if len(parts) == 3:
-                    stats.append(
-                        {"added": parts[0], "deleted": parts[1], "path": parts[2]}
-                    )
+                    stats.append({"added": parts[0], "deleted": parts[1], "path": parts[2]})
         redacted_changed, changed_findings = _redact_path_entries(entries[:200], redactor)
         redacted_numstat, numstat_findings = _redact_path_entries(stats[:200], redactor)
         findings = sorted(
@@ -543,9 +598,7 @@ class FileCollector(Collector):
                     continue
             except OSError:
                 continue
-            code, patch = run_git(
-                root, "diff", "--no-ext-diff", "--no-color", "-U3", "--", rel
-            )
+            code, patch = run_git(root, "diff", "--no-ext-diff", "--no-color", "-U3", "--", rel)
             if code != 0 or not patch.strip():
                 continue
             truncated = len(patch) > DIFF_OUTPUT_MAX

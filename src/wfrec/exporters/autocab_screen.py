@@ -85,8 +85,7 @@ def build_screen_capture(session) -> tuple[dict, int]:
             notes = f"[{payload.get('tool')}/{payload.get('role')}] {payload.get('text', '')}"
         elif event.type == FILE_DIFF:
             notes = (
-                f"edited {payload.get('path')} "
-                f"(+{payload.get('added')}/-{payload.get('deleted')})"
+                f"edited {payload.get('path')} (+{payload.get('added')}/-{payload.get('deleted')})"
             )
         elif event.type == JOB_SUBMITTED:
             notes = (

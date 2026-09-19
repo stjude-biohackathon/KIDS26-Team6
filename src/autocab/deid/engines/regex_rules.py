@@ -177,9 +177,7 @@ RULES: tuple[Rule, ...] = (
     Rule(
         "phone_nanp",
         DeidLabel.PHONE,
-        re.compile(
-            r"(?<![\d-])(?:\+?1[-. ]?)?\(?[2-9]\d{2}\)?[-. ][2-9]\d{2}[-. ]\d{4}(?![\d-])"
-        ),
+        re.compile(r"(?<![\d-])(?:\+?1[-. ]?)?\(?[2-9]\d{2}\)?[-. ][2-9]\d{2}[-. ]\d{4}(?![\d-])"),
         validator=v.nanp_plausible,
         notes=(
             "A separator between groups is mandatory. Allowing ten bare digits "
@@ -377,9 +375,7 @@ RULES: tuple[Rule, ...] = (
     Rule(
         "sample_flag",
         DeidLabel.SAMPLE_ID,
-        re.compile(
-            r"(?i)--sample(?:-id|-name)?[= ]\s*(?P<span>[A-Za-z0-9][A-Za-z0-9._-]{2,24})\b"
-        ),
+        re.compile(r"(?i)--sample(?:-id|-name)?[= ]\s*(?P<span>[A-Za-z0-9][A-Za-z0-9._-]{2,24})\b"),
         group=1,
         notes="Spans the value only, so the flag itself survives and the command still runs.",
     ),
@@ -410,9 +406,7 @@ RULES: tuple[Rule, ...] = (
     Rule(
         "slurm_job_name_flag",
         DeidLabel.SLURM_JOB_NAME,
-        re.compile(
-            r"(?i)--job[-_]?name[= ]\s*(?P<span>[A-Za-z0-9][A-Za-z0-9._-]{1,40})"
-        ),
+        re.compile(r"(?i)--job[-_]?name[= ]\s*(?P<span>[A-Za-z0-9][A-Za-z0-9._-]{1,40})"),
         group=1,
     ),
     Rule(
@@ -450,9 +444,7 @@ RULES: tuple[Rule, ...] = (
     Rule(
         "slurm_job_name_column",
         DeidLabel.SLURM_JOB_NAME,
-        re.compile(
-            r"(?i)\bjob[-_ ]?name\s*[:=]?\s+(?P<span>[A-Za-z0-9][A-Za-z0-9._-]{1,40})"
-        ),
+        re.compile(r"(?i)\bjob[-_ ]?name\s*[:=]?\s+(?P<span>[A-Za-z0-9][A-Za-z0-9._-]{1,40})"),
         group=1,
         notes="`sacct` / `squeue` column output: `JobName  wgs_smith_07`.",
     ),
@@ -547,9 +539,7 @@ RULES: tuple[Rule, ...] = (
     Rule(
         "street_address",
         DeidLabel.LOCATION,
-        re.compile(
-            rf"\b\d{{1,5}}\s+(?:[A-Z][A-Za-z.]{{1,15}}\s+){{1,4}}{_STREET_SUFFIX}\.?\b"
-        ),
+        re.compile(rf"\b\d{{1,5}}\s+(?:[A-Z][A-Za-z.]{{1,15}}\s+){{1,4}}{_STREET_SUFFIX}\.?\b"),
     ),
     Rule(
         "city_state_zip",
@@ -577,7 +567,9 @@ def patterns_sha256(deny_terms: Sequence[str] = ()) -> str:
         (rule.name, rule.label.value, rule.pattern.pattern, str(rule.group), rule.difficulty)
         for rule in RULES
     ]
-    entries.extend(("deny", DeidLabel.DENY.value, term.casefold(), "0", "easy") for term in deny_terms)
+    entries.extend(
+        ("deny", DeidLabel.DENY.value, term.casefold(), "0", "easy") for term in deny_terms
+    )
     return table_digest(entries)
 
 
@@ -619,12 +611,8 @@ class RegexRules(BaseEngine):
         include_hard: bool = True,
     ) -> None:
         self._deny_terms = tuple(dict.fromkeys(term for term in deny_terms if term))
-        self._deny = tuple(
-            (term, _deny_pattern(term)) for term in sorted(self._deny_terms)
-        )
-        self._rules = tuple(
-            rule for rule in RULES if include_hard or rule.difficulty != "hard"
-        )
+        self._deny = tuple((term, _deny_pattern(term)) for term in sorted(self._deny_terms))
+        self._rules = tuple(rule for rule in RULES if include_hard or rule.difficulty != "hard")
         self._digest = patterns_sha256(self._deny_terms)
 
     @property

@@ -192,11 +192,7 @@ def terminal_session_to_trace(
     metadata = session.metadata
     commands = [command for _, command in session.commands]
 
-    existing_tags = [
-        part.strip()
-        for part in metadata.get("tags", "").split(",")
-        if part.strip()
-    ]
+    existing_tags = [part.strip() for part in metadata.get("tags", "").split(",") if part.strip()]
     tags = infer_workflow_tags(commands, existing_tags)
 
     title = metadata.get("title") or metadata.get("workflow_family") or "Terminal Workflow Session"

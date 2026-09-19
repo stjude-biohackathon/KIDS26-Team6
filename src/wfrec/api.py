@@ -105,9 +105,7 @@ class WatchRequest(BaseModel):
 
 class ExportRequest(BaseModel):
     session_id: str | None = None
-    formats: list[str] = Field(
-        default_factory=lambda: ["events", "autocab", "trace"]
-    )
+    formats: list[str] = Field(default_factory=lambda: ["events", "autocab", "trace"])
     choose_destination: bool = False
 
 
@@ -190,9 +188,7 @@ def _selected_status(recorder: Recorder, session: Session) -> dict[str, Any]:
     live["shell_output"] = False
     live["shell_output_requested"] = session.manifest.shell_output
     live["shell_output_available"] = False
-    live["shell_output_reason"] = shell_output_unavailable_reason(
-        session.manifest.shell_backend
-    )
+    live["shell_output_reason"] = shell_output_unavailable_reason(session.manifest.shell_backend)
     live["shell_backend"] = session.manifest.shell_backend
     if not is_active:
         # Collector state belongs to the live session, not the historical one
@@ -255,8 +251,10 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
         """
 
         header = request.headers.get("authorization", "")
-        supplied = header[7:] if header.lower().startswith("bearer ") else (
-            request.query_params.get("token") or ""
+        supplied = (
+            header[7:]
+            if header.lower().startswith("bearer ")
+            else (request.query_params.get("token") or "")
         )
         if not secrets.compare_digest(supplied, token):
             raise HTTPException(status_code=401, detail="Invalid or missing API token.")
@@ -346,9 +344,7 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
         }
 
     @app.patch("/sessions/{session_id}", dependencies=guard)
-    def rename_session(
-        session_id: str, payload: RenameSessionRequest
-    ) -> dict[str, str]:
+    def rename_session(session_id: str, payload: RenameSessionRequest) -> dict[str, str]:
         return recorder.rename_session(session_id, payload.title)
 
     @app.post("/sessions/{session_id}/trash", dependencies=guard)
@@ -468,9 +464,7 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
                 force=payload.force,
                 dry_run=payload.dry_run,
                 stop_session=(
-                    None
-                    if not payload.force
-                    else lambda: recorder.stop_session(session.session_id)
+                    None if not payload.force else lambda: recorder.stop_session(session.session_id)
                 ),
             )
         except SealError as exc:
@@ -498,9 +492,7 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
             if not _request_is_local(request):
                 raise HTTPException(
                     status_code=409,
-                    detail=(
-                        "Export folders can only be chosen on the daemon host."
-                    ),
+                    detail=("Export folders can only be chosen on the daemon host."),
                 )
             try:
                 destination = choose_directory()
@@ -527,9 +519,7 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
     # --------------------------------------------------------------------- UI
     def ui_asset(filename: str, media_type: str) -> Response:
-        content = resources.files("wfrec.ui").joinpath(filename).read_text(
-            encoding="utf-8"
-        )
+        content = resources.files("wfrec.ui").joinpath(filename).read_text(encoding="utf-8")
         return Response(
             content=content,
             media_type=media_type,
@@ -554,9 +544,7 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
-        html = resources.files("wfrec.ui").joinpath("index.html").read_text(
-            encoding="utf-8"
-        )
+        html = resources.files("wfrec.ui").joinpath("index.html").read_text(encoding="utf-8")
         # The token is injected into the page rather than exposed as a URL
         # parameter, so it does not end up in shell history or a browser's
         # visible address bar after navigation.

@@ -57,10 +57,7 @@ def test_cursor_handles_restart_overlap_and_equal_timestamps(
         "command-1",
         "command-2",
     ]
-    assert all(
-        f"substr(timestamp, 1, 19) >= '{timestamp[:19]}'" in query
-        for query in queries
-    )
+    assert all(f"substr(timestamp, 1, 19) >= '{timestamp[:19]}'" in query for query in queries)
 
     cursor_path = session.root / "shell" / "devsql-cursor.json"
     cursor = json.loads(cursor_path.read_text(encoding="utf-8"))
@@ -131,9 +128,7 @@ def test_new_active_interval_excludes_commands_from_pause_gap(
 
     gap_timestamp = datetime_to_iso(first_moment + timedelta(seconds=5))
     resume_timestamp = datetime_to_iso(first_moment + timedelta(seconds=10))
-    after_resume_timestamp = datetime_to_iso(
-        first_moment + timedelta(seconds=11)
-    )
+    after_resume_timestamp = datetime_to_iso(first_moment + timedelta(seconds=11))
     session.record(SESSION_RESUMED, ts=resume_timestamp)
 
     resumed = ShellCollector(
@@ -157,11 +152,7 @@ def test_new_active_interval_excludes_commands_from_pause_gap(
         "before-pause",
         "after-resume",
     ]
-    cursor = json.loads(
-        (session.root / "shell" / "devsql-cursor.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    cursor = json.loads((session.root / "shell" / "devsql-cursor.json").read_text(encoding="utf-8"))
     assert cursor["active_interval_start"] == resume_timestamp
 
 
@@ -223,11 +214,7 @@ def test_devsql_version_change_replaces_cursor_metadata(
     )._run_once()
 
     assert len(_shell_events(session)) == 1
-    cursor = json.loads(
-        (session.root / "shell" / "devsql-cursor.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    cursor = json.loads((session.root / "shell" / "devsql-cursor.json").read_text(encoding="utf-8"))
     assert cursor["devsql_version"] == "devsql 0.6.0"
 
 
@@ -291,6 +278,4 @@ def _devsql_client(
 def _shell_events(session: Session) -> list[Event]:
     """Return only collected shell command events."""
 
-    return [
-        event for event in session.writer.read() if event.type == SHELL_COMMAND
-    ]
+    return [event for event in session.writer.read() if event.type == SHELL_COMMAND]

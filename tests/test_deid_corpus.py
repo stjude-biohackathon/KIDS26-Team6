@@ -137,9 +137,7 @@ def test_prescrubbed_channel_carries_surrogates_and_a_residual_identifier(loaded
     assert records
     for record in records:
         assert record.spans, f"{record.id}: no residual identifier to find"
-        assert any(
-            marker in record.text for marker in ("_", "[REDACTED_", "[DATE:")
-        ), record.id
+        assert any(marker in record.text for marker in ("_", "[REDACTED_", "[DATE:")), record.id
     blob = "\n".join(record.text for record in records)
     assert "[REDACTED_" in blob
     assert "[DATE:" in blob
@@ -218,9 +216,7 @@ def test_validate_catches_a_corrupted_offset(loaded):
         record,
         spans=(replace(record.spans[0], start=record.spans[0].start + 1),),
     )
-    problems = corpus_mod.validate(
-        corpus_mod.Corpus(records=(broken,), fingerprint="x")
-    )
+    problems = corpus_mod.validate(corpus_mod.Corpus(records=(broken,), fingerprint="x"))
 
     assert any("text[start:end]" in problem for problem in problems)
     assert corpus_mod.validate(corpus_mod.Corpus(records=(bad,), fingerprint="x")) == []

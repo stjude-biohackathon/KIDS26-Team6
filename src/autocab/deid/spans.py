@@ -201,7 +201,9 @@ def resolve(
         end = max(0, min(span.end, limit))
         if end <= start:
             continue
-        clipped.append(span if (start, end) == (span.start, span.end) else replace(span, start=start, end=end))
+        clipped.append(
+            span if (start, end) == (span.start, span.end) else replace(span, start=start, end=end)
+        )
 
     protected = [span for span in clipped if span.protect]
     if protected:
@@ -216,9 +218,7 @@ def resolve(
         clipped = survivors
 
     if keeps is not None:
-        clipped = [
-            span for span in clipped if span.protect or not keeps(text, span)
-        ]
+        clipped = [span for span in clipped if span.protect or not keeps(text, span)]
 
     clipped.sort(key=_sort_key)
 
@@ -235,9 +235,7 @@ def resolve(
         # so it keeps label and detector; the hull only ever grows rightward
         # because the sweep is start-ordered. The swallowed label is retained in
         # `absorbed` -- see the field docstring.
-        merged_labels = dict.fromkeys(
-            (*current.absorbed, span.label, *span.absorbed)
-        )
+        merged_labels = dict.fromkeys((*current.absorbed, span.label, *span.absorbed))
         merged_labels.pop(current.label, None)
         resolved[-1] = replace(
             current,

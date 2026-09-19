@@ -86,9 +86,7 @@ def test_query_returns_validated_rows() -> None:
         command: list[str],
         **options: object,
     ) -> subprocess.CompletedProcess[str]:
-        return completed_process(
-            stdout='[{"source":"atuin","timestamp":123}]'
-        )
+        return completed_process(stdout='[{"source":"atuin","timestamp":123}]')
 
     client = DevSQLClient(Path("devsql"), runner=runner)
 

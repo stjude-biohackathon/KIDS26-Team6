@@ -20,8 +20,8 @@ def test_render_markdown_blocks_active_content_and_remote_images() -> None:
     rendered = render_markdown(
         '<script>alert("x")</script>\n\n'
         '[unsafe](javascript:alert("x"))\n\n'
-        '[embedded](data:text/html,unsafe)\n\n'
-        '![tracker](https://example.org/pixel.gif)\n\n'
+        "[embedded](data:text/html,unsafe)\n\n"
+        "![tracker](https://example.org/pixel.gif)\n\n"
         '<a href="https://example.org" onclick="alert(1)">raw link</a>'
     )
 

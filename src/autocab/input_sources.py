@@ -25,7 +25,9 @@ class InputBundle:
 def load_trace_input(trace_path: Path | None = None) -> InputBundle:
     """Load workflow traces from JSON input."""
 
-    resolved_path = trace_path or Path(__file__).resolve().parents[2] / "data" / "sample_workflow_traces.json"
+    resolved_path = (
+        trace_path or Path(__file__).resolve().parents[2] / "data" / "sample_workflow_traces.json"
+    )
     traces = load_workflow_traces(resolved_path)
     return InputBundle(
         mode="trace",
@@ -73,7 +75,9 @@ def _trace_from_capture_session(session: dict[str, Any], index: int) -> Workflow
     if not events:
         raise ValueError(f"Capture session {index} has no events.")
 
-    workflow_family = session.get("workflow_family") or session.get("title") or f"capture-session-{index}"
+    workflow_family = (
+        session.get("workflow_family") or session.get("title") or f"capture-session-{index}"
+    )
     title = session.get("title") or workflow_family.title()
     analyst = session.get("analyst", "unknown-analyst")
     steps = [
@@ -101,13 +105,18 @@ def _trace_from_capture_session(session: dict[str, Any], index: int) -> Workflow
 def load_screen_capture_input(capture_path: Path | None = None) -> InputBundle:
     """Load a consented screen-capture export and map it into workflow traces."""
 
-    resolved_path = capture_path or Path(__file__).resolve().parents[2] / "data" / "sample_screen_capture.json"
+    resolved_path = (
+        capture_path or Path(__file__).resolve().parents[2] / "data" / "sample_screen_capture.json"
+    )
     payload = json.loads(resolved_path.read_text(encoding="utf-8"))
     sessions = payload.get("sessions", [])
     if not sessions:
         raise ValueError(f"Screen capture input {resolved_path} does not contain any sessions.")
 
-    traces = [_trace_from_capture_session(session, index) for index, session in enumerate(sessions, start=1)]
+    traces = [
+        _trace_from_capture_session(session, index)
+        for index, session in enumerate(sessions, start=1)
+    ]
     return InputBundle(
         mode="screen-capture",
         traces=traces,
@@ -129,7 +138,6 @@ def load_terminal_log_input(log_path: Path | None = None) -> InputBundle:
         mode="terminal-log",
         traces=[trace],
         source_note=(
-            f"Loaded terminal workflow log from {log_path} and converted it "
-            "into trace JSON."
+            f"Loaded terminal workflow log from {log_path} and converted it into trace JSON."
         ),
     )

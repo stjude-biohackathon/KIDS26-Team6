@@ -82,10 +82,39 @@ _LABEL_KEYWORDS: frozenset[str] = frozenset(
 
 _TITLES: frozenset[str] = frozenset(
     {
-        "dr", "dr.", "doctor", "mr", "mr.", "mrs", "mrs.", "ms", "ms.",
-        "miss", "prof", "prof.", "professor", "md", "m.d.", "do", "d.o.",
-        "phd", "ph.d.", "rn", "np", "pa", "dds", "dvm", "jr", "jr.", "sr",
-        "sr.", "ii", "iii", "iv", "esq", "esq.",
+        "dr",
+        "dr.",
+        "doctor",
+        "mr",
+        "mr.",
+        "mrs",
+        "mrs.",
+        "ms",
+        "ms.",
+        "miss",
+        "prof",
+        "prof.",
+        "professor",
+        "md",
+        "m.d.",
+        "do",
+        "d.o.",
+        "phd",
+        "ph.d.",
+        "rn",
+        "np",
+        "pa",
+        "dds",
+        "dvm",
+        "jr",
+        "jr.",
+        "sr",
+        "sr.",
+        "ii",
+        "iii",
+        "iv",
+        "esq",
+        "esq.",
     }
 )
 
@@ -210,14 +239,10 @@ class Pseudonymizer:
         return "Pseudonymizer(key=<discarded>)"
 
     def __reduce__(self):  # pragma: no cover - exercised by the audit test
-        raise TypeError(
-            "Pseudonymizer is not serializable: the key must never leave the process"
-        )
+        raise TypeError("Pseudonymizer is not serializable: the key must never leave the process")
 
     def __getstate__(self):  # pragma: no cover - belt and braces with __reduce__
-        raise TypeError(
-            "Pseudonymizer is not serializable: the key must never leave the process"
-        )
+        raise TypeError("Pseudonymizer is not serializable: the key must never leave the process")
 
     # -- minting -----------------------------------------------------------
     def surrogate_for(self, label: str, surface: str) -> Surrogate:
@@ -257,7 +282,11 @@ class Pseudonymizer:
             # surrogate. Recorded in `seal.json` as a count, never with the
             # values, so a reviewer can see it happened at all.
             self._collisions.append(
-                {"surrogate": text, "label": label, "value_ids": [self._value_ids[previous], value_id]}
+                {
+                    "surrogate": text,
+                    "label": label,
+                    "value_ids": [self._value_ids[previous], value_id],
+                }
             )
         return Surrogate(label, text, value_id=value_id, first_seen=first_seen)
 

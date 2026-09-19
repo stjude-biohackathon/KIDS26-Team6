@@ -58,9 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Record a bioinformatics workflow session for AutoCAB.",
     )
     parser.add_argument("--version", action="version", version=f"wfrec {__version__}")
-    parser.add_argument(
-        "--json", action="store_true", help="Emit machine-readable JSON."
-    )
+    parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
 
     # Shared so `--json` works on either side of the subcommand. Requiring it
     # before the verb is the kind of papercut that makes a CLI feel hostile,
@@ -73,7 +71,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--json", action="store_true", default=argparse.SUPPRESS, help=argparse.SUPPRESS
     )
 
-    sub = parser.add_subparsers(dest="command", required=True, parser_class=lambda **kw: argparse.ArgumentParser(parents=[common], **kw))
+    sub = parser.add_subparsers(
+        dest="command",
+        required=True,
+        parser_class=lambda **kw: argparse.ArgumentParser(parents=[common], **kw),
+    )
 
     start = sub.add_parser("start", help="Start a new recording session.")
     start.add_argument("--title", default="", help="What you are working on.")
@@ -81,15 +83,22 @@ def build_parser() -> argparse.ArgumentParser:
     start.add_argument("--workflow-family", default="", help="Group label for matching.")
     start.add_argument("--tag", action="append", default=[], help="Repeatable tag.")
     start.add_argument(
-        "--watch", action="append", default=[], type=Path,
+        "--watch",
+        action="append",
+        default=[],
+        type=Path,
         help="Project root to watch for file changes. Repeatable.",
     )
     start.add_argument(
-        "--without", action="append", default=[], choices=list(SOURCES),
+        "--without",
+        action="append",
+        default=[],
+        choices=list(SOURCES),
         help="Start with a source disabled. Repeatable.",
     )
     start.add_argument(
-        "--no-daemon", action="store_true",
+        "--no-daemon",
+        action="store_true",
         help="Do not auto-start the background daemon (shell capture still works).",
     )
 
@@ -139,7 +148,9 @@ def build_parser() -> argparse.ArgumentParser:
     export = sub.add_parser("export", help="Export a session for AutoCAB.")
     export.add_argument("session_id", nargs="?")
     export.add_argument(
-        "--format", action="append", default=[],
+        "--format",
+        action="append",
+        default=[],
         choices=["all", "events", "autocab", "terminal-log", "screen-capture", "trace"],
         help="Repeatable. Defaults to all export files.",
     )
@@ -150,7 +161,8 @@ def build_parser() -> argparse.ArgumentParser:
     merge.add_argument("session_ids", nargs="+")
     merge.add_argument("--output", type=Path, required=True)
     merge.add_argument(
-        "--workflow-family", default="",
+        "--workflow-family",
+        default="",
         help="Force a shared family so different titles still cluster together.",
     )
 
@@ -161,11 +173,11 @@ def build_parser() -> argparse.ArgumentParser:
     attach.add_argument("--tool", default="manual")
 
     hooks = sub.add_parser("hooks", help="Install or remove shell hooks.")
+    hooks.add_argument("action", choices=["install", "uninstall", "status", "eval"])
     hooks.add_argument(
-        "action", choices=["install", "uninstall", "status", "eval"]
-    )
-    hooks.add_argument(
-        "--shell", action="append", default=[],
+        "--shell",
+        action="append",
+        default=[],
         choices=["bash", "zsh", "fish", "powershell"],
         help="Repeatable. Auto-detected when omitted.",
     )
@@ -194,11 +206,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     daemon.add_argument("--gui", action="store_true", help="Open the UI on start.")
     daemon.add_argument(
-        "--stop", action="store_true",
+        "--stop",
+        action="store_true",
         help="Stop a running daemon (needed on macOS after granting Screen Recording).",
     )
     daemon.add_argument(
-        "--no-indicator", action="store_true",
+        "--no-indicator",
+        action="store_true",
         help="Don't show the menu-bar/tray recording indicator.",
     )
 
@@ -262,20 +276,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Repeatable. Adds to the default deny vocabulary.",
     )
 
-    deid = sub.add_parser(
-        "deid", help="De-identification model weights and provider status."
-    )
+    deid = sub.add_parser("deid", help="De-identification model weights and provider status.")
     deid_verbs = deid.add_subparsers(dest="deid_command", required=True)
-    fetch = deid_verbs.add_parser(
-        "fetch", help="Download and verify the pinned model weights."
-    )
+    fetch = deid_verbs.add_parser("fetch", help="Download and verify the pinned model weights.")
     fetch.add_argument("--bundle", type=Path, default=None, help="Write an air-gap bundle instead.")
     load_weights = deid_verbs.add_parser("load", help="Install an air-gap bundle.")
     load_weights.add_argument("bundle", type=Path)
     deid_verbs.add_parser("verify", help="Re-verify every weight file's sha256.")
-    deid_verbs.add_parser(
-        "providers", help="List LLM providers with their resolved egress class."
-    )
+    deid_verbs.add_parser("providers", help="List LLM providers with their resolved egress class.")
 
     return parser
 
@@ -542,9 +550,7 @@ def _direct(args: argparse.Namespace, as_json: bool) -> int:
             sources=dict.fromkeys(args.without, False),
         )
     elif command == "pause":
-        result = recorder.pause_session(
-            args.session_id, reason=args.reason, expect=args.expect
-        )
+        result = recorder.pause_session(args.session_id, reason=args.reason, expect=args.expect)
     elif command == "resume":
         result = recorder.resume_session(args.session_id)
     elif command == "stop":
@@ -624,10 +630,7 @@ def _report(command: str, result: dict, as_json: bool, *, daemon: bool) -> None:
         collectors = result.get("collectors") or {}
         for name, info in collectors.items():
             if info.get("available") is False:
-                warning(
-                    f"{name}: {info.get('reason')} "
-                    f"{info.get('detail', '')[:100]}".rstrip()
-                )
+                warning(f"{name}: {info.get('reason')} {info.get('detail', '')[:100]}".rstrip())
         return
 
     if command == "shell-output":
@@ -845,16 +848,12 @@ def _events(args: argparse.Namespace, as_json: bool) -> int:
     if args.role:
         role = args.role.casefold()
         events = [
-            event
-            for event in events
-            if str(event.payload.get("role") or "").casefold() == role
+            event for event in events if str(event.payload.get("role") or "").casefold() == role
         ]
     if args.tool:
         tool = args.tool.casefold()
         events = [
-            event
-            for event in events
-            if str(event.payload.get("tool") or "").casefold() == tool
+            event for event in events if str(event.payload.get("tool") or "").casefold() == tool
         ]
     events = events[-args.limit :]
 
@@ -924,7 +923,14 @@ def _seal(args: argparse.Namespace, as_json: bool) -> int:
             if status.get("journal"):
                 rows.append(("Seal in progress", status["journal"]))
             record = status.get("seal") or {}
-            for key in ("assurance", "generation", "engine", "findings", "distinct_values", "sealed_at"):
+            for key in (
+                "assurance",
+                "generation",
+                "engine",
+                "findings",
+                "distinct_values",
+                "sealed_at",
+            ):
                 if key in record:
                     rows.append((key.replace("_", " ").title(), record[key]))
             summary(f"Seal status for {session.session_id}", rows)
@@ -960,9 +966,7 @@ def _seal(args: argparse.Namespace, as_json: bool) -> int:
     if args.force:
         client = Client.discover()
         if client is not None:
-            stop_session = lambda: client.post(
-                "/sessions/stop", {"session_id": session.session_id}
-            )
+            stop_session = lambda: client.post("/sessions/stop", {"session_id": session.session_id})
         else:
             recorder = Recorder(supervise=False)
             stop_session = lambda: recorder.stop_session(session.session_id)
@@ -1082,10 +1086,7 @@ def _ssh(args: argparse.Namespace, as_json: bool) -> int:
     session = SessionStore().resolve(None)
     boot = remote.bootstrap(args.host)
     if not boot["ok"]:
-        error(
-            f"Could not bootstrap {args.host}: "
-            f"{boot.get('error') or boot.get('stderr')}"
-        )
+        error(f"Could not bootstrap {args.host}: {boot.get('error') or boot.get('stderr')}")
         return 1
     if args.host not in session.manifest.remote_hosts:
         session.manifest.remote_hosts.append(args.host)

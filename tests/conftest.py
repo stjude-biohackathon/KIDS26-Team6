@@ -64,8 +64,14 @@ def pytest_collection_modifyitems(config, items):
     """
 
     gates = {
-        "model": ("AUTOCAB_DEID_MODEL_TESTS", "set AUTOCAB_DEID_MODEL_TESTS=1 to run the model tier tests"),
-        "live": ("AUTOCAB_DEID_LIVE_LLM_TESTS", "set AUTOCAB_DEID_LIVE_LLM_TESTS=1 to run live LLM tests (these send text to a provider)"),
+        "model": (
+            "AUTOCAB_DEID_MODEL_TESTS",
+            "set AUTOCAB_DEID_MODEL_TESTS=1 to run the model tier tests",
+        ),
+        "live": (
+            "AUTOCAB_DEID_LIVE_LLM_TESTS",
+            "set AUTOCAB_DEID_LIVE_LLM_TESTS=1 to run live LLM tests (these send text to a provider)",
+        ),
     }
     for item in items:
         for marker, (env_var, reason) in gates.items():

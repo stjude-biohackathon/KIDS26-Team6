@@ -80,14 +80,10 @@ def success(message: object) -> None:
 def warning(message: object) -> None:
     """Print a warning to stderr without interpreting the message as markup."""
 
-    error_console.print(
-        Text.assemble(("Warning", "bold yellow"), " ", plain_text(message))
-    )
+    error_console.print(Text.assemble(("Warning", "bold yellow"), " ", plain_text(message)))
 
 
 def error(message: object) -> None:
     """Print an error to stderr without interpreting the message as markup."""
 
-    error_console.print(
-        Text.assemble(("Error", "bold red"), " ", plain_text(message))
-    )
+    error_console.print(Text.assemble(("Error", "bold red"), " ", plain_text(message)))

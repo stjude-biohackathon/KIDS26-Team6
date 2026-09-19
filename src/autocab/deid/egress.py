@@ -195,10 +195,10 @@ INTERNAL_NETWORKS: tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...] = (
     ipaddress.ip_network("10.0.0.0/8"),
     ipaddress.ip_network("172.16.0.0/12"),
     ipaddress.ip_network("192.168.0.0/16"),
-    ipaddress.ip_network("169.254.0.0/16"),   # IPv4 link-local
-    ipaddress.ip_network("100.64.0.0/10"),    # CGNAT
-    ipaddress.ip_network("fc00::/7"),         # IPv6 unique-local
-    ipaddress.ip_network("fe80::/10"),        # IPv6 link-local
+    ipaddress.ip_network("169.254.0.0/16"),  # IPv4 link-local
+    ipaddress.ip_network("100.64.0.0/10"),  # CGNAT
+    ipaddress.ip_network("fc00::/7"),  # IPv6 unique-local
+    ipaddress.ip_network("fe80::/10"),  # IPv6 link-local
 )
 
 
@@ -495,8 +495,7 @@ def reverify(classification: Classification, *, resolver: Resolver | None = None
         addresses = tuple(resolver(target.host, target.port))
     except Exception as exc:
         raise EgressChanged(
-            f"{target.host} no longer resolves ({type(exc).__name__}: {exc}); "
-            "refusing to send"
+            f"{target.host} no longer resolves ({type(exc).__name__}: {exc}); refusing to send"
         ) from exc
     if set(addresses) != set(classification.resolved):
         raise EgressChanged(

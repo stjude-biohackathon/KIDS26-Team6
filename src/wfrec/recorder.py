@@ -60,9 +60,7 @@ class Recorder:
         self._pause_reason = ""
         self._paused_at = 0.0
         self._next_file_trigger = "session-start"
-        self._shell_backend_resolver = (
-            shell_backend_resolver or resolve_shell_backend
-        )
+        self._shell_backend_resolver = shell_backend_resolver or resolve_shell_backend
         self._shell_backend: ShellBackendSelection | None = None
 
     # ------------------------------------------------------------------ state
@@ -80,8 +78,7 @@ class Recorder:
     def statuses(self) -> dict[str, dict[str, Any]]:
         with self._lock:
             return {
-                name: collector.status.to_dict()
-                for name, collector in self._collectors.items()
+                name: collector.status.to_dict() for name, collector in self._collectors.items()
             }
 
     def status(self) -> dict[str, Any]:
@@ -105,20 +102,15 @@ class Recorder:
                 "shell_output": False,
                 "shell_output_requested": state.shell_output,
                 "shell_output_available": False,
-                "shell_output_reason": shell_output_unavailable_reason(
-                    state.shell_backend
-                ),
+                "shell_output_reason": shell_output_unavailable_reason(state.shell_backend),
                 "shell_backend": state.shell_backend,
                 "collectors": self.statuses(),
                 "running": {
-                    name: collector.running
-                    for name, collector in self._collectors.items()
+                    name: collector.running for name, collector in self._collectors.items()
                 },
             }
             if session is not None:
-                active_seconds, paused_seconds = (
-                    session.manifest.duration_snapshot()
-                )
+                active_seconds, paused_seconds = session.manifest.duration_snapshot()
                 payload["session"] = {
                     "id": session.session_id,
                     "title": session.manifest.title,
@@ -221,9 +213,7 @@ class Recorder:
 
             status["sealed"] = is_sealed(session.root)
             status["next_step"] = (
-                f"wfrec seal {session.session_id}"
-                if not status["sealed"]
-                else "already sealed"
+                f"wfrec seal {session.session_id}" if not status["sealed"] else "already sealed"
             )
             return status
 
@@ -242,9 +232,7 @@ class Recorder:
             else:
                 session = self.store.resolve(session_id)
             if session.writer.sealed:
-                raise SessionSealed(
-                    f"Session {session_id} is sealed and cannot be renamed."
-                )
+                raise SessionSealed(f"Session {session_id} is sealed and cannot be renamed.")
             session.manifest.title = clean_title
             session.save()
             return {"id": session.session_id, "title": session.manifest.title}
@@ -254,9 +242,7 @@ class Recorder:
         """Turn one capture source on or off, taking effect immediately."""
 
         if source not in SOURCES:
-            raise ValueError(
-                f"Unknown source '{source}'. Known: {', '.join(SOURCES)}"
-            )
+            raise ValueError(f"Unknown source '{source}'. Known: {', '.join(SOURCES)}")
         with self._lock:
             session = self._require_session()
             session.set_source(source, enabled)
@@ -311,10 +297,7 @@ class Recorder:
     def _build(self, source: str, session: Session) -> Collector | None:
         if source == "shell":
             shell_backend = self._shell_backend
-            if (
-                shell_backend is None
-                or shell_backend.name != session.manifest.shell_backend
-            ):
+            if shell_backend is None or shell_backend.name != session.manifest.shell_backend:
                 shell_backend = self._restore_shell_backend(session)
             return ShellCollector(
                 session,
@@ -325,17 +308,11 @@ class Recorder:
             )
         if source == "files":
             roots = [Path(r) for r in session.manifest.watch_roots]
-            return FileCollector(
-                session, roots=roots, initial_trigger=self._next_file_trigger
-            )
+            return FileCollector(session, roots=roots, initial_trigger=self._next_file_trigger)
         if source == "screen":
             return ScreenCollector(session)
         if source == "agents":
-            devsql_client = (
-                self._shell_backend.client
-                if self._shell_backend is not None
-                else None
-            )
+            devsql_client = self._shell_backend.client if self._shell_backend is not None else None
             return AgentCollector(session, devsql_client=devsql_client)
         # `context` needs no background collector: notes arrive by explicit
         # user action through the API, never by polling.
@@ -357,9 +334,7 @@ class Recorder:
     def _restore_shell_backend(self, session: Session) -> ShellBackendSelection:
         """Reconnect the persisted backend without changing its identity."""
 
-        selection = self._shell_backend_resolver(
-            session.manifest.shell_backend
-        )
+        selection = self._shell_backend_resolver(session.manifest.shell_backend)
         self._shell_backend = selection
         return selection
 
@@ -421,9 +396,7 @@ class Recorder:
                 except Exception:  # pragma: no cover - defensive
                     return
 
-        self._heartbeat = threading.Thread(
-            target=beat, name="wfrec-waiting", daemon=True
-        )
+        self._heartbeat = threading.Thread(target=beat, name="wfrec-waiting", daemon=True)
         self._heartbeat.start()
 
     def _stop_heartbeat(self) -> None:

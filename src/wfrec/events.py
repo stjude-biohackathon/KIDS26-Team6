@@ -270,8 +270,7 @@ class EventWriter:
                     event.analyst = event.analyst or self._analyst
                     event.seq = seq + offset
                     handle.write(
-                        json.dumps(event.to_dict(), ensure_ascii=False, default=str)
-                        + "\n"
+                        json.dumps(event.to_dict(), ensure_ascii=False, default=str) + "\n"
                     )
                 handle.flush()
                 os.fsync(handle.fileno())
