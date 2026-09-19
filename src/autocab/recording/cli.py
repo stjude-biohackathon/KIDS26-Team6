@@ -18,11 +18,7 @@ from rich.text import Text
 
 from autocab.deid.engines.registry import ENGINE_CHOICES
 from autocab.deid.policy import PROFILES
-
-from . import SOURCES, __version__, paths
-from .client import Client, DaemonUnavailable
-from .events import Event
-from .output import (
+from autocab.output import (
     console,
     data_table,
     error,
@@ -33,6 +29,10 @@ from .output import (
     summary,
     warning,
 )
+
+from . import SOURCES, __version__, paths
+from .client import Client, DaemonUnavailable
+from .events import Event
 from .recorder import NoActiveSession, Recorder
 from .session import SessionNotFound, SessionStore
 

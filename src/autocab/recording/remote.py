@@ -21,8 +21,9 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
+from autocab.output import error
+
 from .events import JOB_COMPLETED, Event
-from .output import error
 from .redaction import shared as shared_redactor
 
 REMOTE_DIR = "~/.wfrec"

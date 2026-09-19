@@ -193,8 +193,10 @@ def test_init_guides_setup_when_interactive(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 0, result.output
-    assert "Analyst: analyst-guide" in result.output
-    assert "PHI redaction: regex" in result.output
+    assert "Analyst:" in result.output
+    assert "analyst-guide" in result.output
+    assert "PHI redaction:" in result.output
+    assert "regex" in result.output
     assert "Install shell capture hooks?" in result.output
     assert "Run readiness checks?" in result.output
 
@@ -347,7 +349,8 @@ def test_record_redact_seals_an_archived_session(autocab_home: Path) -> None:
 
     assert result.exit_code == 0, result.output
     assert (session.root / "seal.json").is_file()
-    assert "Engine: regex" in result.output
+    assert "Engine:" in result.output
+    assert "regex" in result.output
 
 
 def test_demo_does_not_approve_by_default(tmp_path: Path) -> None:

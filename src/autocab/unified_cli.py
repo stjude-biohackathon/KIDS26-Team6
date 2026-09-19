@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 import sys
 from typing import Any
@@ -22,6 +21,18 @@ from autocab.initialization import (
 )
 from autocab.migration import migrate_wfrec_sessions
 from autocab.orchestrator import run_pipeline
+from autocab.output import (
+    command_list,
+    console,
+    data_table,
+    emit_json,
+    error,
+    info,
+    mapping_summary,
+    plain_text,
+    summary,
+    warning,
+)
 from autocab.terminal_logs import convert_terminal_log, write_trace_json
 from autocab.workflow import ForgeWorkflow, RunStore, WorkflowError
 from autocab.recording.recorder import Recorder
@@ -31,14 +42,13 @@ from autocab.recording.session import SessionNotFound, SessionStore
 from autocab.recording.state import resolved_default_analyst
 
 
-def _emit(payload: Any, *, as_json: bool = False) -> None:
+def _emit(payload: Any, *, title: str, as_json: bool = False) -> None:
     """Render structured results consistently for people and scripts."""
 
     if as_json:
-        click.echo(json.dumps(payload, indent=2, default=str))
+        emit_json(payload)
         return
-    for label, value in payload.items():
-        click.echo(f"{label.replace('_', ' ').title()}: {value}")
+    mapping_summary(title, payload)
 
 
 def _run_recorder(arguments: list[str]) -> None:
@@ -126,7 +136,7 @@ def init_command(
                     default=False,
                 )
                 if not fetch_model:
-                    click.echo(f"Keeping regex redaction because {model_name} is not installed.")
+                    warning(f"Keeping regex redaction because {model_name} is not installed.")
                     redaction_engine = "regex"
             install_hooks = click.confirm(
                 "Install shell capture hooks? This updates your shell profile.",
@@ -141,7 +151,7 @@ def init_command(
 
         selected_engine = redaction_engine or current_engine
         if fetch_model and not as_json:
-            click.echo(DOWNLOAD_PROGRESS_NOTE, err=True)
+            info(DOWNLOAD_PROGRESS_NOTE, stderr=True)
         model_status = (
             prepare_model(selected_engine, fetch=fetch_model)
             if redaction_engine or fetch_model
@@ -166,30 +176,35 @@ def init_command(
         }
     )
     if as_json:
-        _emit(payload, as_json=True)
+        _emit(payload, title="AutoCAB initialized", as_json=True)
         return
-    click.echo(f"AutoCAB home: {result.home}")
-    click.echo(f"Configuration: {result.config}")
-    click.echo(f"Analyst: {result.analyst}")
-    click.echo(f"PHI redaction: {result.redaction_engine}")
+
+    rows: list[tuple[str, object]] = [
+        ("Home", result.home),
+        ("Configuration", result.config),
+        ("Analyst", result.analyst),
+        ("PHI redaction", result.redaction_engine),
+    ]
     if model_status:
-        click.echo(f"Redaction model: verified at {model_status.path}")
+        rows.append(("Redaction model", f"Verified at {model_status.path}"))
     if hooks:
-        click.echo(f"Shell hooks: {len(hooks)} configuration change(s)")
+        rows.append(("Shell hooks", f"{len(hooks)} configuration change(s)"))
     if migration:
-        click.echo(f"Migrated sessions: {len(migration['copied'])}")
+        rows.append(("Migrated sessions", len(migration["copied"])))
     if readiness:
-        click.echo(
-            "Readiness: "
-            f"{readiness['available_sources']}/{readiness['total_sources']} capture sources available"
+        rows.append(
+            (
+                "Readiness",
+                f"{readiness['available_sources']}/{readiness['total_sources']} "
+                "capture sources available",
+            )
         )
-        click.echo(f"Redaction ready: {'yes' if readiness['redaction_ready'] else 'no'}")
-        click.echo(f"Readiness warnings: {len(readiness['warnings'])}")
+        rows.append(("Redaction ready", "Yes" if readiness["redaction_ready"] else "No"))
+        rows.append(("Readiness warnings", len(readiness["warnings"])))
     if result.legacy_sessions:
-        click.echo(f"Legacy recording sessions found: {result.legacy_sessions}")
-    click.echo("Next:")
-    for command in result.next_commands:
-        click.echo(f"  {command}")
+        rows.append(("Legacy sessions", result.legacy_sessions))
+    summary("AutoCAB initialized", rows)
+    command_list("Next", result.next_commands)
 
 
 @cli.command("dashboard")
@@ -381,9 +396,15 @@ def _apply_redaction(session_id: str, engine: str | None) -> None:
         )
     except EngineUnavailable as exc:
         raise click.ClickException(f"PHI redaction is unavailable: {exc}") from exc
-    click.echo(f"PHI redaction applied: {session_id}")
-    click.echo(f"Engine: {result.record['engine']}")
-    click.echo(f"Findings: {result.record['findings']}")
+    summary(
+        "PHI redaction applied",
+        [
+            ("Session", session_id),
+            ("Engine", result.record["engine"]),
+            ("Findings", result.record["findings"]),
+        ],
+        style="bold green",
+    )
 
 
 @cli.command("forge")
@@ -393,7 +414,7 @@ def forge_command(session_id: str, as_json: bool) -> None:
     """Create an evidence-linked, blocked skill draft from a sealed session."""
 
     run = ForgeWorkflow().forge(session_id)
-    _emit(run.to_dict(), as_json=as_json)
+    _emit(run.to_dict(), title="Skill draft", as_json=as_json)
 
 
 @cli.command("review")
@@ -422,7 +443,7 @@ def review_command(
         notes=notes,
         spec_path=spec_path,
     )
-    _emit(run.to_dict(), as_json=as_json)
+    _emit(run.to_dict(), title="Review", as_json=as_json)
 
 
 @cli.command("approve")
@@ -434,7 +455,7 @@ def approve_command(run_id: str, reviewer: str, notes: str, as_json: bool) -> No
     """Explicitly approve a reviewed run for packaging."""
 
     run = ForgeWorkflow().approve(run_id, reviewer=reviewer, notes=notes)
-    _emit(run.to_dict(), as_json=as_json)
+    _emit(run.to_dict(), title="Approval", as_json=as_json)
 
 
 @cli.command("package")
@@ -444,7 +465,7 @@ def package_command(run_id: str, as_json: bool) -> None:
     """Render and strictly validate an approved skill package."""
 
     run = ForgeWorkflow().package(run_id)
-    _emit(run.to_dict(), as_json=as_json)
+    _emit(run.to_dict(), title="Skill package", as_json=as_json)
 
 
 @cli.command("status")
@@ -457,15 +478,30 @@ def status_command(as_json: bool) -> None:
     recorder.shutdown()
     runs = [run.to_dict() for run in RunStore().list()[:10]]
     if as_json:
-        _emit({"recording": recording, "forge_runs": runs}, as_json=True)
+        _emit(
+            {"recording": recording, "forge_runs": runs},
+            title="AutoCAB status",
+            as_json=True,
+        )
         return
     session = recording.get("session") or {}
-    click.echo(f"Recording: {session.get('status', 'none')}")
+    rows: list[tuple[str, object]] = [
+        ("Recording", session.get("status", "none")),
+        ("Forge runs", len(runs)),
+    ]
     if session:
-        click.echo(f"Session: {session.get('id')}")
-    click.echo(f"Forge runs: {len(runs)}")
+        rows.insert(1, ("Session", session.get("id")))
+    summary("AutoCAB status", rows)
+    if not runs:
+        return
+    table = data_table("Run", "State", "Sessions")
     for run in runs:
-        click.echo(f"  {run['run_id']}  {run['state']}  {', '.join(run['session_ids'])}")
+        table.add_row(
+            plain_text(run["run_id"]),
+            plain_text(run["state"]),
+            plain_text(", ".join(run["session_ids"])),
+        )
+    console.print(table)
 
 
 @cli.command("migrate")
@@ -482,7 +518,7 @@ def migrate_command(legacy: bool, source: Path | None, as_json: bool) -> None:
     if not legacy:
         raise click.UsageError("Choose a migration source, for example --legacy.")
     result = migrate_wfrec_sessions(source_root=source or Path.home() / ".wfrec")
-    _emit(result.to_dict(), as_json=as_json)
+    _emit(result.to_dict(), title="Session migration", as_json=as_json)
 
 
 @cli.command("demo")
@@ -526,7 +562,7 @@ def demo_command(
         reviewer=reviewer,
         approve=approve,
     )
-    click.echo(json.dumps([proposal.to_dict() for proposal in proposals], indent=2))
+    emit_json([proposal.to_dict() for proposal in proposals])
 
 
 @cli.command("ingest-terminal-log")
@@ -542,7 +578,7 @@ def ingest_command(log_file: Path, output: Path) -> None:
 
     trace = convert_terminal_log(log_file)
     write_trace_json(trace, output)
-    click.echo(json.dumps([trace.to_dict()], indent=2))
+    emit_json([trace.to_dict()])
 
 
 @cli.command(
@@ -575,6 +611,6 @@ def run(argv: list[str] | None = None) -> int:
     except click.exceptions.Exit as exc:
         return exc.exit_code
     except (WorkflowError, SessionNotFound, SealError, ValueError) as exc:
-        click.echo(f"autocab: {exc}", err=True)
+        error(exc)
         return 1
     return int(result or 0)

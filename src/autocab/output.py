@@ -1,8 +1,11 @@
-"""Shared Rich presentation helpers for human-facing ``wfrec`` output."""
+"""Shared, restrained Rich presentation for human-facing CLI output."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
+import json
+import sys
+from typing import Any
 
 from rich import box
 from rich.console import Console, Group
@@ -11,6 +14,12 @@ from rich.text import Text
 
 console = Console(highlight=False)
 error_console = Console(stderr=True, highlight=False)
+
+
+def emit_json(payload: Any) -> None:
+    """Write machine-readable JSON without Rich styling or status text."""
+
+    sys.stdout.write(json.dumps(payload, indent=2, default=str) + "\n")
 
 
 def plain_text(value: object, style: str = "") -> Text:
@@ -58,19 +67,44 @@ def summary(
 ) -> None:
     """Print a heading followed by a small key-value grid."""
 
-    grid = Table.grid(padding=(0, 2))
+    grid = Table.grid(padding=(0, 1))
     grid.add_column(style="bold", no_wrap=True)
     grid.add_column(overflow="fold")
     for label, value in rows:
         rendered = value if isinstance(value, Text) else plain_text(value)
-        grid.add_row(label, rendered)
+        grid.add_row(f"{label}:", rendered)
     console.print(Group(Text(title, style=style), grid))
 
 
-def notice(label: str, message: object, *, style: str) -> None:
-    """Print one compact labelled message to standard output."""
+def mapping_summary(title: str, payload: Mapping[str, object]) -> None:
+    """Render a flat mapping with readable labels."""
 
-    console.print(Text.assemble((label, style), " ", plain_text(message)))
+    summary(
+        title,
+        ((key.replace("_", " ").title(), value) for key, value in payload.items()),
+    )
+
+
+def command_list(title: str, commands: Sequence[str]) -> None:
+    """Print shell commands without interpreting their contents as markup."""
+
+    console.print(Text(title, style="bold"))
+    for command in commands:
+        console.print(Text.assemble("  ", plain_text(command, style="cyan")))
+
+
+def notice(label: str, message: object, *, style: str, stderr: bool = False) -> None:
+    """Print one compact labelled message."""
+
+    destination = error_console if stderr else console
+    destination.print(
+        Text.assemble((label, style), " ", plain_text(message)),
+        soft_wrap=True,
+    )
+
+
+def info(message: object, *, stderr: bool = False) -> None:
+    notice("Info", message, style="bold cyan", stderr=stderr)
 
 
 def success(message: object) -> None:
@@ -80,10 +114,10 @@ def success(message: object) -> None:
 def warning(message: object) -> None:
     """Print a warning to stderr without interpreting the message as markup."""
 
-    error_console.print(Text.assemble(("Warning", "bold yellow"), " ", plain_text(message)))
+    notice("Warning", message, style="bold yellow", stderr=True)
 
 
 def error(message: object) -> None:
     """Print an error to stderr without interpreting the message as markup."""
 
-    error_console.print(Text.assemble(("Error", "bold red"), " ", plain_text(message)))
+    notice("Error", message, style="bold red", stderr=True)

@@ -18,6 +18,12 @@ from rich.console import Group
 from rich.table import Table
 from rich.text import Text
 
+from autocab.output import (
+    plain_text as _plain_text,
+    status_table as _status_table,
+    status_text as _status_text,
+)
+
 from . import SOURCES, __version__, paths
 from .collectors.shell import (
     ShellBackendSelection,
@@ -25,11 +31,6 @@ from .collectors.shell import (
 )
 from .devsql import DevSQLClient
 from .events import platform_summary
-from .output import (
-    plain_text as _plain_text,
-    status_table as _status_table,
-    status_text as _status_text,
-)
 from .state import (
     SHELL_BACKEND_DEVSQL,
     RecorderState,
