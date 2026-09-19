@@ -364,7 +364,7 @@ through `autocab.deid` on the way in, and each event records which rules fired
 in its `redactions` array. This is masking: `[REDACTED_MRN]`, not reversible,
 not linkable.
 
-*The post-capture check.* `wfrec seal <id>` walks every payload of every
+*The post-capture check.* `autocab record redact <id>` walks every payload of every
 event plus `context/`, `screen/ocr/`, `files/diffs/`, `shell/remote/` and
 `jobs/`, and rewrites what it finds to per-run surrogates — `MRN_a7f3c14b9e02`
 — so a value stays linkable *within* the session and unrecoverable outside it.
@@ -377,25 +377,25 @@ default. To add the local GLiNER model, install its pinned files once and
 select it explicitly:
 
 ```bash
-wfrec deid fetch
-wfrec deid verify
-wfrec seal <id> --engine gliner
+autocab deid fetch
+autocab deid verify
+autocab record redact <id> --engine gliner
 ```
 
 The model lives under `~/.autocab/models/` or `$AUTOCAB_HOME/models/`. Package
 installation, the dashboard, and ordinary regex sealing never download model
-data. Use `wfrec deid fetch --bundle gliner-model.zip` followed by
-`wfrec deid load gliner-model.zip` for an offline computer.
+data. Use `autocab deid fetch --bundle gliner-model.zip` followed by
+`autocab deid load gliner-model.zip` for an offline computer.
 
 A PII-tuned GLiNER2 model is also available as a local sealing option:
 
 ```bash
 uv sync --extra deid-gliner2
-wfrec deid fetch --model gliner2-pii
+autocab deid fetch --model gliner2-pii
 autocab deid eval --engine gliner2-pii-only
 autocab deid eval --engine gliner2-pii
 autocab deid benchmark --engine gliner2-pii
-wfrec seal <id> --engine gliner2-pii
+autocab record redact <id> --engine gliner2-pii
 ```
 
 Its pinned files live under the same `~/.autocab/models/` root. The production
@@ -442,7 +442,7 @@ remain future work in the design plan.
 ### Local by default, and the three cases that matter
 
 **The default is local, with no egress.** The regex tier and GLiNER inference
-are local by construction. Only the explicit `wfrec deid fetch` setup command
+are local by construction. Only the explicit `autocab deid fetch` setup command
 uses the network; sealing never does. An LLM tier pointed at a loopback
 address (`ollama`, or any OpenAI-compatible server on `127.0.0.1`) is also
 local: `autocab.deid.egress` classifies it `none` and applies no egress gate. A

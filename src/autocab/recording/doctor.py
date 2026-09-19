@@ -466,7 +466,7 @@ def render(report: dict[str, Any]) -> Group:
     model_detail = (
         f"verified; {weights.get('path')}"
         if weights_valid
-        else f"not installed; run `wfrec deid fetch`; {weights.get('path', '')}"
+        else f"not installed; run `autocab deid fetch`; {weights.get('path', '')}"
     )
     deid.add_row(
         _status_text(weights_valid),

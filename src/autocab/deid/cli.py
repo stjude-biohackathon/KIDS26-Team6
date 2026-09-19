@@ -18,6 +18,7 @@ from .engines.registry import ENGINE_CHOICES
 from .eval import corpus as corpus_mod
 from .eval import benchmark, comparison, generate, report
 from .eval.generate import DEFAULT_SEED, DIFFICULTIES
+from .models import MODEL_CHOICES, ModelWeightsError, fetch_weights, load_bundle, verify_weights
 
 DIAGNOSTIC_ENGINE_CHOICES = ("gliner-only", "gliner2-pii-only")
 EVAL_ENGINE_CHOICES = (*ENGINE_CHOICES, *DIAGNOSTIC_ENGINE_CHOICES)
@@ -96,6 +97,17 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
     bench.add_argument("--output", type=Path, help="Optional JSON output path.")
     bench.add_argument("--plot", type=Path, help="Optional SVG performance plot path.")
 
+    fetch = verbs.add_parser("fetch", help="Download and verify pinned model weights.")
+    fetch.add_argument("--model", choices=MODEL_CHOICES, default="gliner")
+    fetch.add_argument("--bundle", type=Path, help="Write an offline ZIP instead of installing.")
+
+    load = verbs.add_parser("load", help="Verify and install an offline model ZIP.")
+    load.add_argument("bundle", type=Path)
+    load.add_argument("--model", choices=MODEL_CHOICES, default="gliner")
+
+    verify = verbs.add_parser("verify", help="Verify installed model weights without a network call.")
+    verify.add_argument("--model", choices=MODEL_CHOICES, default="gliner")
+
     verbs.add_parser("labels", help="Print the taxonomy and its HIPAA rollup.")
     return deid
 
@@ -111,10 +123,54 @@ def run(args: argparse.Namespace) -> int:
         return _eval(args)
     if args.deid_command == "benchmark":
         return _benchmark(args)
+    if args.deid_command == "fetch":
+        return _fetch(args)
+    if args.deid_command == "load":
+        return _load(args)
+    if args.deid_command == "verify":
+        return _verify(args)
     if args.deid_command == "labels":
         return _labels()
     print(f"autocab deid: unknown command {args.deid_command!r}", file=sys.stderr)
     return 2
+
+
+def _fetch(args: argparse.Namespace) -> int:
+    try:
+        result = fetch_weights(args.bundle, model=args.model)
+    except ModelWeightsError as exc:
+        print(f"autocab deid fetch: {exc}", file=sys.stderr)
+        return 1
+    if isinstance(result, Path):
+        print(f"created offline model bundle: {result}")
+    else:
+        print(f"downloaded and verified model: {result.path}")
+    return 0
+
+
+def _load(args: argparse.Namespace) -> int:
+    try:
+        status = load_bundle(args.bundle, model=args.model)
+    except ModelWeightsError as exc:
+        print(f"autocab deid load: {exc}", file=sys.stderr)
+        return 1
+    print(f"installed and verified model: {status.path}")
+    return 0
+
+
+def _verify(args: argparse.Namespace) -> int:
+    status = verify_weights(model=args.model)
+    if status.valid:
+        print(f"verified model: {status.path}")
+        return 0
+    print(f"autocab deid verify: model verification failed at {status.path}", file=sys.stderr)
+    for problem in status.problems:
+        print(f"  - {problem}", file=sys.stderr)
+    print(
+        f"Run `autocab deid fetch --model {args.model}` to install or repair it.",
+        file=sys.stderr,
+    )
+    return 1
 
 
 def _gen_corpus(args: argparse.Namespace) -> int:

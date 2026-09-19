@@ -1098,7 +1098,7 @@ def _deid(args: argparse.Namespace, as_json: bool) -> int:
             error(f"{status.spec.name} verification failed at {status.path}")
             for problem in status.problems:
                 warning(problem)
-            warning(f"Run `wfrec deid fetch --model {args.model}` to install or repair it.")
+            warning(f"Run `autocab deid fetch --model {args.model}` to install or repair it.")
         return 0 if status.valid else 1
 
     raise ValueError(f"Unhandled de-identification command: {verb}")

@@ -1,7 +1,7 @@
 """Pinned local model artifacts for optional de-identification tiers.
 
 Model code ships with the package, but model data does not. A user explicitly
-downloads the pinned artifacts with ``wfrec deid fetch``. Every later use is
+downloads the pinned artifacts with ``autocab deid fetch``. Every later use is
 offline and verifies the files before inference.
 """
 
@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import BinaryIO
+from typing import BinaryIO, Iterator
 from zipfile import ZIP_STORED, BadZipFile, ZipFile
 
 MODEL_NAME = "gliner-small-v2.1"
@@ -23,6 +25,8 @@ SOURCE_REPOSITORY = "urchade/gliner_small-v2.1"
 SOURCE_REVISION = "4e091416cf7c3481db542c2a3d26156916f3a47f"
 MODEL_LICENSE = "apache-2.0"
 MANIFEST_FILENAME = "manifest.json"
+DEFAULT_DOWNLOAD_CONCURRENCY = 8
+XET_CONCURRENCY_VARIABLE = "HF_XET_FIXED_DOWNLOAD_CONCURRENCY"
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +194,14 @@ def model_root(model: str = "gliner") -> Path:
     return paths.home() / "models" / spec.name / spec.revision
 
 
+def model_cache_root() -> Path:
+    """Return the persistent Hub cache used to resume interrupted downloads."""
+
+    from autocab.recording import paths
+
+    return paths.home() / "models" / ".hub-cache"
+
+
 def manifest(model: str = "gliner") -> dict[str, object]:
     """Return the exact metadata written beside installed files and bundles."""
 
@@ -278,37 +290,61 @@ def resolve_weights(directory: Path | None = None, *, model: str = "gliner") -> 
     detail = "; ".join(status.problems)
     raise ModelWeightsError(
         f"{status.spec.name} weights are unavailable at {status.path}: {detail}. "
-        f"Run `wfrec deid fetch --model {model}`, then "
-        f"`wfrec deid verify --model {model}`."
+        f"Run `autocab deid fetch --model {model}`, then "
+        f"`autocab deid verify --model {model}`."
     )
 
 
-def _download_to(directory: Path, spec: ModelSpec) -> None:
-    try:
-        from huggingface_hub import hf_hub_download
-    except ImportError as exc:  # pragma: no cover - dependency metadata prevents this
-        raise ModelWeightsError("huggingface-hub is required for `wfrec deid fetch`") from exc
+@contextmanager
+def _download_concurrency(value: int = DEFAULT_DOWNLOAD_CONCURRENCY) -> Iterator[None]:
+    """Use bounded Xet concurrency without overriding an operator's setting.
 
-    for item in spec.files:
+    Hugging Face reads transfer settings when its download stack starts. Model
+    fetching is an explicit foreground operation, so temporarily setting the
+    process environment here keeps the policy local to that operation.
+    """
+
+    previous = os.environ.get(XET_CONCURRENCY_VARIABLE)
+    if previous is None:
+        os.environ[XET_CONCURRENCY_VARIABLE] = str(value)
+    try:
+        yield
+    finally:
+        if previous is None:
+            os.environ.pop(XET_CONCURRENCY_VARIABLE, None)
+        else:
+            os.environ[XET_CONCURRENCY_VARIABLE] = previous
+
+
+def _download_to(directory: Path, spec: ModelSpec) -> None:
+    cache = model_cache_root()
+    cache.mkdir(parents=True, exist_ok=True)
+
+    with _download_concurrency():
         try:
-            downloaded = Path(
-                hf_hub_download(
-                    repo_id=spec.repository,
-                    filename=item.remote_path,
-                    revision=spec.revision,
-                    local_dir=directory,
-                    cache_dir=directory / ".hub-cache",
-                )
-            )
-        except Exception as exc:
+            from huggingface_hub import hf_hub_download
+        except ImportError as exc:  # pragma: no cover - dependency metadata prevents this
             raise ModelWeightsError(
-                f"could not download {item.remote_path} from pinned revision {spec.revision}: {exc}"
+                "huggingface-hub is required to download PHI redaction models"
             ) from exc
-        destination = directory / item.local_name
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        # macOS exposes /tmp through /private/tmp, so lexical Path equality can
-        # describe the same inode with two names.
-        if downloaded.resolve() != destination.resolve():
+
+        for item in spec.files:
+            try:
+                downloaded = Path(
+                    hf_hub_download(
+                        repo_id=spec.repository,
+                        filename=item.remote_path,
+                        revision=spec.revision,
+                        cache_dir=cache,
+                    )
+                )
+            except Exception as exc:
+                raise ModelWeightsError(
+                    f"could not download {item.remote_path} from pinned revision "
+                    f"{spec.revision}: {exc}"
+                ) from exc
+            destination = directory / item.local_name
+            destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(downloaded, destination)
 
 

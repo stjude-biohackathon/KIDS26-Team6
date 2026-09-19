@@ -1,11 +1,11 @@
-"""The optional model is managed explicitly from the wfrec terminal CLI."""
+"""The optional model is managed explicitly from the AutoCAB terminal CLI."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from autocab.cli import main
 from autocab.deid.config import load as load_config
-from autocab.recording.cli import main
 
 
 def test_regex_is_the_default_without_user_configuration(autocab_home: Path) -> None:
@@ -21,7 +21,7 @@ def test_verify_missing_model_is_offline_and_names_the_setup_command(
     captured = capfd.readouterr()
     output = captured.out + captured.err
     assert "verification failed" in output
-    assert "wfrec deid fetch" in output
+    assert "autocab deid fetch" in output
 
 
 def test_verify_selects_the_gliner2_model(autocab_home: Path, capfd) -> None:
