@@ -1,48 +1,8 @@
-"""Seal a session: detect, rewrite destructively, and prove it happened.
+"""Create a redacted, audited copy of a recording session.
 
-Detection lives in ``autocab.deid``. This module is orchestration and I/O --
-locking, staging, the three-phase commit, crash recovery, and the audit. Keeping
-the split means a new detector tier cannot accidentally change the atomicity
-story, and the atomicity story can be tested with a fake engine at zero model
-cost.
-
-The schema rule is **inverted**
--------------------------------
-A fixed field map -- "scrub ``payload.command``, ``payload.ocr_text``,
-``payload.note``" -- means every new event type and every new payload key
-silently bypasses the seal. That is leak-by-default, and it fails in the most
-expensive way: quietly, months later, in a session somebody already shared.
-
-So the seal **recursively walks every payload and scrubs every ``str`` value**,
-with an explicit :data:`SKIP_KEYS` set of structural keys. Adding an event type
-can then only ever over-scrub, never under-scrub. Over-scrubbing is a bug report;
-under-scrubbing is a disclosure.
-
-The locking property everything rests on
-----------------------------------------
-``EventWriter.append`` opens ``events.jsonl`` with ``"a"`` **inside**
-``file_lock(.events.lock)``, and the lock file is a **separate inode**. So
-``os.replace(tmp, events.jsonl)`` while holding that lock is safe: a blocked
-appender re-opens *by path* once the lock releases and lands on the new file, and
-no appender holds a file descriptor across the swap.
-
-``tests/test_deid_seal_concurrency.py`` asserts that directly, because a future
-refactor to a long-lived append descriptor would break the seal **silently** --
-the appends would land in the unlinked old inode and simply vanish.
-
-Three phases
-------------
-======  ===================  ==========  ==================================
-Phase   Lock                 Duration    Work
-======  ===================  ==========  ==================================
-1       ``.events.lock``     ms          snapshot the timeline, record size
-2       ``.seal/lock`` only  s-min       detect, pseudonymize, stage
-3       ``.events.lock``     ms          verify size, ``os.replace`` each file
-======  ===================  ==========  ==================================
-
-Phase 2 deliberately does **not** hold ``.events.lock``. The alternative is
-holding it across minutes of inference, which stalls every collector thread in
-the daemon -- and a safety feature that freezes the recorder gets switched off.
+The seal scrubs every string value except named structural fields. It stages
+changes outside the event lock, then takes the lock to confirm the file size and
+replace files. This keeps collectors responsive and concurrent appends safe.
 """
 
 from __future__ import annotations
@@ -653,6 +613,7 @@ def recover(session_dir: Path) -> dict[str, Any] | None:
         if state == STATE_COMMITTED:
             record = journal.get("seal_record")
             if isinstance(record, dict):
+                _verify_commit_targets(session_dir, record)
                 marker_path(session_dir).write_text(
                     json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
                 )
@@ -682,26 +643,66 @@ def guard_readers(session_dir: Path) -> None:
 def _commit_staged(session_dir: Path, journal: Mapping[str, Any]) -> list[str]:
     """Replay every staged replacement and every recorded deletion.
 
-    Idempotent in both directions: a staged file that is gone has already been
-    committed, and a deletion target that is gone has already been deleted.
+    A missing staged file counts as committed only when the destination has the
+    expected digest. This keeps recovery idempotent without treating a missing
+    source as proof that its replacement succeeded.
     """
 
     committed: list[str] = []
     staged = staged_dir(session_dir)
+    record = journal.get("seal_record")
+    if not isinstance(record, Mapping):
+        raise SealAborted("Seal commit has no digest record. The seal was not published.")
+    record_targets = record.get("targets")
+    if not isinstance(record_targets, Mapping):
+        raise SealAborted("Seal commit has no target digests. The seal was not published.")
+
     for relpath in journal.get("targets", []) or []:
-        source = staged / str(relpath)
-        if not source.exists():
-            continue  # its disappearance IS its commit record
-        destination = session_dir / str(relpath)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        os.replace(source, destination)
-        committed.append(str(relpath))
+        target_name = str(relpath)
+        digests = record_targets.get(target_name)
+        if not isinstance(digests, Mapping):
+            raise SealAborted(
+                f"Seal commit has no digest entry for {target_name}. The seal was not published."
+            )
+        expected_digest = str(digests.get("after_sha256") or "")
+        if not expected_digest:
+            raise SealAborted(
+                f"Seal commit has no final digest for {target_name}. The seal was not published."
+            )
+
+        source = staged / target_name
+        destination = session_dir / target_name
+        if source.exists():
+            if _sha256_file(source) != expected_digest:
+                raise SealAborted(
+                    f"Seal commit staged file {target_name} does not match its expected digest. "
+                    "The seal was not published."
+                )
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(source, destination)
+            committed.append(target_name)
+
+        if not destination.is_file() or _sha256_file(destination) != expected_digest:
+            raise SealAborted(
+                f"Seal commit destination {target_name} does not match its expected digest. "
+                "The seal was not published."
+            )
     for relpath in journal.get("deletions", []) or []:
         target = session_dir / str(relpath)
         with contextlib.suppress(FileNotFoundError):
             target.unlink()
         committed.append(f"-{relpath}")
+    _verify_commit_targets(session_dir, record)
     return committed
+
+
+def _verify_commit_targets(session_dir: Path, record: Mapping[str, Any]) -> None:
+    """Verify the full target set before a seal marker becomes visible."""
+
+    try:
+        _verify_seal_targets(session_dir, record, what="Seal commit")
+    except NotSealed as exc:
+        raise SealAborted(f"{exc} The seal was not published.") from exc
 
 
 # --------------------------------------------------------------------------
@@ -1024,7 +1025,7 @@ def seal_session(
     existing = marker_path(session_dir)
     if existing.exists() and not reseal:
         return SealResult(
-            record=json.loads(existing.read_text(encoding="utf-8")),
+            record=verify_seal_integrity(session_dir),
             findings=0,
             targets=[],
             reseal=False,
@@ -1339,6 +1340,9 @@ def _commit(
             max((event.seq or 0 for event in tail), default=0),
         )
         _write_audit(session_dir, staged_dir(session_dir), scrubber)
+        targets[AUDIT_RELPATH]["after_sha256"] = _sha256_file(
+            staged_dir(session_dir) / AUDIT_RELPATH
+        )
 
     shutil.rmtree(seal_dir(session_dir), ignore_errors=True)
     raise SealAborted(
