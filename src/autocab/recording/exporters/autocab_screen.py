@@ -18,6 +18,7 @@ from pathlib import Path
 
 from ..events import (
     AGENT_MESSAGE,
+    AGENT_TOOL_COMPLETED,
     CONTEXT_NOTE,
     FILE_DIFF,
     JOB_SUBMITTED,
@@ -36,6 +37,7 @@ EVENT_MAP = {
     SHELL_COMMAND: ("terminal", "run"),
     CONTEXT_NOTE: ("notes", "annotate"),
     AGENT_MESSAGE: ("agent", "converse"),
+    AGENT_TOOL_COMPLETED: ("agent", "use"),
     FILE_DIFF: ("editor", "edit"),
     JOB_SUBMITTED: ("scheduler", "submit"),
     MARKER_USER: ("notes", "mark"),
@@ -83,6 +85,9 @@ def build_screen_capture(session) -> tuple[dict, int]:
                 notes = f"{payload['label']}: {notes}"
         elif event.type == AGENT_MESSAGE:
             notes = f"[{payload.get('tool')}/{payload.get('role')}] {payload.get('text', '')}"
+        elif event.type == AGENT_TOOL_COMPLETED:
+            detail = payload.get("command") or payload.get("arguments") or payload.get("output")
+            notes = f"[{payload.get('agent')}/{payload.get('tool_name')}] {detail or ''}"
         elif event.type == FILE_DIFF:
             notes = (
                 f"edited {payload.get('path')} (+{payload.get('added')}/-{payload.get('deleted')})"

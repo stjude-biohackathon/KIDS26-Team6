@@ -140,7 +140,7 @@ distinguish *"the analyst waited six hours on an alignment job"* from
 |---|---|---|
 | `shell` | Commands, cwd, exit codes, durations | DevSQL with Atuin is primary; installed hooks provide the fallback. Stdout and stderr are not captured |
 | `files` | Git-verified changes and diffs in declared roots | `watchdog` triggers, `git` verifies. Genomics binaries are metadata-only, never opened |
-| `agents` | Codex, Claude Code, Copilot Chat and Cursor transcripts | Codex uses DevSQL; Claude Code uses its local JSONL transcripts; `attach-transcript` is the manual fallback |
+| `agents` | Codex, Claude Code, Copilot Chat and Cursor activity | Codex uses DevSQL messages and completed tool executions; Claude Code uses its local JSONL transcripts; `attach-transcript` is the manual fallback |
 | `screen` | Frames, OCR text, active-window titles, optional video | OCR is the part a downstream LLM can read; video is for humans |
 | `context` | A paste box and `wfrec note` | Everything captured is deliberate. There is no background clipboard watching, by design |
 

@@ -16,7 +16,7 @@
     {
       key:'agents',
       label:'Agents',
-      types:new Set(['agent.message', 'agent.adapter.failed']),
+      types:new Set(['agent.message', 'agent.tool.completed', 'agent.adapter.failed']),
       color:'var(--chart-2)'
     },
     {
@@ -562,8 +562,11 @@
         event => options.windowLabel(event.payload || {})
       ));
       renderRanking(agents, countBy(
-        events.filter(event => event.type === 'agent.message'),
-        event => options.toolLabel((event.payload || {}).tool)
+        events.filter(event => ['agent.message', 'agent.tool.completed'].includes(event.type)),
+        event => {
+          const payload = event.payload || {};
+          return options.toolLabel(payload.tool || payload.agent);
+        }
       ));
     }
 

@@ -69,6 +69,7 @@ const EVENT_NAMES = {
   'screen.recording.stopped':'Screen recording stopped',
   'context.note':'Note added',
   'agent.message':'Agent message',
+  'agent.tool.completed':'Agent tool completed',
   'agent.adapter.failed':'Agent capture issue',
   'file.changed':'File changed',
   'file.diff':'File diff captured',
@@ -1259,6 +1260,17 @@ function presentEvent(event){
     detailMeta = branchDetail(p);
     detail = joinDetails([normalizeText(p.text), detailMeta]);
     detailHtml = formattedDetail;
+  } else if(event.type === 'agent.tool.completed'){
+    const agent = TOOL_NAMES[p.agent] || cleanText(p.agent || 'Agent', 30);
+    const toolName = cleanText(p.tool_name || 'tool', 60);
+    title = `${agent} · ${toolName}`;
+    detailLimit = 220;
+    detail = joinDetails([
+      normalizeText(p.command || p.arguments || p.output),
+      p.exit_code !== undefined && p.exit_code !== null ? `exit ${p.exit_code}` : '',
+      durationDetail(p.duration_ms),
+      pathTail(p.cwd)
+    ]);
   } else if(event.type === 'shell.command.completed'){
     detailLimit = 150;
     detail = joinDetails([
