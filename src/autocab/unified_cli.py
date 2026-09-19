@@ -26,6 +26,7 @@ from autocab.terminal_logs import convert_terminal_log, write_trace_json
 from autocab.workflow import ForgeWorkflow, RunStore, WorkflowError
 from autocab.recording.recorder import Recorder
 from autocab.recording.seal import SealError
+from autocab.recording.seal_service import apply_phi_redaction
 from autocab.recording.session import SessionNotFound, SessionStore
 from autocab.recording.state import resolved_default_analyst
 
@@ -40,12 +41,12 @@ def _emit(payload: Any, *, as_json: bool = False) -> None:
         click.echo(f"{label.replace('_', ' ').title()}: {value}")
 
 
-def _run_wfrec(arguments: list[str]) -> None:
+def _run_recorder(arguments: list[str]) -> None:
     """Use the recorder's established daemon-aware command implementation."""
 
-    from autocab.recording.cli import main as wfrec_main
+    from autocab.recording.cli import main as recorder_main
 
-    result = wfrec_main(arguments)
+    result = recorder_main(arguments)
     if result:
         raise click.exceptions.Exit(result)
 
@@ -66,7 +67,7 @@ def cli() -> None:
 )
 @click.option("--fetch-model", is_flag=True, help="Download and verify selected model weights.")
 @click.option("--install-hooks", is_flag=True, help="Install auto-detected shell capture hooks.")
-@click.option("--migrate-wfrec", is_flag=True, help="Copy legacy ~/.wfrec sessions.")
+@click.option("--migrate-legacy", is_flag=True, help="Copy legacy recording sessions.")
 @click.option("--check", "run_checks", is_flag=True, help="Run recorder readiness checks.")
 @click.option(
     "--interactive/--no-interactive",
@@ -79,7 +80,7 @@ def init_command(
     redaction_engine: str | None,
     fetch_model: bool,
     install_hooks: bool,
-    migrate_wfrec: bool,
+    migrate_legacy: bool,
     run_checks: bool,
     interactive: bool | None,
     as_json: bool,
@@ -95,7 +96,7 @@ def init_command(
                 redaction_engine,
                 fetch_model,
                 install_hooks,
-                migrate_wfrec,
+                migrate_legacy,
                 run_checks,
             )
         )
@@ -132,8 +133,8 @@ def init_command(
                 default=False,
             )
             if legacy_session_count():
-                migrate_wfrec = click.confirm(
-                    "Copy legacy .wfrec sessions into .autocab?",
+                migrate_legacy = click.confirm(
+                    "Copy legacy recording sessions into AutoCAB?",
                     default=False,
                 )
             run_checks = click.confirm("Run readiness checks?", default=True)
@@ -146,7 +147,7 @@ def init_command(
         )
         result = initialize(analyst=analyst, redaction_engine=redaction_engine)
         hooks = install_shell_hooks() if install_hooks else []
-        migration = migrate_legacy_sessions() if migrate_wfrec else None
+        migration = migrate_legacy_sessions() if migrate_legacy else None
         readiness = readiness_summary() if run_checks else None
     except click.ClickException:
         raise
@@ -183,15 +184,69 @@ def init_command(
         click.echo(f"Redaction ready: {'yes' if readiness['redaction_ready'] else 'no'}")
         click.echo(f"Readiness warnings: {len(readiness['warnings'])}")
     if result.legacy_sessions:
-        click.echo(f"Legacy wfrec sessions found: {result.legacy_sessions}")
+        click.echo(f"Legacy recording sessions found: {result.legacy_sessions}")
     click.echo("Next:")
     for command in result.next_commands:
         click.echo(f"  {command}")
 
 
+@cli.command("dashboard")
+@click.option("--port", type=int, help="Port for the dashboard server.")
+@click.option("--host", help="Listen address. Defaults to loopback.")
+@click.option("--bind-all", is_flag=True, help="Listen on all interfaces.")
+@click.option("--advertise-url", help="Browser-facing base URL for this server.")
+@click.option(
+    "--allow-remote",
+    is_flag=True,
+    help="Allow a non-loopback bind. Required with --bind-all.",
+)
+@click.option(
+    "--open/--no-open",
+    "open_dashboard",
+    default=True,
+    help="Open the dashboard after the server starts.",
+)
+@click.option("--stop", is_flag=True, help="Stop the running dashboard server.")
+@click.option(
+    "--no-indicator",
+    is_flag=True,
+    help="Do not show the menu-bar or tray recording indicator.",
+)
+def dashboard_command(
+    port: int | None,
+    host: str | None,
+    bind_all: bool,
+    advertise_url: str | None,
+    allow_remote: bool,
+    open_dashboard: bool,
+    stop: bool,
+    no_indicator: bool,
+) -> None:
+    """Start the AutoCAB dashboard and recording service."""
+
+    arguments = ["daemon"]
+    if port is not None:
+        arguments.extend(["--port", str(port)])
+    if host:
+        arguments.extend(["--host", host])
+    if bind_all:
+        arguments.append("--bind-all")
+    if advertise_url:
+        arguments.extend(["--advertise-url", advertise_url])
+    if allow_remote:
+        arguments.append("--allow-remote")
+    if stop:
+        arguments.append("--stop")
+    elif open_dashboard:
+        arguments.append("--gui")
+    if no_indicator:
+        arguments.append("--no-indicator")
+    _run_recorder(arguments)
+
+
 @cli.group(help="Start, annotate, pause, resume, or finish a recording session.")
 def record() -> None:
-    """Manage wfrec recording through AutoCAB."""
+    """Manage recording through AutoCAB."""
 
 
 @record.command("start")
@@ -228,7 +283,7 @@ def record_start(
         arguments.extend(["--watch", str(root)])
     if no_daemon:
         arguments.append("--no-daemon")
-    _run_wfrec(arguments)
+    _run_recorder(arguments)
 
 
 @record.command("note")
@@ -242,7 +297,7 @@ def record_note(text: str | None, label: str) -> None:
         arguments.append(text)
     if label:
         arguments.extend(["--label", label])
-    _run_wfrec(arguments)
+    _run_recorder(arguments)
 
 
 @record.command("pause")
@@ -259,7 +314,7 @@ def record_pause(session_id: str | None, reason: str, expect: str) -> None:
         arguments.extend(["--reason", reason])
     if expect:
         arguments.extend(["--expect", expect])
-    _run_wfrec(arguments)
+    _run_recorder(arguments)
 
 
 @record.command("resume")
@@ -267,7 +322,7 @@ def record_pause(session_id: str | None, reason: str, expect: str) -> None:
 def record_resume(session_id: str | None) -> None:
     """Resume a paused recording session."""
 
-    _run_wfrec(["resume", *([session_id] if session_id else [])])
+    _run_recorder(["resume", *([session_id] if session_id else [])])
 
 
 @record.command("finish")
@@ -282,16 +337,51 @@ def record_finish(session_id: str | None, seal: bool, engine: str | None) -> Non
     """Stop a session permanently and optionally seal it."""
 
     resolved = SessionStore().resolve(session_id)
-    _run_wfrec(["stop", resolved.session_id])
+    _run_recorder(["stop", resolved.session_id])
     if seal:
-        configured_engine = load_deid_config().engine
-        selected_engine = engine or configured_engine
-        if selected_engine not in REDACTION_ENGINES:
-            raise click.ClickException(
-                f"Configured redaction engine {selected_engine!r} cannot seal sessions. "
-                f"Choose one of: {', '.join(REDACTION_ENGINES)}."
-            )
-        _run_wfrec(["seal", resolved.session_id, "--engine", selected_engine])
+        _apply_redaction(resolved.session_id, engine)
+
+
+@record.command("redact")
+@click.argument("session_id", required=False)
+@click.option(
+    "--engine",
+    type=click.Choice(REDACTION_ENGINES),
+    help="PHI detector tier. Defaults to the engine selected during init.",
+)
+def record_redact(session_id: str | None, engine: str | None) -> None:
+    """Apply PHI redaction and seal an archived session."""
+
+    resolved = SessionStore().resolve(session_id)
+    _apply_redaction(resolved.session_id, engine)
+
+
+def _apply_redaction(session_id: str, engine: str | None) -> None:
+    """Apply configured redaction without silently weakening the selected engine."""
+
+    from autocab.deid.engines.base import EngineUnavailable
+
+    try:
+        config = load_deid_config()
+    except ConfigRejected as exc:
+        raise click.ClickException(f"PHI redaction configuration is invalid: {exc}") from exc
+    selected_engine = engine or config.engine
+    if selected_engine not in REDACTION_ENGINES:
+        raise click.ClickException(
+            f"Configured redaction engine {selected_engine!r} is unsupported. "
+            f"Choose one of: {', '.join(REDACTION_ENGINES)}."
+        )
+    try:
+        result = apply_phi_redaction(
+            SessionStore().resolve(session_id),
+            engine=selected_engine,
+            profile=config.profile,
+        )
+    except EngineUnavailable as exc:
+        raise click.ClickException(f"PHI redaction is unavailable: {exc}") from exc
+    click.echo(f"PHI redaction applied: {session_id}")
+    click.echo(f"Engine: {result.record['engine']}")
+    click.echo(f"Findings: {result.record['findings']}")
 
 
 @cli.command("forge")
@@ -377,18 +467,18 @@ def status_command(as_json: bool) -> None:
 
 
 @cli.command("migrate")
-@click.option("--from-wfrec", is_flag=True, help="Copy legacy ~/.wfrec sessions.")
+@click.option("--legacy", is_flag=True, help="Copy sessions from legacy recorder storage.")
 @click.option(
     "--source",
     type=click.Path(path_type=Path, file_okay=False),
-    help="Legacy root. Defaults to ~/.wfrec.",
+    help="Legacy storage root. Uses the discovered compatibility location by default.",
 )
 @click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
-def migrate_command(from_wfrec: bool, source: Path | None, as_json: bool) -> None:
+def migrate_command(legacy: bool, source: Path | None, as_json: bool) -> None:
     """Copy legacy sessions into canonical AutoCAB storage."""
 
-    if not from_wfrec:
-        raise click.UsageError("Choose a migration source, for example --from-wfrec.")
+    if not legacy:
+        raise click.UsageError("Choose a migration source, for example --legacy.")
     result = migrate_wfrec_sessions(source_root=source or Path.home() / ".wfrec")
     _emit(result.to_dict(), as_json=as_json)
 

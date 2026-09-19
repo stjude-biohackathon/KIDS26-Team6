@@ -274,7 +274,7 @@ def test_unknown_source_is_a_400(client):
 def test_operations_without_a_session_are_a_409(client):
     response = client.post("/notes", json={"text": "hi"})
     assert response.status_code == 409
-    assert "wfrec start" in response.json()["detail"]
+    assert "autocab record start" in response.json()["detail"]
 
 
 def test_missing_session_is_a_404(client):
@@ -1254,7 +1254,7 @@ def test_cli_rejects_bad_toggle_word(autocab_home):
 
 def test_cli_note_without_session_exits_nonzero(autocab_home, capsys):
     assert main(["note", "hello"]) == 2
-    assert "wfrec start" in capsys.readouterr().err
+    assert "autocab record start" in capsys.readouterr().err
 
 
 def test_cli_events_filters_by_source(autocab_home, capsys):

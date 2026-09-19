@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from click.testing import CliRunner
 import pytest
@@ -19,8 +20,83 @@ def test_help_lists_the_integrated_workflow_commands() -> None:
     result = CliRunner().invoke(cli, ["--help"])
 
     assert result.exit_code == 0
-    for command in ("init", "record", "forge", "review", "approve", "package", "status"):
+    for command in (
+        "init",
+        "dashboard",
+        "record",
+        "forge",
+        "review",
+        "approve",
+        "package",
+        "status",
+    ):
         assert command in result.output
+
+
+@pytest.mark.parametrize("arguments", [[], ["init", "--help"], ["migrate", "--help"]])
+def test_autocab_help_uses_only_autocab_branding(arguments: list[str]) -> None:
+    result = CliRunner().invoke(cli, [*arguments, "--help"] if not arguments else arguments)
+
+    assert result.exit_code == 0, result.output
+    assert "wfrec" not in result.output.lower()
+
+
+def test_dashboard_opens_the_local_ui_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+    monkeypatch.setattr(unified_cli, "_run_recorder", calls.append)
+
+    result = CliRunner().invoke(cli, ["dashboard"])
+
+    assert result.exit_code == 0, result.output
+    assert calls == [["daemon", "--gui"]]
+
+
+def test_dashboard_forwards_headless_remote_options(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+    monkeypatch.setattr(unified_cli, "_run_recorder", calls.append)
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "dashboard",
+            "--port",
+            "9000",
+            "--host",
+            "0.0.0.0",
+            "--bind-all",
+            "--advertise-url",
+            "https://node.example",
+            "--allow-remote",
+            "--no-open",
+            "--no-indicator",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls == [
+        [
+            "daemon",
+            "--port",
+            "9000",
+            "--host",
+            "0.0.0.0",
+            "--bind-all",
+            "--advertise-url",
+            "https://node.example",
+            "--allow-remote",
+            "--no-indicator",
+        ]
+    ]
+
+
+def test_dashboard_stop_does_not_open_the_ui(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+    monkeypatch.setattr(unified_cli, "_run_recorder", calls.append)
+
+    result = CliRunner().invoke(cli, ["dashboard", "--stop"])
+
+    assert result.exit_code == 0, result.output
+    assert calls == [["daemon", "--stop"]]
 
 
 def test_init_creates_workspace_and_saves_analyst(tmp_path: Path) -> None:
@@ -84,7 +160,7 @@ def test_init_reports_legacy_sessions(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["legacy_sessions"] == 1
-    assert payload["next_commands"][0] == "autocab migrate --from-wfrec"
+    assert payload["next_commands"][0] == "autocab migrate --legacy"
 
 
 def test_init_reports_an_unwritable_home_as_a_cli_error(tmp_path: Path) -> None:
@@ -220,7 +296,7 @@ def test_init_runs_explicit_setup_actions(
 
     result = CliRunner().invoke(
         cli,
-        ["init", "--install-hooks", "--migrate-wfrec", "--check", "--json"],
+        ["init", "--install-hooks", "--migrate-legacy", "--check", "--json"],
         env={
             "AUTOCAB_HOME": str(tmp_path / "autocab"),
             "WFREC_RUN": str(tmp_path / "run"),
@@ -243,13 +319,35 @@ def test_record_finish_uses_the_configured_redaction_engine(
         '[deid]\nengine = "gliner2-pii"\n',
         encoding="utf-8",
     )
-    calls: list[list[str]] = []
-    monkeypatch.setattr(unified_cli, "_run_wfrec", calls.append)
+    recorder_calls: list[list[str]] = []
+    redaction_calls: list[tuple[str, str]] = []
+
+    def redact(current_session, *, engine: str, profile: str):
+        redaction_calls.append((current_session.session_id, engine))
+        assert profile == "balanced"
+        return SimpleNamespace(record={"engine": engine, "findings": 2})
+
+    monkeypatch.setattr(unified_cli, "_run_recorder", recorder_calls.append)
+    monkeypatch.setattr(unified_cli, "apply_phi_redaction", redact)
 
     result = CliRunner().invoke(cli, ["record", "finish", session.session_id, "--seal"])
 
     assert result.exit_code == 0, result.output
-    assert calls[-1] == ["seal", session.session_id, "--engine", "gliner2-pii"]
+    assert recorder_calls == [["stop", session.session_id]]
+    assert redaction_calls == [(session.session_id, "gliner2-pii")]
+    assert "PHI redaction applied" in result.output
+
+
+def test_record_redact_seals_an_archived_session(autocab_home: Path) -> None:
+    store = SessionStore()
+    session, _created = store.start(title="Redact me", analyst="analyst")
+    store.stop(session.session_id)
+
+    result = CliRunner().invoke(cli, ["record", "redact", session.session_id])
+
+    assert result.exit_code == 0, result.output
+    assert (session.root / "seal.json").is_file()
+    assert "Engine: regex" in result.output
 
 
 def test_demo_does_not_approve_by_default(tmp_path: Path) -> None:
@@ -283,7 +381,7 @@ def test_migrate_copies_legacy_sessions_into_autocab_home(tmp_path: Path) -> Non
 
     result = CliRunner().invoke(
         cli,
-        ["migrate", "--from-wfrec", "--source", str(legacy), "--json"],
+        ["migrate", "--legacy", "--source", str(legacy), "--json"],
         env={"AUTOCAB_HOME": str(target)},
     )
 

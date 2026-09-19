@@ -35,14 +35,15 @@ class Client:
         if not api:
             if require:
                 raise DaemonUnavailable(
-                    "No wfrec daemon is running. Start one with `wfrec daemon`."
+                    "No AutoCAB recording service is running. "
+                    "Start one with `autocab dashboard`."
                 )
             return None
         if daemon_alive() is None:
             if require:
                 raise DaemonUnavailable(
-                    "A daemon address is published but not responding. "
-                    "Start one with `wfrec daemon`."
+                    "The AutoCAB recording service is published but not responding. "
+                    "Restart it with `autocab dashboard`."
                 )
             return None
         return cls(api[0], api[1])
@@ -61,7 +62,7 @@ class Client:
             detail = response.text
             with contextlib.suppress(Exception):
                 detail = response.json().get("detail", detail)
-            raise RuntimeError(f"wfrec API {response.status_code}: {detail}")
+            raise RuntimeError(f"AutoCAB API {response.status_code}: {detail}")
         return response.json()
 
     def get(self, path: str) -> Any:

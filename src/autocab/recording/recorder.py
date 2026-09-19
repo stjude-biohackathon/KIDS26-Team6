@@ -91,7 +91,7 @@ class Recorder:
             if session is None and state.active_session:
                 # A fresh Recorder (the CLI builds one per invocation) has no
                 # session attached yet, but there may well be an active one on
-                # disk. Reporting None here made `wfrec status` claim nothing
+                # disk. Reporting None here made the status command claim nothing
                 # was being recorded while a session was running.
                 session = self.store.active()
                 self._session = session
@@ -214,7 +214,9 @@ class Recorder:
 
             status["sealed"] = is_sealed(session.root)
             status["next_step"] = (
-                f"wfrec seal {session.session_id}" if not status["sealed"] else "already sealed"
+                f"autocab record redact {session.session_id}"
+                if not status["sealed"]
+                else "already sealed"
             )
             return status
 
@@ -445,7 +447,7 @@ class NoActiveSession(RuntimeError):
     """Raised when an operation needs an active session and there is none."""
 
     def __init__(self) -> None:
-        super().__init__("No active session. Run `wfrec start` first.")
+        super().__init__("No active session. Run `autocab record start` first.")
 
 
 def _count_lines(path: Path) -> int:

@@ -217,7 +217,7 @@ def run(
             "WFREC_ADVERTISE_URL or --advertise-url so your browser can connect."
         )
 
-    summary("wfrec daemon", rows)
+    summary("AutoCAB dashboard", rows)
 
     if open_gui:
         threading.Thread(
@@ -310,7 +310,7 @@ def launch_gui(url: str, token: str) -> None:  # pragma: no cover - UI
     try:
         import webview
 
-        webview.create_window("wfrec", target, width=980, height=760)
+        webview.create_window("AutoCAB", target, width=980, height=760)
         webview.start()
         return
     except Exception:

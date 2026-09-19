@@ -141,7 +141,7 @@ def initialize(*, analyst: str = "", redaction_engine: str | None = None) -> Ini
     legacy_sessions = legacy_session_count()
     next_commands = []
     if legacy_sessions:
-        next_commands.append("autocab migrate --from-wfrec")
+        next_commands.append("autocab migrate --legacy")
     next_commands.extend(('autocab record start --title "My workflow" --watch .', "autocab status"))
     return InitResult(
         home=root,

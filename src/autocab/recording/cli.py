@@ -612,7 +612,7 @@ def _report(command: str, result: dict, as_json: bool, *, daemon: bool) -> None:
         if not daemon:
             warning(
                 "No daemon is running, so background collectors are inactive. "
-                "Start one with `wfrec daemon` or `wfrec daemon --gui`."
+                "Start one with `autocab dashboard` or `autocab dashboard --no-open`."
             )
         return
 
@@ -622,7 +622,7 @@ def _report(command: str, result: dict, as_json: bool, *, daemon: bool) -> None:
             [
                 ("Session", result.get("stopped")),
                 ("Folder", result.get("root")),
-                ("Export", "wfrec export"),
+                ("Next", result.get("next_step", "Open the AutoCAB dashboard")),
             ],
         )
         return
