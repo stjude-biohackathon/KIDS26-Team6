@@ -10,7 +10,7 @@ from typing import Any
 import click
 
 from autocab.deid.config import ConfigRejected, load as load_deid_config
-from autocab.deid.models import ModelWeightsError, verify_weights
+from autocab.deid.models import DOWNLOAD_PROGRESS_NOTE, ModelWeightsError, verify_weights
 from autocab.initialization import (
     REDACTION_ENGINES,
     initialize,
@@ -140,6 +140,8 @@ def init_command(
             run_checks = click.confirm("Run readiness checks?", default=True)
 
         selected_engine = redaction_engine or current_engine
+        if fetch_model and not as_json:
+            click.echo(DOWNLOAD_PROGRESS_NOTE, err=True)
         model_status = (
             prepare_model(selected_engine, fetch=fetch_model)
             if redaction_engine or fetch_model

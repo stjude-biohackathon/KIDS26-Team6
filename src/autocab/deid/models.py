@@ -26,7 +26,12 @@ SOURCE_REVISION = "4e091416cf7c3481db542c2a3d26156916f3a47f"
 MODEL_LICENSE = "apache-2.0"
 MANIFEST_FILENAME = "manifest.json"
 DEFAULT_DOWNLOAD_CONCURRENCY = 8
-XET_CONCURRENCY_VARIABLE = "HF_XET_FIXED_DOWNLOAD_CONCURRENCY"
+DOWNLOAD_PROGRESS_NOTE = (
+    "Downloading model weights. Xet progress may remain at 0% until its first "
+    "chunk completes."
+)
+XET_INITIAL_CONCURRENCY_VARIABLE = "HF_XET_CLIENT_AC_INITIAL_DOWNLOAD_CONCURRENCY"
+XET_CACHE_VARIABLE = "HF_XET_CACHE"
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,7 +191,7 @@ def _model_spec(model: str) -> ModelSpec:
 
 
 def model_root(model: str = "gliner") -> Path:
-    """Return the application-owned model directory under ``WFREC_HOME``."""
+    """Return the application-owned model directory under AutoCAB storage."""
 
     from autocab.recording import paths
 
@@ -200,6 +205,14 @@ def model_cache_root() -> Path:
     from autocab.recording import paths
 
     return paths.home() / "models" / ".hub-cache"
+
+
+def model_xet_cache_root() -> Path:
+    """Return the application-owned working cache used by Xet transfers."""
+
+    from autocab.recording import paths
+
+    return paths.home() / "models" / ".xet-cache"
 
 
 def manifest(model: str = "gliner") -> dict[str, object]:
@@ -296,31 +309,38 @@ def resolve_weights(directory: Path | None = None, *, model: str = "gliner") -> 
 
 
 @contextmanager
-def _download_concurrency(value: int = DEFAULT_DOWNLOAD_CONCURRENCY) -> Iterator[None]:
-    """Use bounded Xet concurrency without overriding an operator's setting.
+def _download_environment(value: int = DEFAULT_DOWNLOAD_CONCURRENCY) -> Iterator[None]:
+    """Start Xet promptly while preserving adaptive control and local storage.
 
     Hugging Face reads transfer settings when its download stack starts. Model
     fetching is an explicit foreground operation, so temporarily setting the
     process environment here keeps the policy local to that operation.
     """
 
-    previous = os.environ.get(XET_CONCURRENCY_VARIABLE)
-    if previous is None:
-        os.environ[XET_CONCURRENCY_VARIABLE] = str(value)
+    defaults = {
+        XET_INITIAL_CONCURRENCY_VARIABLE: str(value),
+        XET_CACHE_VARIABLE: str(model_xet_cache_root()),
+    }
+    previous = {name: os.environ.get(name) for name in defaults}
+    for name, default in defaults.items():
+        if previous[name] is None:
+            os.environ[name] = default
     try:
         yield
     finally:
-        if previous is None:
-            os.environ.pop(XET_CONCURRENCY_VARIABLE, None)
-        else:
-            os.environ[XET_CONCURRENCY_VARIABLE] = previous
+        for name, original in previous.items():
+            if original is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = original
 
 
 def _download_to(directory: Path, spec: ModelSpec) -> None:
     cache = model_cache_root()
     cache.mkdir(parents=True, exist_ok=True)
+    model_xet_cache_root().mkdir(parents=True, exist_ok=True)
 
-    with _download_concurrency():
+    with _download_environment():
         try:
             from huggingface_hub import hf_hub_download
         except ImportError as exc:  # pragma: no cover - dependency metadata prevents this

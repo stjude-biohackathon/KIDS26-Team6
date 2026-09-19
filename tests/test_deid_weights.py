@@ -56,9 +56,10 @@ def test_fetch_bundle_load_and_verify_are_hash_checked(
     ) -> str:
         assert Path(cache_dir) == models.model_cache_root()
         assert "local_dir" not in _kwargs
-        assert os.environ[models.XET_CONCURRENCY_VARIABLE] == str(
+        assert os.environ[models.XET_INITIAL_CONCURRENCY_VARIABLE] == str(
             models.DEFAULT_DOWNLOAD_CONCURRENCY
         )
+        assert Path(os.environ[models.XET_CACHE_VARIABLE]) == models.model_xet_cache_root()
         destination = Path(cache_dir) / filename
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(source_files[filename])
@@ -76,7 +77,8 @@ def test_fetch_bundle_load_and_verify_are_hash_checked(
     assert installed.valid is True
     assert installed.path.parent.parent.parent == autocab_home
     assert models.verify_weights().valid is True
-    assert models.XET_CONCURRENCY_VARIABLE not in os.environ
+    assert models.XET_INITIAL_CONCURRENCY_VARIABLE not in os.environ
+    assert models.XET_CACHE_VARIABLE not in os.environ
 
     installed.path.joinpath(pinned[0].local_name).write_bytes(b"corrupt")
     corrupt = models.verify_weights()
@@ -106,15 +108,19 @@ def test_interrupted_download_keeps_the_hub_cache(
     assert partial.read_bytes() == b"partial model data"
 
 
-def test_download_concurrency_preserves_an_operator_override(
+def test_download_environment_preserves_operator_overrides(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv(models.XET_CONCURRENCY_VARIABLE, "3")
+    custom_cache = Path("/custom/xet-cache")
+    monkeypatch.setenv(models.XET_INITIAL_CONCURRENCY_VARIABLE, "3")
+    monkeypatch.setenv(models.XET_CACHE_VARIABLE, str(custom_cache))
 
-    with models._download_concurrency():
-        assert os.environ[models.XET_CONCURRENCY_VARIABLE] == "3"
+    with models._download_environment():
+        assert os.environ[models.XET_INITIAL_CONCURRENCY_VARIABLE] == "3"
+        assert Path(os.environ[models.XET_CACHE_VARIABLE]) == custom_cache
 
-    assert os.environ[models.XET_CONCURRENCY_VARIABLE] == "3"
+    assert os.environ[models.XET_INITIAL_CONCURRENCY_VARIABLE] == "3"
+    assert Path(os.environ[models.XET_CACHE_VARIABLE]) == custom_cache
 
 
 def test_bundle_must_match_the_pinned_manifest(
