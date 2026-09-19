@@ -12,6 +12,7 @@ from wfrec import paths
 from wfrec.api import create_app
 from wfrec.cli import main
 from wfrec.desktop import DirectoryOpenError
+from wfrec.events import Event
 from wfrec.recorder import Recorder
 from wfrec.session import Manifest, Session, SessionStore
 from wfrec.state import RecorderState
@@ -111,10 +112,12 @@ def test_endpoints_require_the_token(wfrec_home):
         assert anon.get("/dashboard.css").status_code == 200
         assert anon.get("/provenance.css").status_code == 200
         assert anon.get("/settings.css").status_code == 200
+        assert anon.get("/forge-workflow.css").status_code == 200
         assert anon.get("/app.js").status_code == 200
         assert anon.get("/dashboard.js").status_code == 200
         assert anon.get("/provenance.js").status_code == 200
         assert anon.get("/settings.js").status_code == 200
+        assert anon.get("/forge-workflow.js").status_code == 200
         assert anon.get("/status").status_code == 401
         assert anon.get("/status", headers={"Authorization": "Bearer wrong"}).status_code == 401
         assert (
@@ -136,6 +139,108 @@ def test_start_pause_resume_stop_over_http(client):
 
     stopped = client.post("/sessions/stop", json={}).json()
     assert stopped["stopped"] == session_id
+
+
+def test_forge_api_requires_a_sealed_session(client):
+    started = client.post(
+        "/sessions/start", json={"title": "Active workflow", "analyst": "analyst"}
+    ).json()
+
+    response = client.post(f"/sessions/{started['session']['id']}/forge-runs")
+
+    assert response.status_code == 409
+    assert "unsealed session" in response.json()["detail"]
+
+
+def test_forge_api_exposes_blocked_review_state(client):
+    started = client.post(
+        "/sessions/start", json={"title": "Variant QC", "analyst": "analyst"}
+    ).json()
+    session_id = started["session"]["id"]
+    session = Session.load(session_id)
+    session.writer.append(
+        Event(
+            source="shell",
+            type="shell.command.completed",
+            payload={"command": "bcftools view input.vcf.gz", "exit_code": 0},
+        )
+    )
+    client.post("/sessions/stop", json={"session_id": session_id})
+    sealed = client.post("/sessions/seal", json={"session_id": session_id})
+    assert sealed.status_code == 200
+
+    created = client.post(f"/sessions/{session_id}/forge-runs")
+    assert created.status_code == 200
+    run_id = created.json()["run"]["run_id"]
+    assert created.json()["run"]["state"] == "blocked"
+    assert created.json()["skill_spec"]["steps"][0]["commandShape"].startswith("bcftools")
+
+    listed = client.get(f"/sessions/{session_id}/forge-runs").json()["runs"]
+    assert [run["run_id"] for run in listed] == [run_id]
+    assert client.get(f"/forge-runs/{run_id}").status_code == 200
+
+    reviewed = client.post(
+        f"/forge-runs/{run_id}/review",
+        json={"reviewer": "Reviewer", "notes": "Dependency details still needed."},
+    )
+    assert reviewed.status_code == 200
+    assert reviewed.json()["run"]["state"] == "blocked"
+
+    approval = client.post(
+        f"/forge-runs/{run_id}/approve",
+        json={"reviewer": "Reviewer"},
+    )
+    assert approval.status_code == 409
+    assert "needs_review" in approval.json()["detail"]
+
+
+def test_forge_api_keeps_review_approval_and_packaging_separate(client):
+    started = client.post(
+        "/sessions/start", json={"title": "Reviewed workflow", "analyst": "analyst"}
+    ).json()
+    session_id = started["session"]["id"]
+    Session.load(session_id).writer.append(
+        Event(
+            source="shell",
+            type="shell.command.completed",
+            payload={"command": "python workflow.py input.txt", "exit_code": 0},
+        )
+    )
+    client.post("/sessions/stop", json={"session_id": session_id})
+    client.post("/sessions/seal", json={"session_id": session_id})
+    created = client.post(f"/sessions/{session_id}/forge-runs").json()
+    run_id = created["run"]["run_id"]
+    spec = created["skill_spec"]
+    spec["requestedPackaging"] = "std"
+    spec["packaging"] = "std"
+    spec["decision"] = "novel"
+    spec["name"] = spec["name"].removesuffix("-cbd") + "-std"
+    spec["unresolvedQuestions"] = []
+    spec["dependencies"] = []
+    spec["runtimeEnvironment"]["verified"] = True
+    spec["licenseDecision"] = "No copied third-party source is included."
+    for step in spec["steps"]:
+        step["status"] = "supported"
+        step["dependencies"] = []
+
+    reviewed = client.post(
+        f"/forge-runs/{run_id}/review",
+        json={"reviewer": "Reviewer One", "skill_spec": spec},
+    )
+    assert reviewed.status_code == 200
+    assert reviewed.json()["run"]["state"] == "needs_review"
+
+    approved = client.post(
+        f"/forge-runs/{run_id}/approve",
+        json={"reviewer": "Reviewer Two"},
+    )
+    assert approved.status_code == 200
+    assert approved.json()["run"]["state"] == "approved"
+
+    packaged = client.post(f"/forge-runs/{run_id}/package")
+    assert packaged.status_code == 200
+    assert packaged.json()["run"]["state"] == "packaged"
+    assert packaged.json()["run"]["package_path"].endswith("reviewed-workflow-std")
 
 
 def test_toggle_source_over_http(client):

@@ -1,0 +1,202 @@
+.forge-workflow {
+  display: grid;
+  gap: 13px;
+  padding-block: 14px;
+}
+
+.forge-workflow__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.forge-workflow__header h2 {
+  margin-bottom: 3px;
+}
+
+.forge-workflow__summary {
+  margin: 0;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.forge-workflow__header > button {
+  flex: 0 0 auto;
+  min-height: var(--control-field);
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.forge-workflow__stages {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.forge-workflow__stages li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--dim);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.forge-workflow__stages li::before {
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border: 1px solid var(--control-border);
+  border-radius: 50%;
+  background: var(--panel);
+  content: "";
+}
+
+.forge-workflow__stages li::after {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  right: 8px;
+  left: 15px;
+  height: 1px;
+  background: var(--line);
+  content: "";
+}
+
+.forge-workflow__stages li:last-child::after {
+  display: none;
+}
+
+.forge-workflow__stages li.is-complete {
+  color: var(--ink);
+}
+
+.forge-workflow__stages li.is-complete::before {
+  border-color: var(--on);
+  background: var(--on);
+}
+
+.forge-workflow__stages li.is-current {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.forge-workflow__stages li.is-current::before {
+  border: 3px solid var(--panel);
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.forge-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 32px));
+}
+
+.forge-dialog__frame {
+  display: grid;
+  max-height: inherit;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+
+.forge-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.forge-dialog__header h2 {
+  margin: 0 0 3px;
+  color: var(--ink);
+  font-size: 16px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.forge-dialog__header p,
+.forge-dialog__message {
+  margin: 0;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.forge-dialog__content {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.forge-dialog__content section {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.forge-dialog__content h3 {
+  margin: 0 0 6px;
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.forge-dialog__content p,
+.forge-dialog__content ul {
+  margin: 0;
+}
+
+.forge-dialog__content ul {
+  padding-left: 20px;
+}
+
+.forge-dialog__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.forge-dialog__message {
+  min-height: 18px;
+  padding: 0 18px;
+  color: var(--danger);
+}
+
+.forge-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px 18px;
+}
+
+@media (max-width: 560px) {
+  .forge-workflow__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .forge-workflow__stages {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .forge-workflow__stages li::after {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .forge-workflow__stages li::before {
+    forced-color-adjust: none;
+  }
+}

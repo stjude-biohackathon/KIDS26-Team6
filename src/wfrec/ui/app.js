@@ -157,6 +157,31 @@ const SESSION_METADATA = window.WfrecSessionMetadata.create({
     }
   }
 });
+const FORGE_WORKFLOW = window.WfrecForgeWorkflow.create({
+  root:document.getElementById('forge-workflow'),
+  summary:document.getElementById('forge-workflow-summary'),
+  stages:document.getElementById('forge-workflow-stages'),
+  action:document.getElementById('forge-workflow-action'),
+  dialog:document.getElementById('forge-dialog'),
+  dialogTitle:document.getElementById('forge-dialog-title'),
+  dialogStatus:document.getElementById('forge-dialog-status'),
+  dialogContent:document.getElementById('forge-dialog-content'),
+  dialogMessage:document.getElementById('forge-dialog-message'),
+  dialogAction:document.getElementById('forge-dialog-action'),
+  dialogClose:document.getElementById('forge-dialog-close'),
+  dialogCancel:document.getElementById('forge-dialog-cancel'),
+  listRuns:sessionId => api(`/sessions/${encodeURIComponent(sessionId)}/forge-runs`),
+  createRun:sessionId => api(
+    `/sessions/${encodeURIComponent(sessionId)}/forge-runs`, {}, 'POST'
+  ),
+  loadRun:runId => api(`/forge-runs/${encodeURIComponent(runId)}`),
+  approveRun:(runId, reviewer) => api(
+    `/forge-runs/${encodeURIComponent(runId)}/approve`, {reviewer}, 'POST'
+  ),
+  packageRun:runId => api(`/forge-runs/${encodeURIComponent(runId)}/package`, {}, 'POST'),
+  reviewer:() => STATE && STATE.default_analyst || 'unknown-analyst',
+  notify:(message, kind) => flash(message, kind)
+});
 
 async function api(path, body, method){
   const requestMethod = method || (body ? 'POST' : 'GET');
@@ -616,6 +641,7 @@ function render(){
   const s = STATE.session;
   PROVENANCE.setSession(s && s.id);
   SESSION_METADATA.render(s);
+  FORGE_WORKFLOW.setSession(s);
   const badge = document.getElementById('badge');
   const status = s ? s.status : 'idle';
   const active = status === 'active';
@@ -786,7 +812,7 @@ async function refresh(){
     const query = SELECTED_SESSION ? `?session_id=${encodeURIComponent(SELECTED_SESSION)}` : '';
     STATE = await api('/status'+query);
     render();
-    await renderDashboard();
+    await Promise.all([renderDashboard(), FORGE_WORKFLOW.refresh(STATE.session)]);
     if(!CONNECTED) flash('Recorder reconnected.', 'success');
     CONNECTED = true;
   }catch(_error){

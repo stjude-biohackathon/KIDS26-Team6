@@ -10,10 +10,12 @@
 <link rel="stylesheet" href="/provenance.css">
 <link rel="stylesheet" href="/session-metadata.css">
 <link rel="stylesheet" href="/settings.css">
+<link rel="stylesheet" href="/forge-workflow.css">
 <script src="/dashboard.js" defer></script>
 <script src="/provenance.js" defer></script>
 <script src="/session-metadata.js" defer></script>
 <script src="/settings.js" defer></script>
+<script src="/forge-workflow.js" defer></script>
 <script src="/app.js" defer></script>
 </head>
 <body>
@@ -169,6 +171,23 @@
     </section>
 
     <div id="session-content" class="session-content">
+      <section id="forge-workflow" class="forge-workflow" aria-labelledby="forge-workflow-heading">
+        <div class="forge-workflow__header">
+          <div>
+            <h2 id="forge-workflow-heading">Skill workflow</h2>
+            <p id="forge-workflow-summary" class="forge-workflow__summary">Loading skill workflow…</p>
+          </div>
+          <button id="forge-workflow-action" type="button" disabled>Create skill draft</button>
+        </div>
+        <ol id="forge-workflow-stages" class="forge-workflow__stages" aria-label="Skill workflow progress">
+          <li data-stage="recorded">Recorded</li>
+          <li data-stage="draft">Draft</li>
+          <li data-stage="review">Review</li>
+          <li data-stage="approved">Approved</li>
+          <li data-stage="packaged">Packaged</li>
+        </ol>
+      </section>
+
       <section id="activity-dashboard" class="activity-dashboard" aria-labelledby="activity-dashboard-heading">
         <h2 id="activity-dashboard-heading" class="sr-only">Activity dashboard</h2>
         <section class="activity-dashboard__card" aria-labelledby="activity-overview-heading">
@@ -306,6 +325,28 @@
       <button type="submit" class="primary">Save</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="forge-dialog" class="forge-dialog" aria-labelledby="forge-dialog-title">
+  <div class="forge-dialog__frame">
+    <div class="forge-dialog__header">
+      <div>
+        <h2 id="forge-dialog-title">Skill draft</h2>
+        <p id="forge-dialog-status"></p>
+      </div>
+      <button id="forge-dialog-close" class="icon-action" type="button" aria-label="Close skill draft" title="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="m6 6 12 12M18 6 6 18" />
+        </svg>
+      </button>
+    </div>
+    <div id="forge-dialog-content" class="forge-dialog__content"></div>
+    <p id="forge-dialog-message" class="forge-dialog__message" role="alert"></p>
+    <div class="forge-dialog__actions">
+      <button id="forge-dialog-cancel" type="button">Close</button>
+      <button id="forge-dialog-action" class="primary" type="button" hidden></button>
+    </div>
+  </div>
 </dialog>
 
 </body>

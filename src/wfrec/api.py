@@ -26,6 +26,9 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
+from autocab.forge.skill_spec import loadSpec
+from autocab.workflow import ForgeWorkflow, RunNotFound, RunStore, WorkflowError
+
 from . import SOURCES, __version__
 from .desktop import (
     DirectoryOpenError,
@@ -130,6 +133,17 @@ class SealRequest(BaseModel):
     force: bool = False
     dry_run: bool = False
     status: bool = False
+
+
+class ForgeReviewRequest(BaseModel):
+    reviewer: str = Field(min_length=1, max_length=200)
+    notes: str = Field(default="", max_length=5_000)
+    skill_spec: dict[str, Any] | None = None
+
+
+class ForgeApprovalRequest(BaseModel):
+    reviewer: str = Field(min_length=1, max_length=200)
+    notes: str = Field(default="", max_length=5_000)
 
 
 def _event_count(session: Session) -> int:
@@ -380,6 +394,8 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     """Build the control API around a live ``Recorder``."""
 
     app = FastAPI(title="wfrec control API", version=__version__)
+    forge_store = RunStore()
+    forge_workflow = ForgeWorkflow(forge_store)
 
     def authorize(request: Request) -> None:
         """Bearer-token check.
@@ -435,6 +451,21 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     @app.exception_handler(ValueError)
     async def _bad_value(_request: Request, exc: ValueError) -> JSONResponse:
         return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+    @app.exception_handler(RunNotFound)
+    async def _run_not_found(_request: Request, exc: RunNotFound) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(WorkflowError)
+    async def _workflow_error(_request: Request, exc: WorkflowError) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+    def forge_detail(run_id: str) -> dict[str, Any]:
+        """Return bounded run state and the reviewable SkillSpec."""
+
+        run = forge_store.load(run_id)
+        spec = loadSpec(forge_store.run_dir(run_id) / "skill-spec.json")
+        return {"run": run.to_dict(), "skill_spec": spec}
 
     # ------------------------------------------------------------------ meta
     @app.get("/health")
@@ -506,6 +537,53 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
         session = recorder.store.resolve(session_id)
         return _session_provenance(session, RecorderState.load())
+
+    @app.get("/sessions/{session_id}/forge-runs", dependencies=guard)
+    def session_forge_runs(session_id: str) -> dict[str, Any]:
+        """List forge runs associated with one recorded session."""
+
+        recorder.store.resolve(session_id)
+        return {"runs": [run.to_dict() for run in forge_store.list(session_id=session_id)]}
+
+    @app.post("/sessions/{session_id}/forge-runs", dependencies=guard)
+    def create_forge_run(session_id: str) -> dict[str, Any]:
+        """Create a conservative skill draft from a sealed session."""
+
+        from .seal import SealError
+
+        try:
+            run = forge_workflow.forge(session_id)
+        except SealError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        return forge_detail(run.run_id)
+
+    @app.get("/forge-runs/{run_id}", dependencies=guard)
+    def get_forge_run(run_id: str) -> dict[str, Any]:
+        return forge_detail(run_id)
+
+    @app.post("/forge-runs/{run_id}/review", dependencies=guard)
+    def review_forge_run(run_id: str, payload: ForgeReviewRequest) -> dict[str, Any]:
+        run = forge_workflow.review(
+            run_id,
+            reviewer=payload.reviewer,
+            notes=payload.notes,
+            spec=payload.skill_spec,
+        )
+        return forge_detail(run.run_id)
+
+    @app.post("/forge-runs/{run_id}/approve", dependencies=guard)
+    def approve_forge_run(run_id: str, payload: ForgeApprovalRequest) -> dict[str, Any]:
+        run = forge_workflow.approve(
+            run_id,
+            reviewer=payload.reviewer,
+            notes=payload.notes,
+        )
+        return forge_detail(run.run_id)
+
+    @app.post("/forge-runs/{run_id}/package", dependencies=guard)
+    def package_forge_run(run_id: str) -> dict[str, Any]:
+        run = forge_workflow.package(run_id)
+        return forge_detail(run.run_id)
 
     @app.patch("/sessions/{session_id}", dependencies=guard)
     def rename_session(session_id: str, payload: RenameSessionRequest) -> dict[str, str]:
@@ -720,6 +798,10 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     def settings_styles() -> Response:
         return ui_asset("settings.css", "text/css")
 
+    @app.get("/forge-workflow.css", response_class=Response)
+    def forge_workflow_styles() -> Response:
+        return ui_asset("forge-workflow.css", "text/css")
+
     @app.get("/app.js", response_class=Response)
     def javascript() -> Response:
         return ui_asset("app.js", "application/javascript")
@@ -739,6 +821,10 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     @app.get("/settings.js", response_class=Response)
     def settings_javascript() -> Response:
         return ui_asset("settings.js", "application/javascript")
+
+    @app.get("/forge-workflow.js", response_class=Response)
+    def forge_workflow_javascript() -> Response:
+        return ui_asset("forge-workflow.js", "application/javascript")
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:

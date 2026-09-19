@@ -13,7 +13,12 @@ from uuid import uuid4
 
 from autocab.forge.package_validator import validatePackage
 from autocab.forge.renderer import runForge
-from autocab.forge.skill_spec import RENDERABLE_DECISIONS, loadSpec, validateSpec
+from autocab.forge.skill_spec import (
+    RENDERABLE_DECISIONS,
+    SkillSpecError,
+    loadSpec,
+    validateSpec,
+)
 from wfrec.events import read_events_sorted, utc_now
 from wfrec.locking import atomic_write_text
 from wfrec.seal import require_sealed
@@ -45,6 +50,15 @@ def _seal_summary(record: dict[str, Any]) -> dict[str, Any]:
             if isinstance(values, dict)
         },
     }
+
+
+def _load_spec(path: Path) -> dict[str, Any]:
+    """Translate a malformed persisted spec into a workflow-level error."""
+
+    try:
+        return loadSpec(path)
+    except SkillSpecError as exc:
+        raise WorkflowError(str(exc)) from exc
 
 
 class ForgeWorkflow:
@@ -82,33 +96,38 @@ class ForgeWorkflow:
         reviewer: str,
         notes: str,
         spec_path: Path | None = None,
+        spec: dict[str, Any] | None = None,
     ) -> ForgeRun:
         """Validate reviewer edits and mark whether blockers remain."""
 
+        if spec_path is not None and spec is not None:
+            raise ValueError("Provide either spec_path or spec, not both.")
         with self.store.lock(run_id) as run_dir:
             run = self.store.load(run_id)
             if run.state in {ForgeState.APPROVED, ForgeState.PACKAGED}:
                 raise WorkflowError(f"Run {run_id} cannot be reviewed in state {run.state}.")
-            spec = loadSpec(spec_path or run_dir / "skill-spec.json")
-            issues = validateSpec(spec)
+            reviewed_spec = (
+                spec if spec is not None else _load_spec(spec_path or run_dir / "skill-spec.json")
+            )
+            issues = validateSpec(reviewed_spec)
             if issues:
                 raise WorkflowError("SkillSpec review failed: " + "; ".join(issues))
             blockers = [
                 question
-                for question in spec["unresolvedQuestions"]
+                for question in reviewed_spec["unresolvedQuestions"]
                 if question.get("blocking") is True
             ]
             next_state = ForgeState.BLOCKED if blockers else ForgeState.NEEDS_REVIEW
             if (
                 next_state == ForgeState.NEEDS_REVIEW
-                and spec["decision"] not in RENDERABLE_DECISIONS
+                and reviewed_spec["decision"] not in RENDERABLE_DECISIONS
             ):
                 raise WorkflowError("A review-ready skill must use decision 'compose' or 'novel'.")
             atomic_write_text(
                 run_dir / "skill-spec.json",
-                json.dumps(spec, indent=2, sort_keys=True) + "\n",
+                json.dumps(reviewed_spec, indent=2, sort_keys=True) + "\n",
             )
-            run.unresolved_count = len(spec["unresolvedQuestions"])
+            run.unresolved_count = len(reviewed_spec["unresolvedQuestions"])
             run.transition(next_state, reason="Reviewer validated the SkillSpec.")
             self.store.append_review(
                 run_id,
@@ -133,7 +152,7 @@ class ForgeWorkflow:
                 raise WorkflowError(
                     f"Run {run_id} must be in needs_review before approval, not {run.state}."
                 )
-            spec = loadSpec(run_dir / "skill-spec.json")
+            spec = _load_spec(run_dir / "skill-spec.json")
             issues = validateSpec(spec)
             if issues:
                 raise WorkflowError("SkillSpec approval failed: " + "; ".join(issues))
@@ -170,7 +189,7 @@ class ForgeWorkflow:
                     f"Run {run_id} must be approved before packaging, not {run.state}."
                 )
             spec_path = run_dir / "skill-spec.json"
-            spec = loadSpec(spec_path)
+            spec = _load_spec(spec_path)
             issues = validateSpec(spec)
             if issues:
                 raise WorkflowError("SkillSpec packaging failed: " + "; ".join(issues))
