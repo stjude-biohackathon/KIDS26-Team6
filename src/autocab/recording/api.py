@@ -1,15 +1,8 @@
-"""Local HTTP control API.
+"""Provide the local control API for the CLI, dashboard, and agent skill.
 
-The single place recorder operations are implemented. The CLI, the GUI and the
-``recorder.md`` agent skill are all thin clients of this API, which is why
-"start screen recording" behaves identically whether it was typed as a command,
-clicked in the window, or asked for in natural language.
-
-Binds to loopback by default (``127.0.0.1``). Optional non-loopback bind is
-available through an explicitly enabled remote dashboard bind
-and requires a bearer token read from a file that is mode 0600 in the runtime
-directory. The recorder makes no outbound network requests at all; that property
-is worth keeping easy to verify.
+The server binds to loopback by default. Remote access requires an explicit
+bind and a bearer token stored with mode 0600. Recorder operations stay here so
+each client uses the same behavior.
 """
 
 from __future__ import annotations
@@ -33,8 +26,10 @@ from . import SOURCES, __version__
 from .desktop import (
     DirectoryOpenError,
     DirectorySelectionError,
+    FileOpenError,
     choose_directory,
     open_directory,
+    open_file,
 )
 from .events import Event, SessionSealed
 from .markdown import render_markdown
@@ -465,7 +460,25 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
 
         run = forge_store.load(run_id)
         spec = loadSpec(forge_store.run_dir(run_id) / "skill-spec.json")
-        return {"run": run.to_dict(), "skill_spec": spec}
+        payload = run.to_dict()
+        package_path = resolve_forge_package(run_id, run.package_path)
+        payload["package_full_path"] = str(package_path) if package_path else None
+        return {"run": payload, "skill_spec": spec}
+
+    def resolve_forge_package(run_id: str, package_path: str | None) -> Path | None:
+        """Resolve a stored package path without allowing it outside its run."""
+
+        if not package_path:
+            return None
+        run_directory = forge_store.run_dir(run_id).resolve()
+        resolved = (run_directory / package_path).resolve()
+        try:
+            resolved.relative_to(run_directory)
+        except ValueError as exc:
+            raise WorkflowError(
+                f"Run {run_id} has an invalid package path outside its run directory."
+            ) from exc
+        return resolved
 
     # ------------------------------------------------------------------ meta
     @app.get("/health")
@@ -560,6 +573,44 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     @app.get("/forge-runs/{run_id}", dependencies=guard)
     def get_forge_run(run_id: str) -> dict[str, Any]:
         return forge_detail(run_id)
+
+    @app.post("/forge-runs/{run_id}/open-spec", dependencies=guard)
+    def open_forge_spec(run_id: str, request: Request) -> dict[str, Any]:
+        """Open the current SkillSpec with the daemon host's default application."""
+
+        if not _request_is_local(request):
+            raise HTTPException(
+                status_code=409,
+                detail="Skill drafts can only be opened from the daemon host.",
+            )
+        forge_store.load(run_id)
+        try:
+            open_file(forge_store.run_dir(run_id) / "skill-spec.json")
+        except FileOpenError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        return {"run_id": run_id, "artifact": "skill-spec.json", "opened": True}
+
+    @app.post("/forge-runs/{run_id}/open-package", dependencies=guard)
+    def open_forge_package(run_id: str, request: Request) -> dict[str, Any]:
+        """Open a generated package directory on the daemon host."""
+
+        if not _request_is_local(request):
+            raise HTTPException(
+                status_code=409,
+                detail="Skill packages can only be opened from the daemon host.",
+            )
+        run = forge_store.load(run_id)
+        package_path = resolve_forge_package(run_id, run.package_path)
+        if package_path is None or not package_path.is_dir():
+            raise HTTPException(
+                status_code=409,
+                detail="This skill package is not available on disk.",
+            )
+        try:
+            open_directory(package_path)
+        except DirectoryOpenError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        return {"run_id": run_id, "path": str(package_path), "opened": True}
 
     @app.post("/forge-runs/{run_id}/review", dependencies=guard)
     def review_forge_run(run_id: str, payload: ForgeReviewRequest) -> dict[str, Any]:
