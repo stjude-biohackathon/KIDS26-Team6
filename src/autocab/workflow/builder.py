@@ -12,9 +12,54 @@ from autocab.forge.skill_spec import SCHEMA_VERSION, validateSpec
 from autocab.recording.events import DEID_SEALED, SHELL_COMMAND, Event
 from autocab.recording.session import Session
 
+from .dependency_versions import detect_dependency_version
 from .models import WorkflowError
 
 NON_MATERIAL_PREFIXES = ("session.", "source.", "screen.recording.")
+SHELL_ONLY_COMMANDS = {
+    ".",
+    ":",
+    "[",
+    "alias",
+    "bg",
+    "cd",
+    "command",
+    "cp",
+    "dirs",
+    "echo",
+    "eval",
+    "exec",
+    "exit",
+    "export",
+    "false",
+    "fg",
+    "history",
+    "jobs",
+    "kill",
+    "mkdir",
+    "mv",
+    "popd",
+    "printf",
+    "pushd",
+    "pwd",
+    "read",
+    "readonly",
+    "return",
+    "rm",
+    "set",
+    "shift",
+    "source",
+    "test",
+    "times",
+    "trap",
+    "true",
+    "type",
+    "ulimit",
+    "umask",
+    "unalias",
+    "unset",
+    "wait",
+}
 
 
 def _slug(value: str) -> str:
@@ -54,9 +99,17 @@ def _executable(command: str) -> str | None:
         tokens = shlex.split(command)
     except ValueError:
         return None
-    if not tokens or tokens[0] in {"cd", "export", "source", "."}:
+    if not tokens or tokens[0].startswith("#"):
         return None
-    return tokens[0].rsplit("/", 1)[-1]
+    while tokens and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", tokens[0]):
+        tokens.pop(0)
+    if not tokens:
+        return None
+    executable = tokens[0].replace("\\", "/").rsplit("/", 1)[-1]
+    normalized = executable.lower()
+    if normalized in SHELL_ONLY_COMMANDS or not re.fullmatch(r"[a-z0-9][a-z0-9._+-]*", normalized):
+        return None
+    return executable
 
 
 def build_evidence_snapshot(
@@ -115,6 +168,13 @@ def build_blocked_spec(
         executable = _executable(command)
         dependency_names = [executable] if executable else []
         if executable and executable not in dependencies:
+            detected = detect_dependency_version(executable)
+            version_note = (
+                f"Detected version {detected.value} when the draft was created "
+                f"using {detected.source}."
+                if detected
+                else "Version was not detected. Review the installed tool and license."
+            )
             dependencies[executable] = {
                 "name": executable,
                 "kind": "missing",
@@ -122,11 +182,11 @@ def build_blocked_spec(
                 "evidenceIds": [evidence_id],
                 "install": None,
                 "environmentPackage": None,
-                "versionConstraint": None,
+                "versionConstraint": detected.value if detected else None,
                 "sourcePath": None,
                 "bundlePath": None,
                 "licenseStatus": "unknown",
-                "notes": "Observed in a sealed session. Verify source, version, and license.",
+                "notes": f"Observed in a sealed session. {version_note}",
             }
         elif executable:
             dependencies[executable]["evidenceIds"].append(evidence_id)

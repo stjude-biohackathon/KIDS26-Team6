@@ -7,6 +7,7 @@ import argparse
 from collections import Counter
 from datetime import datetime, timezone
 import hashlib
+import html
 import json
 import logging
 from pathlib import Path
@@ -16,12 +17,15 @@ from string import Template
 import sys
 from typing import Any
 
+from rich.logging import RichHandler
+
+from autocab.output import error_console, success
+
 from .skill_spec import (
     RENDERABLE_DECISIONS,
     SkillSpecError,
     jsonScalar,
     loadSpec,
-    markdownList,
     safeRelativePath,
     validateSpec,
 )
@@ -29,6 +33,13 @@ from .skill_spec import (
 
 FORGE_VERSION = "0.2.0"
 RUN_ID_PATTERN = re.compile(r"^\d{8}T\d{6}Z$")
+LOCAL_PATH_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9:/])(?:"
+    r"/(?:home|Users|research_jude)/[^\s`\"')\]]+|"
+    r"~/[^\s`\"')\]]+|"
+    r"[A-Za-z]:\\[^\s`\"')\]]+"
+    r")"
+)
 
 
 class ForgeError(Exception):
@@ -100,16 +111,24 @@ def configureLogging(runDir: Path) -> logging.Logger:
     for handler in logger.handlers:
         handler.close()
     logger.handlers.clear()
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     logger.propagate = False
     formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
-    console = logging.StreamHandler()
-    console.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    consoleHandler = RichHandler(
+        console=error_console,
+        show_time=False,
+        show_level=True,
+        show_path=False,
+        markup=False,
+    )
+    consoleHandler.setLevel(logging.INFO)
+    consoleHandler.setFormatter(logging.Formatter("%(message)s"))
     logsDir = runDir / "logs"
     logsDir.mkdir(parents=True, exist_ok=True)
     fileHandler = logging.FileHandler(logsDir / "skill-forge.log", encoding="utf-8")
+    fileHandler.setLevel(logging.DEBUG)
     fileHandler.setFormatter(formatter)
-    logger.addHandler(console)
+    logger.addHandler(consoleHandler)
     logger.addHandler(fileHandler)
     return logger
 
@@ -157,6 +176,39 @@ def copyTextInput(sourceValue: str | None, destination: Path, fallback: str) -> 
     destination.write_text(text.rstrip() + "\n", encoding="utf-8")
 
 
+def portableMarkdownText(value: Any) -> str:
+    """Render recorded text as inert Markdown without machine-local paths."""
+
+    def replacePath(match: re.Match[str]) -> str:
+        path = match.group(0).replace("\\", "/").lower()
+        placeholder = (
+            "<SESSION_PATH>" if "/.wfrec/" in path or "/.autocab/" in path else "<LOCAL_PATH>"
+        )
+        return placeholder
+
+    portable = LOCAL_PATH_PATTERN.sub(replacePath, str(value))
+    escaped = html.escape(portable, quote=False)
+    return escaped.translate(
+        str.maketrans(
+            {
+                "[": "&#91;",
+                "]": "&#93;",
+                "(": "&#40;",
+                ")": "&#41;",
+                "`": "&#96;",
+            }
+        )
+    )
+
+
+def portableMarkdownList(values: list[str], emptyText: str = "None.") -> str:
+    """Render untrusted list values without creating Markdown structure."""
+
+    if not values:
+        return emptyText
+    return "\n".join(f"- {portableMarkdownText(value)}" for value in values)
+
+
 def renderIo(records: list[dict[str, Any]], required: bool) -> str:
     """Render required or optional I/O role bullets."""
     selected = [record for record in records if record["required"] is required]
@@ -164,14 +216,17 @@ def renderIo(records: list[dict[str, Any]], required: bool) -> str:
         return "None."
     lines = []
     for record in selected:
-        evidence = ", ".join(record["evidenceIds"])
-        lines.append(f"- **`{record['name']}`**: {record['description']} (evidence: {evidence})")
+        evidence = ", ".join(portableMarkdownText(value) for value in record["evidenceIds"])
+        lines.append(
+            f"- **`{record['name']}`**: {portableMarkdownText(record['description'])} "
+            f"(evidence: {evidence})"
+        )
     return "\n".join(lines)
 
 
 def renderTriggers(values: list[str], emptyText: str) -> str:
     """Render realistic trigger/non-trigger language."""
-    return markdownList(values, emptyText)
+    return portableMarkdownList(values, emptyText)
 
 
 def renderDependencies(dependencies: list[dict[str, Any]]) -> str:
@@ -190,9 +245,12 @@ def renderDependencies(dependencies: list[dict[str, Any]]) -> str:
         if dependency["bundlePath"]:
             details.append(f"bundled as `{dependency['bundlePath']}`")
         if dependency["notes"]:
-            details.append(dependency["notes"])
+            details.append(portableMarkdownText(dependency["notes"]))
         requirement = "required" if dependency["required"] else "optional"
-        lines.append(f"- **{dependency['name']}** ({requirement}): " + "; ".join(details))
+        lines.append(
+            f"- **{portableMarkdownText(dependency['name'])}** ({requirement}): "
+            + "; ".join(details)
+        )
     return "\n".join(lines)
 
 
@@ -203,27 +261,31 @@ def renderWorkflow(steps: list[dict[str, Any]]) -> str:
     lines: list[str] = []
     for index, step in enumerate(steps, start=1):
         lines.append(
-            f"{index}. **{step['summary']}** (`{step['status']}`, basis: `{step['basis']}`)."
+            f"{index}. **{portableMarkdownText(step['summary'])}** "
+            f"(`{step['status']}`, basis: `{step['basis']}`)."
         )
         if step["existingSkill"]:
-            lines.append(f"   - Invoke existing skill: `{step['existingSkill']}`.")
+            lines.append(
+                f"   - Invoke existing skill: {portableMarkdownText(step['existingSkill'])}."
+            )
         if step["commandShape"]:
-            lines.append(f"   - Command shape: `{step['commandShape']}`")
+            lines.append(f"   - Command shape: {portableMarkdownText(step['commandShape'])}")
         if step["dependencies"]:
             lines.append(
                 "   - Dependencies: "
-                + ", ".join(f"`{name}`" for name in step["dependencies"])
+                + ", ".join(portableMarkdownText(name) for name in step["dependencies"])
                 + "."
             )
         if step["evidenceIds"]:
-            lines.append("   - Evidence: " + ", ".join(step["evidenceIds"]) + ".")
+            evidence = ", ".join(portableMarkdownText(value) for value in step["evidenceIds"])
+            lines.append(f"   - Evidence: {evidence}.")
         if step["status"] == "proposed":
             lines.append(
                 "   - **Pending approval:** do not execute or treat this inferred "
                 "step as established behavior until the user approves it."
             )
         if step["rationale"]:
-            lines.append(f"   - Rationale: {step['rationale']}")
+            lines.append(f"   - Rationale: {portableMarkdownText(step['rationale'])}")
     return "\n".join(lines)
 
 
@@ -231,14 +293,21 @@ def renderOutputs(outputs: list[dict[str, Any]]) -> str:
     """Render output roles."""
     if not outputs:
         return "No output contract was established."
-    return "\n".join(f"- **`{record['name']}`**: {record['description']}" for record in outputs)
+    return "\n".join(
+        f"- **`{record['name']}`**: {portableMarkdownText(record['description'])}"
+        for record in outputs
+    )
 
 
 def renderFailureModes(failures: list[dict[str, str]]) -> str:
     """Render failure/response pairs."""
     if not failures:
         return "- Unexpected or unclassified failure: stop and report the evidence."
-    return "\n".join(f"- **{failure['trigger']}** — {failure['response']}" for failure in failures)
+    return "\n".join(
+        f"- **{portableMarkdownText(failure['trigger'])}**: "
+        f"{portableMarkdownText(failure['response'])}"
+        for failure in failures
+    )
 
 
 def renderCodebaseRequirements(codebase: dict[str, Any]) -> str:
@@ -349,7 +418,7 @@ def renderRuntimeEnvironment(spec: dict[str, Any]) -> str:
         )
     if environment["notes"]:
         lines.append("- Environment notes:")
-        lines.extend(f"  - {note}" for note in environment["notes"])
+        lines.extend(f"  - {portableMarkdownText(note)}" for note in environment["notes"])
     if not environment["verified"]:
         lines.append(
             "- **Draft limitation:** do not claim cross-user portability until "
@@ -370,8 +439,8 @@ def fillSkillTemplate(spec: dict[str, Any], assetsDir: Path) -> str:
         "description_yaml": jsonScalar(spec["description"]),
         "compatibility_yaml": jsonScalar(compatibilityText(spec)),
         "review_date": datetime.now(timezone.utc).date().isoformat(),
-        "title": spec["title"],
-        "purpose": spec["purpose"],
+        "title": portableMarkdownText(spec["title"]),
+        "purpose": portableMarkdownText(spec["purpose"]),
         "when_to_use": renderTriggers(spec["triggers"], "Use only for the purpose stated above."),
         "when_not_to_use": renderTriggers(
             spec["nonTriggers"], "Do not use outside the stated purpose."
@@ -382,7 +451,7 @@ def fillSkillTemplate(spec: dict[str, Any], assetsDir: Path) -> str:
         "runtime_environment": renderRuntimeEnvironment(spec),
         "workflow": renderWorkflow(spec["steps"]),
         "outputs": renderOutputs(spec["outputs"]),
-        "quality_checks": markdownList(
+        "quality_checks": portableMarkdownList(
             spec["qualityChecks"], "- No quality checks were established."
         ),
         "failure_modes": renderFailureModes(spec["failureModes"]),
@@ -406,10 +475,13 @@ def coverageSummary(spec: dict[str, Any]) -> str:
         return "No existing skill coverage was recorded."
     lines: list[str] = []
     for record in spec["existingSkillCoverage"]:
-        covered = ", ".join(record["actionsCovered"]) or "none"
-        gaps = ", ".join(record["gaps"]) or "none"
+        covered = (
+            ", ".join(portableMarkdownText(value) for value in record["actionsCovered"]) or "none"
+        )
+        gaps = ", ".join(portableMarkdownText(value) for value in record["gaps"]) or "none"
         lines.append(
-            f"- **{record['skill']}**: covered [{covered}]; gaps [{gaps}]; "
+            f"- **{portableMarkdownText(record['skill'])}**: covered {covered}; "
+            f"gaps {gaps}; "
             f"handoff compatible: {str(record['handoffCompatible']).lower()}."
         )
     return "\n".join(lines)
@@ -422,10 +494,15 @@ def selectedSteps(spec: dict[str, Any], statuses: set[str]) -> str:
         return "None."
     lines: list[str] = []
     for step in selected:
-        command = f" Command: `{step['commandShape']}`." if step["commandShape"] else ""
+        command = (
+            f" Command: {portableMarkdownText(step['commandShape'])}."
+            if step["commandShape"]
+            else ""
+        )
         lines.append(
-            f"- **{step['id']}** ({step['status']}): {step['summary']}.{command} "
-            f"Rationale: {step['rationale'] or 'not supplied'}"
+            f"- **{portableMarkdownText(step['id'])}** ({step['status']}): "
+            f"{portableMarkdownText(step['summary'])}.{command} Rationale: "
+            f"{portableMarkdownText(step['rationale'] or 'not supplied')}"
         )
     return "\n".join(lines)
 
@@ -452,7 +529,7 @@ def runtimeEnvironmentReview(spec: dict[str, Any]) -> str:
     """Render environment and per-run reproducibility review state."""
     environment = spec["runtimeEnvironment"]
     primaryFile = runtimeEnvironmentFile(environment)
-    notes = markdownList(environment["notes"], "No environment notes.")
+    notes = portableMarkdownList(environment["notes"], "No environment notes.")
     return (
         f"- Manager: `{environment['manager']}`\n"
         f"- Primary specification: `{primaryFile}`\n"
@@ -476,10 +553,14 @@ def unresolvedReview(spec: dict[str, Any]) -> str:
         return "None."
     lines: list[str] = []
     for question in spec["unresolvedQuestions"]:
-        artifacts = ", ".join(question["neededArtifacts"]) or "no artifact named"
+        artifacts = (
+            ", ".join(portableMarkdownText(value) for value in question["neededArtifacts"])
+            or "no artifact named"
+        )
         severity = "blocking" if question["blocking"] else "non-blocking"
         lines.append(
-            f"- **{question['id']}** ({severity}): {question['question']} Needed: {artifacts}."
+            f"- **{portableMarkdownText(question['id'])}** ({severity}): "
+            f"{portableMarkdownText(question['question'])} Needed: {artifacts}."
         )
     return "\n".join(lines)
 
@@ -492,7 +573,7 @@ def updateReview(spec: dict[str, Any]) -> str:
     return (
         f"- Target: `{assessment['targetSkill']}`\n"
         f"- Material delta: {str(assessment['materialDelta']).lower()}\n"
-        f"- Summary: {assessment['summary']}\n"
+        f"- Summary: {portableMarkdownText(assessment['summary'])}\n"
         f"- Migration: `{assessment['migrationSuggested']}`; approved: "
         f"{str(assessment['migrationApproved']).lower()}"
     )
@@ -516,7 +597,7 @@ def renderReview(
                 "packaging": spec["packaging"],
                 "decision": spec["decision"],
                 "proposal_rendered": str(proposalRendered).lower(),
-                "purpose": spec["purpose"],
+                "purpose": portableMarkdownText(spec["purpose"]),
                 "evidence_summary": evidenceSummary(spec),
                 "coverage_summary": coverageSummary(spec),
                 "proposed_steps": selectedSteps(spec, {"proposed"}),
@@ -545,7 +626,7 @@ def renderProvenanceReference(spec: dict[str, Any]) -> str:
         f"- Skill version: `{spec['skillVersion']}`",
         f"- Packaging: `{spec['packaging']}`",
         f"- Coverage decision: `{spec['decision']}`",
-        f"- License/copy decision: {spec['licenseDecision']}",
+        f"- License/copy decision: {portableMarkdownText(spec['licenseDecision'])}",
         "",
         "## Evidence",
         "",
@@ -553,9 +634,11 @@ def renderProvenanceReference(spec: dict[str, Any]) -> str:
     if spec["evidence"]:
         for record in spec["evidence"]:
             lines.append(
-                f"- **{record['id']}** — `{record['basis']}`, "
-                f"{record['confidence']} confidence; {record['source']} / "
-                f"{record['locator']}: {record['summary']}"
+                f"- **{portableMarkdownText(record['id'])}**: `{record['basis']}`, "
+                f"{record['confidence']} confidence; "
+                f"{portableMarkdownText(record['source'])} / "
+                f"{portableMarkdownText(record['locator'])}: "
+                f"{portableMarkdownText(record['summary'])}"
             )
     else:
         lines.append("No evidence records.")
@@ -564,7 +647,7 @@ def renderProvenanceReference(spec: dict[str, Any]) -> str:
             "",
             "## Assumptions",
             "",
-            markdownList(spec["assumptions"]),
+            portableMarkdownList(spec["assumptions"]),
             "",
             "## Proposed steps awaiting approval",
             "",
@@ -597,8 +680,8 @@ def renderEvaluationPrompts(spec: dict[str, Any], assetsDir: Path) -> str:
         template.substitute(
             {
                 "name": spec["name"],
-                "triggers": markdownList(spec["triggers"]),
-                "non_triggers": markdownList(spec["nonTriggers"]),
+                "triggers": portableMarkdownList(spec["triggers"]),
+                "non_triggers": portableMarkdownList(spec["nonTriggers"]),
                 "mode_case": modeCase,
             }
         ).rstrip()
@@ -615,7 +698,7 @@ def generatedReadme(spec: dict[str, Any]) -> str:
     )
     return (
         f"# {spec['name']}\n\n"
-        f"{spec['purpose']}\n\n"
+        f"{portableMarkdownText(spec['purpose'])}\n\n"
         f"Packaging: **{spec['packaging'].upper()}**. {modeNote}\n\n"
         "This package was staged by `skill-forge`. Review "
         "`references/forge-provenance.md` and resolve all pending approvals before "
@@ -772,7 +855,7 @@ def writeRuntimePackageFiles(
         "commandExecutionExpected": any(
             isinstance(step.get("commandShape"), str)
             and bool(step["commandShape"].strip())
-            and step.get("status") != "blocked"
+            and step.get("status") in {"supported", "proposed"}
             for step in spec["steps"]
         ),
         "runtimeEnvironment": environment,
@@ -1023,7 +1106,8 @@ def runForge(args: argparse.Namespace) -> int:
     ensureEmptyRunDir(runDir, skillRoot)
     logger = configureLogging(runDir)
     appendCommandLog(runDir, runId, args)
-    logger.info("Starting skill-forge run %s", runId)
+    logger.debug("Starting skill-forge run %s", runId)
+    logger.info("Building skill package %s", spec["name"])
 
     copyTextInput(
         args.agentRequestFile,
@@ -1063,7 +1147,7 @@ def runForge(args: argparse.Namespace) -> int:
     proposalPath: Path | None = None
     if proposalRendered:
         proposalPath, copied = prepareProposal(spec, runDir, assets, args)
-        logger.info("Rendered staged proposal: %s", proposalPath)
+        logger.debug("Rendered staged proposal: %s", proposalPath)
     else:
         logger.info(
             "Decision %s intentionally creates no installable proposal.",
@@ -1126,7 +1210,8 @@ def runForge(args: argparse.Namespace) -> int:
         "agentWorkflowFile": "agent_workflow.md",
     }
     writeJson(runDir / "run_metadata.json", metadata)
-    logger.info("Completed skill-forge run %s", runId)
+    logger.debug("Completed skill-forge run %s", runId)
+    success(f"Finished skill package {spec['name']}", stderr=True)
     closeLogging(logger)
     return 0
 

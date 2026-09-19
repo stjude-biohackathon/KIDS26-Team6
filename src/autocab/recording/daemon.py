@@ -10,7 +10,7 @@ import threading
 import time
 from typing import Any
 
-from autocab.output import summary, warning
+from autocab.output import plain_text, summary, warning
 
 from . import paths
 from .bind import resolve_daemon_bind, daemon_summary_rows
@@ -218,7 +218,11 @@ def run(
             "WFREC_ADVERTISE_URL or --advertise-url so your browser can connect."
         )
 
-    summary("AutoCAB dashboard", rows)
+    styled_rows = [
+        (label, plain_text(value, style="cyan") if label == "Sessions" else value)
+        for label, value in rows
+    ]
+    summary("AutoCAB dashboard", styled_rows)
 
     if open_gui:
         threading.Thread(

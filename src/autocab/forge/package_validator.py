@@ -564,6 +564,25 @@ def validateRuntimeContract(
         if isinstance(pythonConstraint, str) and not hasVersionConstraint(pythonConstraint):
             errors.append("Runtime direct-pins requires a constrained Python version.")
 
+    workflowStatuses = set(re.findall(r"\(`(supported|proposed|manual|blocked)`, basis:", body))
+    manualOnly = (
+        package.get("commandExecutionExpected") is False
+        and workflowStatuses == {"manual"}
+        and package.get("dependencies") == []
+        and environment.get("manager") == "none"
+        and environment.get("lockStrategy") == "none"
+        and all(
+            environment.get(field) == []
+            for field in (
+                "condaDependencies",
+                "pipDependencies",
+                "systemDependencies",
+                "externalArtifacts",
+            )
+        )
+        and environment.get("containerImage") is None
+        and environment.get("codebaseEnvironmentFile") is None
+    )
     verified = environment.get("verified")
     unresolved = environment.get("lockStrategy") == "unresolved"
     if verified is not True or unresolved:
@@ -571,7 +590,11 @@ def validateRuntimeContract(
             "Runtime environment is not clean-environment verified or retains an "
             "unresolved lock strategy."
         )
-        if allowDraft:
+        if manualOnly and not unresolved:
+            warnings.append(
+                "Manual-only package does not claim executable runtime reproducibility."
+            )
+        elif allowDraft:
             warnings.append(message)
         else:
             errors.append(message)
