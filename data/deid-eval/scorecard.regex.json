@@ -28,10 +28,10 @@
       "hipaa": null,
       "label": "jobs",
       "label_accuracy": 1.0,
-      "partial": 76,
-      "recall_partial": 0.7917,
-      "recall_strict": 0.7917,
-      "strict": 76
+      "partial": 80,
+      "recall_partial": 0.8333,
+      "recall_strict": 0.8333,
+      "strict": 80
     },
     {
       "clip_gap": 0.0,
@@ -107,10 +107,10 @@
       "hipaa": null,
       "label": "medium",
       "label_accuracy": 1.0,
-      "partial": 176,
-      "recall_partial": 0.8462,
-      "recall_strict": 0.8462,
-      "strict": 176
+      "partial": 180,
+      "recall_partial": 0.8654,
+      "recall_strict": 0.8654,
+      "strict": 180
     }
   ],
   "by_hipaa": [
@@ -274,10 +274,10 @@
       "hipaa": null,
       "label": "hipaa-18",
       "label_accuracy": 1.0,
-      "partial": 120,
-      "recall_partial": 0.9091,
-      "recall_strict": 0.9091,
-      "strict": 120
+      "partial": 124,
+      "recall_partial": 0.9394,
+      "recall_strict": 0.9394,
+      "strict": 124
     }
   ],
   "by_label": [
@@ -463,10 +463,10 @@
       "hipaa": 18,
       "label": "SLURM_JOB_NAME",
       "label_accuracy": 1.0,
-      "partial": 24,
-      "recall_partial": 0.6667,
-      "recall_strict": 0.6667,
-      "strict": 24
+      "partial": 28,
+      "recall_partial": 0.7778,
+      "recall_strict": 0.7778,
+      "strict": 28
     },
     {
       "clip_gap": 0.0,
@@ -674,10 +674,10 @@
       "hipaa": 18,
       "label": "SLURM_JOB_NAME",
       "label_accuracy": 1.0,
-      "partial": 20,
-      "recall_partial": 0.625,
-      "recall_strict": 0.625,
-      "strict": 20
+      "partial": 24,
+      "recall_partial": 0.75,
+      "recall_strict": 0.75,
+      "strict": 24
     },
     {
       "clip_gap": 0.0,
@@ -718,16 +718,16 @@
     "engine": "regex",
     "false_positive_spans_per_negative_record": 0.0,
     "gold_spans": 572,
-    "leaks_per_1000_records": 253.16,
+    "leaks_per_1000_records": 240.51,
     "must_survive_total": 380,
     "must_survive_violations": 0,
     "over_redaction_rate": 0.0043,
-    "over_redaction_share_of_predicted": 0.0129,
-    "predicted_spans": 500,
-    "recall_strict_gated": 0.8803,
-    "recall_strict_overall": 0.8601,
+    "over_redaction_share_of_predicted": 0.0128,
+    "predicted_spans": 504,
+    "recall_strict_gated": 0.8889,
+    "recall_strict_overall": 0.8671,
     "records": 316,
-    "safe_record_rate": 0.7468
+    "safe_record_rate": 0.7595
   },
   "leaks": [
     {
@@ -889,46 +889,6 @@
       "record_id": "diffs-df06-03",
       "start": 33,
       "text": "Andrew  Martinez"
-    },
-    {
-      "channel": "jobs",
-      "difficulty": "medium",
-      "end": 51,
-      "label": "SLURM_JOB_NAME",
-      "partial_hit": false,
-      "record_id": "jobs-jb03-00",
-      "start": 37,
-      "text": "rnaseq_wood_16"
-    },
-    {
-      "channel": "jobs",
-      "difficulty": "medium",
-      "end": 52,
-      "label": "SLURM_JOB_NAME",
-      "partial_hit": false,
-      "record_id": "jobs-jb03-01",
-      "start": 37,
-      "text": "wgs_anderson_33"
-    },
-    {
-      "channel": "jobs",
-      "difficulty": "medium",
-      "end": 49,
-      "label": "SLURM_JOB_NAME",
-      "partial_hit": false,
-      "record_id": "jobs-jb03-02",
-      "start": 37,
-      "text": "wes_allen_49"
-    },
-    {
-      "channel": "jobs",
-      "difficulty": "medium",
-      "end": 51,
-      "label": "SLURM_JOB_NAME",
-      "partial_hit": false,
-      "record_id": "jobs-jb03-03",
-      "start": 37,
-      "text": "methyl_hall_88"
     },
     {
       "channel": "jobs",
