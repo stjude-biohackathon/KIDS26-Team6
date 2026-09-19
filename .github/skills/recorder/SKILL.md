@@ -1,36 +1,37 @@
 ---
 name: recorder
-description: Record the user's bioinformatics workflow session with wfrec so AutoCAB can draft a skill from it. Use when the user asks to start/stop/pause recording, toggle a capture source ("start screen recording", "stop logging my bash history"), note context worth remembering, pause while waiting on a job, check what is being recorded, or export a session for AutoCAB.
+description: Record a bioinformatics workflow with AutoCAB so it can become a reviewed skill draft. Use when the user asks to start, finish, pause, resume, annotate, inspect, or adjust recording.
 ---
 
-# Workflow recorder (`wfrec`)
+# AutoCAB workflow recorder
 
-Drive the `wfrec` recorder on the user's behalf. It captures a session into a
+Drive AutoCAB's recorder on the user's behalf. It captures a session into a
 folder containing an append-only JSONL timeline plus sidecar artifacts, which
-AutoCAB then turns into a draft `SKILL.md`.
+AutoCAB can turn into a reviewed `SKILL.md` draft.
 
-**Always act through the `wfrec` CLI.** It is the stable contract shared by the
-CLI, the GUI window and this skill, so a command you run and a button the user
-clicks do the same thing. Never edit files under `~/.wfrec/` directly.
+Use `autocab record` for the session lifecycle and `autocab status` for state.
+The legacy `wfrec` alias still provides advanced source, hook, remote, and
+diagnostic controls. Never edit files under `~/.autocab/` or `~/.wfrec/`
+directly.
 
 ## Verb table
 
 | The user says | Run |
 |---|---|
-| "start recording my variant calling work" | `wfrec start --title "variant calling" --watch .` |
+| "start recording my variant calling work" | `autocab record start --title "variant calling" --watch .` |
 | "start screen recording" | `wfrec source screen on` |
 | "stop screen recording" | `wfrec source screen off` |
 | "stop logging my bash history" | `wfrec source shell off` |
 | "start capturing my commands again" | `wfrec source shell on` |
 | "also record command output" | Explain that current backends do not capture terminal stdout or stderr |
-| "pause, I'm waiting on the alignment job" | `wfrec pause --reason "waiting on alignment" --expect 6h` |
-| "resume" / "I'm back" | `wfrec resume` |
-| "note that I reran this because the BAM was truncated" | `wfrec note "..." --label why` |
+| "pause, I'm waiting on the alignment job" | `autocab record pause --reason "waiting on alignment" --expect 6h` |
+| "resume" / "I'm back" | `autocab record resume` |
+| "note that I reran this because the BAM was truncated" | `autocab record note "..." --label why` |
 | "mark this point" | `wfrec mark "<label>"` |
 | "watch this directory too" | `wfrec watch <dir>` |
-| "what are you recording right now?" | `wfrec status` |
+| "what are you recording right now?" | `autocab status` |
 | "why isn't screen capture working?" | `wfrec doctor` |
-| "wrap up and hand this to AutoCAB" | `wfrec stop && wfrec export --format autocab` |
+| "wrap up and hand this to AutoCAB" | `autocab record finish --seal` |
 | "combine my session with Bob's" | `wfrec merge <id> <id> --output merged.json` |
 
 The five capture sources are `screen`, `context`, `shell`, `agents`, `files`.
@@ -43,8 +44,8 @@ already has open.
    commands, file changes and agent transcripts. Starting it is the user's
    decision every time, and so is each source they want on.
 
-2. **Check first, act second.** Run `wfrec status` before lifecycle changes.
-   Most errors are just "no active session"; `wfrec start` fixes those, and
+2. **Check first, act second.** Run `autocab status` before lifecycle changes.
+   Most errors are just "no active session"; `autocab record start` fixes those, and
    guessing a session id does not.
 
 3. **Always pass a reason when pausing.** `--reason` is what lets a downstream
@@ -56,7 +57,7 @@ already has open.
    diffs get captured at all — without a declared root, the `files` source
    reports `no-watch-roots` and records nothing.
 
-5. **Relay redactions.** `wfrec note` reports which patterns it scrubbed. Tell
+5. **Relay redactions.** `autocab record note` reports which patterns it scrubbed. Tell
    the user, so they know an identifier was caught rather than assuming
    nothing was there.
 
@@ -67,7 +68,7 @@ already has open.
    platform.
 
 7. **`--json` for parsing, plain output for the user.** Use
-   `wfrec status --json` when you need to branch on a field; show the plain
+   `autocab status --json` when you need to branch on a field; show the plain
    output when reporting back.
 
 ## Setup, once per machine
@@ -84,9 +85,8 @@ run `wfrec hooks eval` and have the user paste the line it prints.
 ## Handing off to AutoCAB
 
 ```bash
-wfrec stop
-wfrec export --format autocab --format trace
-autocab demo --input-mode session --session-dir ~/.wfrec/sessions/<id>
+autocab record finish --seal
+autocab forge --session <session-id>
 ```
 
 `export` writes three lossy projections into `<session>/exports/`: the strict
@@ -109,10 +109,9 @@ several session folders, or use `wfrec merge`.
   and HIPAA identifier 17 (full-face photographs) is uncovered entirely. Read
   "What this does not prove" in that document before telling a user anything
   about the guarantees.
-- **Always tell the user to seal a session before exporting it.** `wfrec export`
-  and the AutoCAB session adapter both refuse an unsealed session with
-  `NotSealed`, so a stopped session is not yet usable: run
-  `wfrec seal <session-id>`. Sealing rewrites the session in place and is
+- **Always tell the user to seal a session before forging it.** AutoCAB refuses
+  an unsealed session, so a stopped session is not yet usable. Prefer
+  `autocab record finish --seal`. Sealing rewrites the session in place and is
   irreversible -- no reverse map is written and the key is discarded -- so say so
   before running it, and use `wfrec seal --dry-run <id>` if the user wants to see
   what it would find first.

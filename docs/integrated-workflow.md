@@ -1,12 +1,13 @@
 # Integrated AutoCAB workflow
 
-AutoCAB uses one durable workflow across the command line and dashboard.
-`wfrec` records evidence. Skill Forge turns a sealed session into a conservative
-draft. A person reviews and approves that draft before AutoCAB can package it.
+AutoCAB uses one durable workflow across the command line and dashboard. Its
+recorder captures evidence. Skill Forge turns a sealed session into a
+conservative draft. A person reviews and approves that draft before AutoCAB can
+package it.
 
 ```text
 recording -> sealed session -> blocked draft -> review-ready -> approved -> packaged
-    wfrec       redaction        Skill Forge        human         human      validator
+ AutoCAB       redaction        Skill Forge        human         human      validator
 ```
 
 There is no automatic approval. A successful draft is not proof that the

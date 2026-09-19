@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![Tests](https://github.com/stjude-biohackathon/KIDS26-Team6/actions/workflows/tests.yml/badge.svg)](https://github.com/stjude-biohackathon/KIDS26-Team6/actions/workflows/tests.yml)
-[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](src/wfrec/README.md)
+[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](docs/recording.md)
 
 Every recurring fix, workaround, and analysis step that lives only in one
 person's head or one messy terminal history is knowledge the next analyst has
@@ -162,11 +162,9 @@ background and open the web UI from your **laptop browser** (do not use
 6. **Record a session** (in terminals where hooks are active):
 
    ```bash
-   wfrec start --title "My workflow" --watch /path/to/project
-   wfrec status
-   wfrec stop
-   wfrec seal
-   wfrec export
+   autocab record start --title "My workflow" --watch /path/to/project
+   autocab status
+   autocab record finish --seal
    ```
 
 7. **Stop the background daemon** when finished:
@@ -175,7 +173,7 @@ background and open the web UI from your **laptop browser** (do not use
    wfrec daemon --stop
    ```
 
-See [`src/wfrec/README.md`](src/wfrec/README.md) for capture sources, security
+See [`docs/recording.md`](docs/recording.md) for capture sources, security
 notes, and troubleshooting.
 
 ### Set Up PHI Redaction
@@ -300,9 +298,9 @@ Generated proposals are written to `skills/generated-drafts/` by default.
 
 ### Collect Workflow Evidence
 
-`wfrec` is AutoCAB's recording engine. Its advanced source and remote controls
-remain available through the `wfrec` command, while the common session lifecycle
-is available through `autocab record`.
+AutoCAB's recording engine lives in the `autocab.recording` package. Use
+`autocab record` for the common session lifecycle. The `wfrec` command remains
+as a compatibility alias for advanced source and remote controls.
 
 After completing the setup above, check which backends are available:
 
@@ -317,14 +315,13 @@ it with `wfrec hooks status`.
 Then record:
 
 ```bash
-wfrec start --title "HG008 variant QC" --watch .
-wfrec status
+autocab record start --title "HG008 variant QC" --watch .
+autocab status
 wfrec source screen on                       # toggle any source, any time
-wfrec note "reran because the BAM was truncated" --label why
-wfrec pause --reason "waiting on bwa" --expect 6h
-wfrec resume
-wfrec stop
-wfrec export
+autocab record note "reran because the BAM was truncated" --label why
+autocab record pause --reason "waiting on bwa" --expect 6h
+autocab record resume
+autocab record finish --seal
 ```
 
 #### Capture Sources and Boundaries
@@ -358,10 +355,11 @@ one-off work.
 
 #### Help and Detailed Documentation
 
-Run `wfrec --help`, or use the `recorder` skill in
+Run `autocab --help` for the unified workflow or `wfrec --help` for advanced
+recording controls. You can also use the `recorder` skill in
 `.claude/skills/recorder/` from Claude Code or Copilot.
 
-**Full usage guide: [`src/wfrec/README.md`](src/wfrec/README.md)**: install,
+**Full usage guide: [`docs/recording.md`](docs/recording.md)**: install,
 per-platform notes (including the macOS Screen Recording restart and the
 Wayland limits), multi-analyst and HPC workflows, and troubleshooting.
 See [`docs/mgatta42/plan.md`](docs/mgatta42/plan.md) for the design rationale
@@ -378,15 +376,14 @@ Run the test suite from the repository-local environment:
 ## Repository Layout
 
 ```text
-src/autocab/       CLI, orchestration, pipeline framework, and de-identification engine
-src/wfrec/         Cross-platform workflow recorder (the observation front end)
+src/autocab/       CLI, recorder, dashboard, workflow engine, Skill Forge, and de-identification
 skills/            Agent skills, including skill-forge and setup-activity-tracking
 docs/              Project documentation, proposal, and team information
 data/              Sample inputs used by the prototype
 tests/             Unit and pipeline tests
 ```
 
-See [`src/wfrec/README.md`](src/wfrec/README.md) for the recorder's own layout
+See [`docs/recording.md`](docs/recording.md) for the recorder's own layout
 (collectors, exporters, hooks) in detail.
 
 ## Team
