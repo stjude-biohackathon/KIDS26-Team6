@@ -61,12 +61,11 @@
     },
     "gliner": {
       "_note": [
-        "The default model tier (build spec step 8). Not yet implemented, so",
-        "these floors are unenforced until engines/gliner_onnx.py lands --",
-        "check_thresholds() reports a missing engine rather than passing",
-        "vacuously. Written down now because they are the acceptance criteria",
-        "for that step: the model tier's whole justification is beating the",
-        "regex tier's NAME 0.368 and LOCATION baseline."
+        "The optional local model tier. These are regression floors measured",
+        "against the pinned INT8 ONNX graph. The model tier is additive: the",
+        "surrogate guard and regex rules still run before its predictions are",
+        "resolved. Its main purpose is improving contextual names and locations",
+        "without exceeding the over-redaction ceiling."
       ],
       "per_label_recall_strict": {
         "NAME": 0.95,

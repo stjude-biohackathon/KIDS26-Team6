@@ -13,7 +13,7 @@ machine where the optional tiers are not installed.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Protocol, cast
 
 from ..spans import Detector, DetectorInfo
 from .base import EngineUnavailable
@@ -40,7 +40,14 @@ ENTRIES: dict[str, EngineEntry] = {
         "autocab.deid.engines.gliner_onnx",
         "GlinerOnnx",
         "",
-        "Zero-shot ONNX NER over the labels.py descriptions. The default model tier.",
+        "Optional local ONNX NER over the labels.py descriptions.",
+    ),
+    "gliner2-pii": EngineEntry(
+        "gliner2-pii",
+        "autocab.deid.engines.gliner2_pii",
+        "Gliner2Pii",
+        "deid-gliner2",
+        "Experimental PII-tuned GLiNER2 model for offline evaluation.",
     ),
     "torch": EngineEntry(
         "torch",
@@ -74,14 +81,42 @@ def available_engines() -> dict[str, DetectorInfo]:
     """
 
     out: dict[str, DetectorInfo] = {}
-    for name in ENTRIES:
+    for name, entry in ENTRIES.items():
         try:
-            engine = load(name)
+            factory = _factory(entry)
+            probe = getattr(factory, "probe", None)
+            info = probe() if callable(probe) else factory().info()
         except EngineUnavailable as exc:
             out[name] = DetectorInfo(name=name, kind="model", available=False, reason=exc.reason)
+        except Exception as exc:  # doctor must describe a broken engine, not crash
+            out[name] = DetectorInfo(
+                name=name,
+                kind="model",
+                available=False,
+                reason=f"{type(exc).__name__}: {exc}"[:160],
+            )
         else:
-            out[name] = engine.info()
+            out[name] = info
     return out
+
+
+class _Factory(Protocol):
+    def __call__(self, **kwargs: object) -> Detector: ...
+
+
+def _factory(entry: EngineEntry) -> _Factory:
+    """Import one engine factory and retain the registry's install hint."""
+
+    try:
+        module = __import__(entry.module, fromlist=[entry.factory])
+    except ImportError as exc:
+        hint = (
+            f"pip install -e '.[{entry.extra}]'"
+            if entry.extra and entry.extra != "provider-specific"
+            else "see docs/deid-evaluation.md"
+        )
+        raise EngineUnavailable(entry.name, f"{exc}; {hint}") from exc
+    return cast(_Factory, getattr(module, entry.factory))
 
 
 def load(name: str, **kwargs: object) -> Detector:
@@ -95,14 +130,5 @@ def load(name: str, **kwargs: object) -> Detector:
     entry = ENTRIES.get(name)
     if entry is None:
         raise EngineUnavailable(name, f"unknown engine; expected one of {', '.join(ENTRIES)}")
-    try:
-        module = __import__(entry.module, fromlist=[entry.factory])
-    except ImportError as exc:
-        hint = (
-            f"pip install -e '.[{entry.extra}]'"
-            if entry.extra and entry.extra != "provider-specific"
-            else "see docs/deid-evaluation.md"
-        )
-        raise EngineUnavailable(entry.name, f"{exc}; {hint}") from exc
-    factory: Callable[..., Detector] = getattr(module, entry.factory)
+    factory: Callable[..., Detector] = _factory(entry)
     return factory(**kwargs)

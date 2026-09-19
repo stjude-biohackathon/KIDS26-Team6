@@ -43,6 +43,13 @@ dependencies = [
   # remains direct here because wfrec imports and relies on its public API.
   "markdown-it-py>=4.2",
   "nh3>=0.3.7",
+  # --- local model PHI detection ---
+  # GLiNER runs through its published ONNX graph. Using the graph directly
+  # avoids pulling PyTorch and Transformers into every wfrec installation.
+  "onnxruntime>=1.17",
+  "tokenizers>=0.20",
+  "huggingface-hub>=0.24",
+  "numpy>=1.24",
   # Menu-bar (macOS) / system-tray (Windows) recording indicator. Skipped on
   # Linux for now: a working tray needs AppIndicator/GTK system packages pip
   # cannot install, so it would fail at runtime rather than install cleanly.
@@ -69,14 +76,13 @@ macos = [
 # that runs inline at capture. That is what lets `SensitiveDataRedactor`
 # delegate to `find_spans()` without making any of the below a hard requirement.
 #
-# The GLiNER model tier (build spec step 8) belongs in *base* dependencies when
-# it lands -- "a PHI control that requires a second install flag is a PHI
-# control that is off on most machines" -- and will add `onnxruntime>=1.17`,
-# `tokenizers>=0.20`, `huggingface-hub>=0.24` and `numpy>=1.24`. Those are
-# deliberately NOT here yet: the engine module does not exist, and base
-# dependencies that nothing imports are cost with no benefit. Adding them is
-# part of that step, together with regenerating `uv.lock` in the same commit.
+# GLiNER's runtime libraries are base dependencies, but its 183 MB weights are
+# not. Users opt into the model tier with `wfrec deid fetch`; ordinary installs
+# and the default regex redaction path never download model data.
 deid-torch = ["torch>=2.2", "transformers>=4.40"]
+# Experimental PII-tuned GLiNER2 evaluation. The base install keeps the much
+# smaller ONNX engine; this extra brings in PyTorch only when explicitly chosen.
+deid-gliner2 = ["gliner2[local]>=2.0,<3"]
 # Presidio's *validators* are already adopted (see engines/validators.py); the
 # framework is opt-in because `en_core_web_lg` is not on PyPI and installs from
 # a GitHub release URL via `spacy download`, which breaks air-gapped and proxied

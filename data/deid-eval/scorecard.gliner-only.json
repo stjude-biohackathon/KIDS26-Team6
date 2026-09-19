@@ -1,0 +1,5391 @@
+{
+  "by_channel": [
+    {
+      "clip_gap": 0.1964,
+      "gold": 56,
+      "hipaa": null,
+      "label": "agents",
+      "label_accuracy": 0.8333,
+      "partial": 17,
+      "recall_partial": 0.3036,
+      "recall_strict": 0.1071,
+      "strict": 6
+    },
+    {
+      "clip_gap": 0.0833,
+      "gold": 60,
+      "hipaa": null,
+      "label": "diffs",
+      "label_accuracy": 1.0,
+      "partial": 12,
+      "recall_partial": 0.2,
+      "recall_strict": 0.1167,
+      "strict": 7
+    },
+    {
+      "clip_gap": 0.0417,
+      "gold": 96,
+      "hipaa": null,
+      "label": "jobs",
+      "label_accuracy": 0.9167,
+      "partial": 16,
+      "recall_partial": 0.1667,
+      "recall_strict": 0.125,
+      "strict": 12
+    },
+    {
+      "clip_gap": 0.0641,
+      "gold": 156,
+      "hipaa": null,
+      "label": "notes",
+      "label_accuracy": 0.8704,
+      "partial": 64,
+      "recall_partial": 0.4103,
+      "recall_strict": 0.3462,
+      "strict": 54
+    },
+    {
+      "clip_gap": 0.0603,
+      "gold": 116,
+      "hipaa": null,
+      "label": "ocr",
+      "label_accuracy": 1.0,
+      "partial": 32,
+      "recall_partial": 0.2759,
+      "recall_strict": 0.2155,
+      "strict": 25
+    },
+    {
+      "clip_gap": 0.2083,
+      "gold": 24,
+      "hipaa": null,
+      "label": "prescrubbed",
+      "label_accuracy": 0.0,
+      "partial": 5,
+      "recall_partial": 0.2083,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0156,
+      "gold": 64,
+      "hipaa": null,
+      "label": "shell",
+      "label_accuracy": 0.4286,
+      "partial": 8,
+      "recall_partial": 0.125,
+      "recall_strict": 0.1094,
+      "strict": 7
+    }
+  ],
+  "by_difficulty": [
+    {
+      "clip_gap": 0.0692,
+      "gold": 260,
+      "hipaa": null,
+      "label": "easy",
+      "label_accuracy": 0.8966,
+      "partial": 76,
+      "recall_partial": 0.2923,
+      "recall_strict": 0.2231,
+      "strict": 58
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 104,
+      "hipaa": null,
+      "label": "hard",
+      "label_accuracy": 1.0,
+      "partial": 25,
+      "recall_partial": 0.2404,
+      "recall_strict": 0.2404,
+      "strict": 25
+    },
+    {
+      "clip_gap": 0.1202,
+      "gold": 208,
+      "hipaa": null,
+      "label": "medium",
+      "label_accuracy": 0.75,
+      "partial": 53,
+      "recall_partial": 0.2548,
+      "recall_strict": 0.1346,
+      "strict": 28
+    }
+  ],
+  "by_hipaa": [
+    {
+      "clip_gap": 0.0,
+      "gold": 104,
+      "hipaa": null,
+      "label": "hipaa-01",
+      "label_accuracy": 1.0,
+      "partial": 66,
+      "recall_partial": 0.6346,
+      "recall_strict": 0.6346,
+      "strict": 66
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 32,
+      "hipaa": null,
+      "label": "hipaa-02",
+      "label_accuracy": 1.0,
+      "partial": 8,
+      "recall_partial": 0.25,
+      "recall_strict": 0.25,
+      "strict": 8
+    },
+    {
+      "clip_gap": 0.0526,
+      "gold": 76,
+      "hipaa": null,
+      "label": "hipaa-03",
+      "label_accuracy": 1.0,
+      "partial": 14,
+      "recall_partial": 0.1842,
+      "recall_strict": 0.1316,
+      "strict": 10
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 20,
+      "hipaa": null,
+      "label": "hipaa-04",
+      "label_accuracy": 1.0,
+      "partial": 2,
+      "recall_partial": 0.1,
+      "recall_strict": 0.1,
+      "strict": 2
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 4,
+      "hipaa": null,
+      "label": "hipaa-05",
+      "label_accuracy": 0.0,
+      "partial": 0,
+      "recall_partial": 0.0,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.75,
+      "gold": 32,
+      "hipaa": null,
+      "label": "hipaa-06",
+      "label_accuracy": 0.0,
+      "partial": 24,
+      "recall_partial": 0.75,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.1,
+      "gold": 20,
+      "hipaa": null,
+      "label": "hipaa-07",
+      "label_accuracy": 0.0,
+      "partial": 2,
+      "recall_partial": 0.1,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 76,
+      "hipaa": null,
+      "label": "hipaa-08",
+      "label_accuracy": 0.6667,
+      "partial": 18,
+      "recall_partial": 0.2368,
+      "recall_strict": 0.2368,
+      "strict": 18
+    },
+    {
+      "clip_gap": 0.25,
+      "gold": 8,
+      "hipaa": null,
+      "label": "hipaa-09",
+      "label_accuracy": 0.0,
+      "partial": 2,
+      "recall_partial": 0.25,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 4,
+      "hipaa": null,
+      "label": "hipaa-10",
+      "label_accuracy": 0.0,
+      "partial": 0,
+      "recall_partial": 0.0,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 8,
+      "hipaa": null,
+      "label": "hipaa-11",
+      "label_accuracy": 0.0,
+      "partial": 4,
+      "recall_partial": 0.5,
+      "recall_strict": 0.5,
+      "strict": 4
+    },
+    {
+      "clip_gap": 0.5,
+      "gold": 4,
+      "hipaa": null,
+      "label": "hipaa-13",
+      "label_accuracy": 0.0,
+      "partial": 2,
+      "recall_partial": 0.5,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.1429,
+      "gold": 28,
+      "hipaa": null,
+      "label": "hipaa-14",
+      "label_accuracy": 0.0,
+      "partial": 4,
+      "recall_partial": 0.1429,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 24,
+      "hipaa": null,
+      "label": "hipaa-15",
+      "label_accuracy": 0.0,
+      "partial": 0,
+      "recall_partial": 0.0,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0379,
+      "gold": 132,
+      "hipaa": null,
+      "label": "hipaa-18",
+      "label_accuracy": 0.0,
+      "partial": 8,
+      "recall_partial": 0.0606,
+      "recall_strict": 0.0227,
+      "strict": 3
+    }
+  ],
+  "by_label": [
+    {
+      "clip_gap": 0.125,
+      "gold": 8,
+      "hipaa": 18,
+      "label": "ACCESSION",
+      "label_accuracy": 0.0,
+      "partial": 1,
+      "recall_partial": 0.125,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 4,
+      "hipaa": 10,
+      "label": "ACCOUNT",
+      "label_accuracy": 0.0,
+      "partial": 0,
+      "recall_partial": 0.0,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 8,
+      "hipaa": 3,
+      "label": "AGE_OVER_89",
+      "label_accuracy": 0.0,
+      "partial": 0,
+      "recall_partial": 0.0,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 40,
+      "hipaa": 3,
+      "label": "DATE_BARE",
+      "label_accuracy": 1.0,
+      "partial": 6,
+      "recall_partial": 0.15,
+      "recall_strict": 0.15,
+      "strict": 6
+    },
+    {
+      "clip_gap": 0.5,
+      "gold": 4,
+      "hipaa": 13,
+      "label": "DEVICE",
+      "label_accuracy": 0.0,
+      "partial": 2,
+      "recall_partial": 0.5,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.1429,
+      "gold": 28,
+      "hipaa": 3,
+      "label": "DOB_LABELLED",
+      "label_accuracy": 1.0,
+      "partial": 8,
+      "recall_partial": 0.2857,
+      "recall_strict": 0.1429,
+      "strict": 4
+    },
+    {
+      "clip_gap": 0.75,
+      "gold": 32,
+      "hipaa": 6,
+      "label": "EMAIL",
+      "label_accuracy": 0.0,
+      "partial": 24,
+      "recall_partial": 0.75,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 4,
+      "hipaa": 5,
+      "label": "FAX",
+      "label_accuracy": 0.0,
+      "partial": 0,
+      "recall_partial": 0.0,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.25,
+      "gold": 8,
+      "hipaa": 9,
+      "label": "HEALTH_PLAN_ID",
+      "label_accuracy": 0.0,
+      "partial": 2,
+      "recall_partial": 0.25,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 24,
+      "hipaa": 15,
+      "label": "IP",
+      "label_accuracy": 0.0,
+      "partial": 0,
+      "recall_partial": 0.0,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 8,
+      "hipaa": 11,
+      "label": "LICENSE",
+      "label_accuracy": 0.0,
+      "partial": 4,
+      "recall_partial": 0.5,
+      "recall_strict": 0.5,
+      "strict": 4
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 32,
+      "hipaa": 2,
+      "label": "LOCATION",
+      "label_accuracy": 1.0,
+      "partial": 8,
+      "recall_partial": 0.25,
+      "recall_strict": 0.25,
+      "strict": 8
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 76,
+      "hipaa": 8,
+      "label": "MRN",
+      "label_accuracy": 0.6667,
+      "partial": 18,
+      "recall_partial": 0.2368,
+      "recall_strict": 0.2368,
+      "strict": 18
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 104,
+      "hipaa": 1,
+      "label": "NAME",
+      "label_accuracy": 1.0,
+      "partial": 66,
+      "recall_partial": 0.6346,
+      "recall_strict": 0.6346,
+      "strict": 66
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 20,
+      "hipaa": 4,
+      "label": "PHONE",
+      "label_accuracy": 1.0,
+      "partial": 2,
+      "recall_partial": 0.1,
+      "recall_strict": 0.1,
+      "strict": 2
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 24,
+      "hipaa": 18,
+      "label": "SAMPLE_ID",
+      "label_accuracy": 0.0,
+      "partial": 0,
+      "recall_partial": 0.0,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 36,
+      "hipaa": 18,
+      "label": "SLURM_JOB_NAME",
+      "label_accuracy": 0.0,
+      "partial": 1,
+      "recall_partial": 0.0278,
+      "recall_strict": 0.0278,
+      "strict": 1
+    },
+    {
+      "clip_gap": 0.1,
+      "gold": 20,
+      "hipaa": 7,
+      "label": "SSN",
+      "label_accuracy": 0.0,
+      "partial": 2,
+      "recall_partial": 0.1,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0625,
+      "gold": 64,
+      "hipaa": 18,
+      "label": "SUBJECT_ID",
+      "label_accuracy": 0.0,
+      "partial": 6,
+      "recall_partial": 0.0938,
+      "recall_strict": 0.0312,
+      "strict": 2
+    },
+    {
+      "clip_gap": 0.1429,
+      "gold": 28,
+      "hipaa": 14,
+      "label": "URL",
+      "label_accuracy": 0.0,
+      "partial": 4,
+      "recall_partial": 0.1429,
+      "recall_strict": 0.0,
+      "strict": 0
+    }
+  ],
+  "by_label_gated": [
+    {
+      "clip_gap": 0.125,
+      "gold": 8,
+      "hipaa": 18,
+      "label": "ACCESSION",
+      "label_accuracy": 0.0,
+      "partial": 1,
+      "recall_partial": 0.125,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 4,
+      "hipaa": 10,
+      "label": "ACCOUNT",
+      "label_accuracy": 0.0,
+      "partial": 0,
+      "recall_partial": 0.0,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 8,
+      "hipaa": 3,
+      "label": "AGE_OVER_89",
+      "label_accuracy": 0.0,
+      "partial": 0,
+      "recall_partial": 0.0,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 40,
+      "hipaa": 3,
+      "label": "DATE_BARE",
+      "label_accuracy": 1.0,
+      "partial": 6,
+      "recall_partial": 0.15,
+      "recall_strict": 0.15,
+      "strict": 6
+    },
+    {
+      "clip_gap": 0.5,
+      "gold": 4,
+      "hipaa": 13,
+      "label": "DEVICE",
+      "label_accuracy": 0.0,
+      "partial": 2,
+      "recall_partial": 0.5,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.25,
+      "gold": 16,
+      "hipaa": 3,
+      "label": "DOB_LABELLED",
+      "label_accuracy": 1.0,
+      "partial": 8,
+      "recall_partial": 0.5,
+      "recall_strict": 0.25,
+      "strict": 4
+    },
+    {
+      "clip_gap": 0.75,
+      "gold": 32,
+      "hipaa": 6,
+      "label": "EMAIL",
+      "label_accuracy": 0.0,
+      "partial": 24,
+      "recall_partial": 0.75,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.25,
+      "gold": 8,
+      "hipaa": 9,
+      "label": "HEALTH_PLAN_ID",
+      "label_accuracy": 0.0,
+      "partial": 2,
+      "recall_partial": 0.25,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 24,
+      "hipaa": 15,
+      "label": "IP",
+      "label_accuracy": 0.0,
+      "partial": 0,
+      "recall_partial": 0.0,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 8,
+      "hipaa": 11,
+      "label": "LICENSE",
+      "label_accuracy": 0.0,
+      "partial": 4,
+      "recall_partial": 0.5,
+      "recall_strict": 0.5,
+      "strict": 4
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 24,
+      "hipaa": 2,
+      "label": "LOCATION",
+      "label_accuracy": 1.0,
+      "partial": 8,
+      "recall_partial": 0.3333,
+      "recall_strict": 0.3333,
+      "strict": 8
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 40,
+      "hipaa": 8,
+      "label": "MRN",
+      "label_accuracy": 0.6,
+      "partial": 15,
+      "recall_partial": 0.375,
+      "recall_strict": 0.375,
+      "strict": 15
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 80,
+      "hipaa": 1,
+      "label": "NAME",
+      "label_accuracy": 1.0,
+      "partial": 44,
+      "recall_partial": 0.55,
+      "recall_strict": 0.55,
+      "strict": 44
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 20,
+      "hipaa": 4,
+      "label": "PHONE",
+      "label_accuracy": 1.0,
+      "partial": 2,
+      "recall_partial": 0.1,
+      "recall_strict": 0.1,
+      "strict": 2
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 24,
+      "hipaa": 18,
+      "label": "SAMPLE_ID",
+      "label_accuracy": 0.0,
+      "partial": 0,
+      "recall_partial": 0.0,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0,
+      "gold": 32,
+      "hipaa": 18,
+      "label": "SLURM_JOB_NAME",
+      "label_accuracy": 0.0,
+      "partial": 1,
+      "recall_partial": 0.0312,
+      "recall_strict": 0.0312,
+      "strict": 1
+    },
+    {
+      "clip_gap": 0.25,
+      "gold": 8,
+      "hipaa": 7,
+      "label": "SSN",
+      "label_accuracy": 0.0,
+      "partial": 2,
+      "recall_partial": 0.25,
+      "recall_strict": 0.0,
+      "strict": 0
+    },
+    {
+      "clip_gap": 0.0625,
+      "gold": 64,
+      "hipaa": 18,
+      "label": "SUBJECT_ID",
+      "label_accuracy": 0.0,
+      "partial": 6,
+      "recall_partial": 0.0938,
+      "recall_strict": 0.0312,
+      "strict": 2
+    },
+    {
+      "clip_gap": 0.1667,
+      "gold": 24,
+      "hipaa": 14,
+      "label": "URL",
+      "label_accuracy": 0.0,
+      "partial": 4,
+      "recall_partial": 0.1667,
+      "recall_strict": 0.0,
+      "strict": 0
+    }
+  ],
+  "headline": {
+    "corpus_fingerprint": "ccfbf64eb85ed3027e7a038a7d052100c914b55411d37f599e1d4245a2547b91",
+    "engine": "gliner-only",
+    "false_positive_spans_per_negative_record": 0.0,
+    "gold_spans": 572,
+    "leaks_per_1000_records": 1458.86,
+    "must_survive_total": 380,
+    "must_survive_violations": 9,
+    "over_redaction_rate": 0.0065,
+    "over_redaction_share_of_predicted": 0.0698,
+    "predicted_spans": 169,
+    "recall_strict_gated": 0.1838,
+    "recall_strict_overall": 0.1941,
+    "records": 316,
+    "safe_record_rate": 0.1994
+  },
+  "leaks": [
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 72,
+      "label": "URL",
+      "partial_hit": true,
+      "record_id": "agents-ag01-00",
+      "start": 24,
+      "text": "https://records.example.net/chart/jackson/079709"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 92,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag01-00",
+      "start": 85,
+      "text": "SJ-0938"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 69,
+      "label": "URL",
+      "partial_hit": true,
+      "record_id": "agents-ag01-01",
+      "start": 24,
+      "text": "https://records.example.com/chart/wood/686009"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 89,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag01-01",
+      "start": 82,
+      "text": "SJ-6022"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 71,
+      "label": "URL",
+      "partial_hit": true,
+      "record_id": "agents-ag01-02",
+      "start": 24,
+      "text": "https://records.example.net/chart/martin/777404"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 91,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag01-02",
+      "start": 84,
+      "text": "SJ-4414"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 69,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "agents-ag01-03",
+      "start": 24,
+      "text": "https://records.example.org/chart/gray/151884"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 89,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag01-03",
+      "start": 82,
+      "text": "SJ-6688"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 50,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag02-00",
+      "start": 43,
+      "text": "SJMB439"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 35,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "agents-ag02-01",
+      "start": 24,
+      "text": "MRN 4415909"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 50,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag02-01",
+      "start": 43,
+      "text": "SJMB498"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 35,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "agents-ag02-02",
+      "start": 24,
+      "text": "MRN 4410623"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 50,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag02-02",
+      "start": 43,
+      "text": "SJOS153"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 50,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag02-03",
+      "start": 43,
+      "text": "SJOS528"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 56,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "agents-ag03-00",
+      "start": 39,
+      "text": "D.O.B. 2007-05-07"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 62,
+      "label": "DOB_LABELLED",
+      "partial_hit": true,
+      "record_id": "agents-ag03-01",
+      "start": 39,
+      "text": "date of birth 9/16/1987"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 54,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "agents-ag03-02",
+      "start": 37,
+      "text": "D.O.B. 2000-09-08"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 61,
+      "label": "DOB_LABELLED",
+      "partial_hit": true,
+      "record_id": "agents-ag03-03",
+      "start": 38,
+      "text": "date of birth 2/24/1973"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 36,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "agents-ag04-00",
+      "start": 24,
+      "text": "reyes_amanda"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 82,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "agents-ag04-00",
+      "start": 54,
+      "text": "jerry.williams11@example.org"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 39,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "agents-ag04-01",
+      "start": 24,
+      "text": "nelson_michelle"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 80,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "agents-ag04-01",
+      "start": 57,
+      "text": "ryan.ross70@example.com"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 36,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "agents-ag04-02",
+      "start": 24,
+      "text": "jackson_eric"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 83,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "agents-ag04-02",
+      "start": 54,
+      "text": "nicholas.flores37@example.com"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 37,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "agents-ag04-03",
+      "start": 24,
+      "text": "rogers_andrew"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 83,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "agents-ag04-03",
+      "start": 55,
+      "text": "patrick.rivera33@example.com"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 56,
+      "label": "SUBJECT_ID",
+      "partial_hit": true,
+      "record_id": "agents-ag05-00",
+      "start": 38,
+      "text": "subject id SJ-2816"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 73,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "agents-ag05-00",
+      "start": 63,
+      "text": "1962-08-14"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 56,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag05-01",
+      "start": 38,
+      "text": "subject id SJ-1802"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 73,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "agents-ag05-01",
+      "start": 63,
+      "text": "2017-10-13"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 56,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag05-02",
+      "start": 38,
+      "text": "subject id SJ-4303"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 73,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "agents-ag05-02",
+      "start": 63,
+      "text": "1984-01-19"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 56,
+      "label": "SUBJECT_ID",
+      "partial_hit": true,
+      "record_id": "agents-ag05-03",
+      "start": 38,
+      "text": "subject id SJ-8961"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "easy",
+      "end": 73,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "agents-ag05-03",
+      "start": 63,
+      "text": "1990-09-17"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "hard",
+      "end": 29,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "agents-ag06-00",
+      "start": 18,
+      "text": "MRN 44OS744"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "hard",
+      "end": 47,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "agents-ag06-00",
+      "start": 36,
+      "text": "666 63 1503"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "hard",
+      "end": 29,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "agents-ag06-01",
+      "start": 18,
+      "text": "MRN 44O44l4"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "hard",
+      "end": 47,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "agents-ag06-01",
+      "start": 36,
+      "text": "666 04 0445"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "hard",
+      "end": 32,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "agents-ag06-02",
+      "start": 18,
+      "text": "M.R.N. 4492274"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "hard",
+      "end": 50,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "agents-ag06-02",
+      "start": 39,
+      "text": "000 69 6154"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "hard",
+      "end": 29,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "agents-ag06-03",
+      "start": 18,
+      "text": "MRN 44Ol167"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "hard",
+      "end": 47,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "agents-ag06-03",
+      "start": 36,
+      "text": "666 66 8835"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 42,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "agents-ag07-00",
+      "start": 28,
+      "text": "panel_reyes_53"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 61,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag07-00",
+      "start": 52,
+      "text": "SJ9125_dx"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 45,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "agents-ag07-01",
+      "start": 28,
+      "text": "rnaseq_collins_68"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 64,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag07-01",
+      "start": 55,
+      "text": "SJ0391_bm"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 40,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "agents-ag07-02",
+      "start": 28,
+      "text": "wgs_moore_39"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 59,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag07-02",
+      "start": 50,
+      "text": "SJ9370_pb"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 44,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "agents-ag07-03",
+      "start": 28,
+      "text": "rnaseq_walker_96"
+    },
+    {
+      "channel": "agents",
+      "difficulty": "medium",
+      "end": 64,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "agents-ag07-03",
+      "start": 54,
+      "text": "SJ8487_rel"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 47,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "diffs-df01-00",
+      "start": 39,
+      "text": "SJNBL349"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 61,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "diffs-df01-00",
+      "start": 53,
+      "text": "SJNBL765"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 73,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "diffs-df01-00",
+      "start": 62,
+      "text": "MRN 4488799"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 46,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "diffs-df01-01",
+      "start": 39,
+      "text": "SJMB416"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 60,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "diffs-df01-01",
+      "start": 52,
+      "text": "SJALL849"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 72,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "diffs-df01-01",
+      "start": 61,
+      "text": "MRN 4494425"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 47,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "diffs-df01-02",
+      "start": 39,
+      "text": "SJALL840"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 61,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "diffs-df01-02",
+      "start": 53,
+      "text": "SJAML883"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 73,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "diffs-df01-02",
+      "start": 62,
+      "text": "MRN 4472289"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 47,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "diffs-df01-03",
+      "start": 39,
+      "text": "SJALL523"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 60,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "diffs-df01-03",
+      "start": 53,
+      "text": "SJMB640"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 72,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "diffs-df01-03",
+      "start": 61,
+      "text": "MRN 4483641"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 55,
+      "label": "EMAIL",
+      "partial_hit": false,
+      "record_id": "diffs-df02-00",
+      "start": 28,
+      "text": "alexander.gomez@example.com"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 112,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "diffs-df02-00",
+      "start": 67,
+      "text": "https://records.example.org/chart/cook/204215"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 54,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "diffs-df02-01",
+      "start": 28,
+      "text": "shirley.thomas@example.net"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 112,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "diffs-df02-01",
+      "start": 66,
+      "text": "https://records.example.com/chart/perez/271731"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 48,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "diffs-df02-02",
+      "start": 28,
+      "text": "gary.lee@example.com"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 107,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "diffs-df02-02",
+      "start": 60,
+      "text": "https://records.example.com/chart/howard/225406"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 50,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "diffs-df02-03",
+      "start": 28,
+      "text": "ashley.kim@example.net"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 109,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "diffs-df02-03",
+      "start": 62,
+      "text": "https://records.example.org/chart/cooper/726492"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 46,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "diffs-df03-00",
+      "start": 37,
+      "text": "SJ1723_dx"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 85,
+      "label": "DOB_LABELLED",
+      "partial_hit": true,
+      "record_id": "diffs-df03-00",
+      "start": 62,
+      "text": "date of birth 11/5/1966"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 46,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "diffs-df03-01",
+      "start": 37,
+      "text": "SJ8116_dx"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 90,
+      "label": "DOB_LABELLED",
+      "partial_hit": true,
+      "record_id": "diffs-df03-01",
+      "start": 66,
+      "text": "date of birth 12/11/1966"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 49,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "diffs-df03-02",
+      "start": 37,
+      "text": "SJ1938_tumor"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 82,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "diffs-df03-02",
+      "start": 67,
+      "text": "DOB: 1951-04-12"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 46,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "diffs-df03-03",
+      "start": 37,
+      "text": "SJ8459_dx"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 77,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "diffs-df03-03",
+      "start": 62,
+      "text": "DOB: 1947-06-09"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 24,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "diffs-df04-00",
+      "start": 13,
+      "text": "192.0.2.138"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 47,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "diffs-df04-00",
+      "start": 33,
+      "text": "2001:db8:c5::8"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 26,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "diffs-df04-01",
+      "start": 13,
+      "text": "203.0.113.251"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 50,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "diffs-df04-01",
+      "start": 35,
+      "text": "2001:db8:9f::56"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 26,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "diffs-df04-02",
+      "start": 13,
+      "text": "203.0.113.235"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 50,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "diffs-df04-02",
+      "start": 35,
+      "text": "2001:db8:0d::86"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 26,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "diffs-df04-03",
+      "start": 13,
+      "text": "203.0.113.238"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "medium",
+      "end": 50,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "diffs-df04-03",
+      "start": 35,
+      "text": "2001:db8:24::82"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 56,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "diffs-df05-00",
+      "start": 45,
+      "text": "nguyen_eric"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 68,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "diffs-df05-01",
+      "start": 55,
+      "text": "parker_george"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 71,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "diffs-df05-02",
+      "start": 55,
+      "text": "anderson_jessica"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "easy",
+      "end": 64,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "diffs-df05-03",
+      "start": 51,
+      "text": "ramirez_donna"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 32,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "diffs-df06-00",
+      "start": 18,
+      "text": "M.R.N. 4423547"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 48,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "diffs-df06-00",
+      "start": 36,
+      "text": "Sharon Green"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 69,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "diffs-df06-00",
+      "start": 52,
+      "text": "4566 Moore Avenue"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 87,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "diffs-df06-00",
+      "start": 71,
+      "text": "Boston, MA 35348"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 32,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "diffs-df06-01",
+      "start": 18,
+      "text": "M.R.N. 4400163"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 67,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "diffs-df06-01",
+      "start": 49,
+      "text": "2976 Jimenez Drive"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 88,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "diffs-df06-01",
+      "start": 69,
+      "text": "Milwaukee, WI 32616"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 29,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "diffs-df06-02",
+      "start": 18,
+      "text": "MRN:4434030"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 67,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "diffs-df06-02",
+      "start": 51,
+      "text": "1959 Baker Court"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 86,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "diffs-df06-02",
+      "start": 69,
+      "text": "Jackson, MS 84673"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 29,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "diffs-df06-03",
+      "start": 18,
+      "text": "MRN 443O13B"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 70,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "diffs-df06-03",
+      "start": 53,
+      "text": "2644 Rivera Court"
+    },
+    {
+      "channel": "diffs",
+      "difficulty": "hard",
+      "end": 88,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "diffs-df06-03",
+      "start": 72,
+      "text": "Newark, NJ 55608"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 21,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb01-00",
+      "start": 6,
+      "text": "panel_bailey_89"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 44,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "jobs-jb01-00",
+      "start": 34,
+      "text": "1935-05-27"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 63,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "jobs-jb01-00",
+      "start": 52,
+      "text": "SJ5178_germ"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 21,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb01-01",
+      "start": 6,
+      "text": "scrna_carter_09"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 44,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "jobs-jb01-01",
+      "start": 34,
+      "text": "1990-04-19"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 64,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "jobs-jb01-01",
+      "start": 52,
+      "text": "SJ0639_tumor"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 22,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb01-02",
+      "start": 6,
+      "text": "atac_castillo_10"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 45,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "jobs-jb01-02",
+      "start": 35,
+      "text": "1959-06-03"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 62,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "jobs-jb01-02",
+      "start": 53,
+      "text": "SJ2047_pb"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 18,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb01-03",
+      "start": 6,
+      "text": "wgs_gomez_34"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 41,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "jobs-jb01-03",
+      "start": 31,
+      "text": "1973-06-13"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 58,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "jobs-jb01-03",
+      "start": 49,
+      "text": "SJ0893_dx"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 36,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb02-00",
+      "start": 19,
+      "text": "panel_gonzalez_17"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 86,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "jobs-jb02-00",
+      "start": 57,
+      "text": "christopher.perez@example.com"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 32,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb02-01",
+      "start": 19,
+      "text": "wes_miller_48"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 77,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "jobs-jb02-01",
+      "start": 53,
+      "text": "laura.martin@example.net"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 33,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb02-02",
+      "start": 19,
+      "text": "atac_foster_90"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 81,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "jobs-jb02-02",
+      "start": 54,
+      "text": "dorothy.morales@example.com"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 32,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb02-03",
+      "start": 19,
+      "text": "atac_patel_60"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 78,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "jobs-jb02-03",
+      "start": 53,
+      "text": "edward.flores@example.net"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 51,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb03-00",
+      "start": 37,
+      "text": "rnaseq_wood_16"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 89,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb03-00",
+      "start": 76,
+      "text": "garcia_thomas"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 52,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb03-01",
+      "start": 37,
+      "text": "wgs_anderson_33"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 90,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb03-01",
+      "start": 77,
+      "text": "lopez_raymond"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 90,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb03-02",
+      "start": 74,
+      "text": "morales_kimberly"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 51,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb03-03",
+      "start": 37,
+      "text": "methyl_hall_88"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 91,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb03-03",
+      "start": 76,
+      "text": "gutierrez_carol"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 41,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "jobs-jb04-00",
+      "start": 33,
+      "text": "SJNBL571"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 58,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb04-00",
+      "start": 42,
+      "text": "robinson_deborah"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 41,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "jobs-jb04-01",
+      "start": 33,
+      "text": "SJNBL960"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 53,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb04-01",
+      "start": 42,
+      "text": "kelly_debra"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 41,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "jobs-jb04-02",
+      "start": 33,
+      "text": "SJAML439"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 56,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb04-02",
+      "start": 42,
+      "text": "taylor_william"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 41,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "jobs-jb04-03",
+      "start": 33,
+      "text": "SJNBL717"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 59,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb04-03",
+      "start": 42,
+      "text": "sanchez_stephanie"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 37,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "jobs-jb05-00",
+      "start": 23,
+      "text": "198.51.100.187"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 69,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb05-00",
+      "start": 56,
+      "text": "atac_ortiz_70"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 83,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "jobs-jb05-00",
+      "start": 73,
+      "text": "8 May 1999"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 35,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "jobs-jb05-01",
+      "start": 23,
+      "text": "198.51.100.6"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 67,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb05-01",
+      "start": 54,
+      "text": "atac_evans_46"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 81,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "jobs-jb05-01",
+      "start": 71,
+      "text": "1 Sep 2015"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 36,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "jobs-jb05-02",
+      "start": 23,
+      "text": "198.51.100.69"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 73,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb05-02",
+      "start": 55,
+      "text": "rnaseq_campbell_56"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 86,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "jobs-jb05-02",
+      "start": 77,
+      "text": "9/27/1937"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 35,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "jobs-jb05-03",
+      "start": 23,
+      "text": "203.0.113.70"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 69,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb05-03",
+      "start": 54,
+      "text": "scrna_wright_58"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 82,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "jobs-jb05-03",
+      "start": 73,
+      "text": "5/18/1958"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 66,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "jobs-jb06-00",
+      "start": 50,
+      "text": "sample: SM-91692"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 66,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "jobs-jb06-01",
+      "start": 50,
+      "text": "sample: SM-54500"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 66,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "jobs-jb06-02",
+      "start": 50,
+      "text": "sample: SM-74200"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 33,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "jobs-jb06-03",
+      "start": 22,
+      "text": "MRN 4483778"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 66,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "jobs-jb06-03",
+      "start": 50,
+      "text": "sample: SM-60967"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 27,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb07-00",
+      "start": 10,
+      "text": "scrna_phillips_96"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 25,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb07-01",
+      "start": 10,
+      "text": "panel_howard_07"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 23,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb07-02",
+      "start": 10,
+      "text": "wes_parker_76"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 24,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb07-03",
+      "start": 10,
+      "text": "rnaseq_long_40"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "hard",
+      "end": 40,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb08-00",
+      "start": 27,
+      "text": "atac_evans_26"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "hard",
+      "end": 63,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "jobs-jb08-00",
+      "start": 52,
+      "text": "MRN 4437S34"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "hard",
+      "end": 41,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb08-01",
+      "start": 27,
+      "text": "scrna_baker_94"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "hard",
+      "end": 64,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "jobs-jb08-01",
+      "start": 53,
+      "text": "MRN:4481466"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "hard",
+      "end": 44,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb08-02",
+      "start": 27,
+      "text": "panel_williams_70"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "hard",
+      "end": 70,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "jobs-jb08-02",
+      "start": 56,
+      "text": "M.R.N. 4415550"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "hard",
+      "end": 44,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb08-03",
+      "start": 27,
+      "text": "panel_gonzalez_94"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "hard",
+      "end": 67,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "jobs-jb08-03",
+      "start": 56,
+      "text": "MRN 44733B3"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 63,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "jobs-jb09-00",
+      "start": 16,
+      "text": "https://records.example.org/chart/rogers/794863"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 87,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "jobs-jb09-00",
+      "start": 72,
+      "text": "+1-555-555-0163"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 60,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "jobs-jb09-01",
+      "start": 16,
+      "text": "https://records.example.net/chart/cox/548500"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 84,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "jobs-jb09-01",
+      "start": 69,
+      "text": "+1-555-555-0162"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 63,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "jobs-jb09-02",
+      "start": 16,
+      "text": "https://records.example.net/chart/nelson/006422"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 87,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "jobs-jb09-02",
+      "start": 72,
+      "text": "+1-555-555-0116"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 62,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "jobs-jb09-03",
+      "start": 16,
+      "text": "https://records.example.org/chart/smith/128830"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 86,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "jobs-jb09-03",
+      "start": 71,
+      "text": "+1-555-555-0166"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 29,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb10-00",
+      "start": 13,
+      "text": "panel_edwards_19"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 81,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "jobs-jb10-00",
+      "start": 70,
+      "text": "10 Jul 2008"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 29,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb10-01",
+      "start": 13,
+      "text": "rnaseq_howard_24"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 85,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "jobs-jb10-01",
+      "start": 76,
+      "text": "8/16/2022"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 27,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb10-02",
+      "start": 13,
+      "text": "scrna_evans_93"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 79,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "jobs-jb10-02",
+      "start": 70,
+      "text": "2/23/1950"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 28,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb10-03",
+      "start": 13,
+      "text": "methyl_lewis_50"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "medium",
+      "end": 83,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "jobs-jb10-03",
+      "start": 72,
+      "text": "27 Jun 2000"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 22,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb11-00",
+      "start": 11,
+      "text": "white_jason"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 25,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb11-01",
+      "start": 11,
+      "text": "anderson_laura"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 24,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb11-02",
+      "start": 11,
+      "text": "mendoza_emily"
+    },
+    {
+      "channel": "jobs",
+      "difficulty": "easy",
+      "end": 24,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "jobs-jb11-03",
+      "start": 11,
+      "text": "green_dorothy"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 15,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt01-00",
+      "start": 8,
+      "text": "SJ-7040"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 96,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "notes-nt01-00",
+      "start": 81,
+      "text": "+1-555-555-0191"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 15,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt01-01",
+      "start": 8,
+      "text": "SJ-5088"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 98,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "notes-nt01-01",
+      "start": 83,
+      "text": "+1-555-555-0109"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 15,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt01-02",
+      "start": 8,
+      "text": "SJ-7052"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 15,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt01-03",
+      "start": 8,
+      "text": "SJ-0538"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 64,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt03-00",
+      "start": 57,
+      "text": "SJOS996"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 84,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "notes-nt03-00",
+      "start": 75,
+      "text": "11/5/1943"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 62,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt03-01",
+      "start": 55,
+      "text": "SJOS022"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 82,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "notes-nt03-01",
+      "start": 73,
+      "text": "1/18/1939"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 64,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt03-02",
+      "start": 57,
+      "text": "SJMB076"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 84,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "notes-nt03-02",
+      "start": 75,
+      "text": "3/27/1954"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 63,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt03-03",
+      "start": 56,
+      "text": "SJOS745"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 85,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "notes-nt03-03",
+      "start": 74,
+      "text": "11 Jul 1952"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 45,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "notes-nt04-00",
+      "start": 18,
+      "text": "margaret.diaz74@example.net"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 81,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "notes-nt04-00",
+      "start": 55,
+      "text": "rachel.myers63@example.org"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 136,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "notes-nt04-00",
+      "start": 90,
+      "text": "https://records.example.net/chart/lopez/323346"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 45,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "notes-nt04-01",
+      "start": 18,
+      "text": "debra.johnson80@example.com"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 80,
+      "label": "EMAIL",
+      "partial_hit": false,
+      "record_id": "notes-nt04-01",
+      "start": 55,
+      "text": "carol.adams33@example.org"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 135,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "notes-nt04-01",
+      "start": 89,
+      "text": "https://records.example.com/chart/young/695047"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 45,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "notes-nt04-02",
+      "start": 18,
+      "text": "steven.carter36@example.net"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 80,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "notes-nt04-02",
+      "start": 55,
+      "text": "jessica.cox51@example.com"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 134,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "notes-nt04-02",
+      "start": 89,
+      "text": "https://records.example.org/chart/gray/968761"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 45,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "notes-nt04-03",
+      "start": 18,
+      "text": "gregory.price56@example.org"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 81,
+      "label": "EMAIL",
+      "partial_hit": false,
+      "record_id": "notes-nt04-03",
+      "start": 55,
+      "text": "frank.morales2@example.org"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 136,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "notes-nt04-03",
+      "start": 90,
+      "text": "https://records.example.net/chart/brown/228320"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 102,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "notes-nt05-00",
+      "start": 79,
+      "text": "Oklahoma City, OK 83359"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 114,
+      "label": "AGE_OVER_89",
+      "partial_hit": false,
+      "record_id": "notes-nt05-00",
+      "start": 108,
+      "text": "age 96"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 51,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "notes-nt05-01",
+      "start": 40,
+      "text": "MRN 4485501"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 96,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "notes-nt05-01",
+      "start": 75,
+      "text": "Baton Rouge, LA 57298"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 108,
+      "label": "AGE_OVER_89",
+      "partial_hit": false,
+      "record_id": "notes-nt05-01",
+      "start": 102,
+      "text": "age 98"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 53,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "notes-nt05-02",
+      "start": 42,
+      "text": "MRN 4490346"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 102,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "notes-nt05-02",
+      "start": 78,
+      "text": "Salt Lake City, UT 90798"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 115,
+      "label": "AGE_OVER_89",
+      "partial_hit": false,
+      "record_id": "notes-nt05-02",
+      "start": 108,
+      "text": "age 106"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 100,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "notes-nt05-03",
+      "start": 79,
+      "text": "Little Rock, AR 06890"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 112,
+      "label": "AGE_OVER_89",
+      "partial_hit": false,
+      "record_id": "notes-nt05-03",
+      "start": 106,
+      "text": "age 98"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 28,
+      "label": "ACCESSION",
+      "partial_hit": false,
+      "record_id": "notes-nt06-00",
+      "start": 9,
+      "text": "specimen YO64-40805"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 54,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt06-00",
+      "start": 34,
+      "text": "subject id SJ-389090"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 105,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "notes-nt06-00",
+      "start": 94,
+      "text": "666-46-2211"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 28,
+      "label": "ACCESSION",
+      "partial_hit": false,
+      "record_id": "notes-nt06-01",
+      "start": 9,
+      "text": "specimen KD79-23819"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 54,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt06-01",
+      "start": 34,
+      "text": "subject id SJ-641646"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 73,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "notes-nt06-01",
+      "start": 62,
+      "text": "20 Nov 1970"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 110,
+      "label": "SSN",
+      "partial_hit": true,
+      "record_id": "notes-nt06-01",
+      "start": 94,
+      "text": "SSN: 000-40-2568"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 28,
+      "label": "ACCESSION",
+      "partial_hit": false,
+      "record_id": "notes-nt06-02",
+      "start": 9,
+      "text": "specimen YV29-15423"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 53,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt06-02",
+      "start": 34,
+      "text": "subject id SJ_37125"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 72,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "notes-nt06-02",
+      "start": 61,
+      "text": "22 Sep 2024"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 104,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "notes-nt06-02",
+      "start": 93,
+      "text": "666-81-3331"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 28,
+      "label": "ACCESSION",
+      "partial_hit": true,
+      "record_id": "notes-nt06-03",
+      "start": 9,
+      "text": "specimen QX63-75363"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 53,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt06-03",
+      "start": 34,
+      "text": "subject id SJ972684"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 70,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "notes-nt06-03",
+      "start": 61,
+      "text": "7/14/2024"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 102,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "notes-nt06-03",
+      "start": 91,
+      "text": "926-75-0183"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 42,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "notes-nt07-00",
+      "start": 31,
+      "text": "MRN 4449S46"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 60,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "notes-nt07-00",
+      "start": 49,
+      "text": "DOB 5/13/14"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 115,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "notes-nt07-00",
+      "start": 67,
+      "text": "https://records.example.net/chart/jackson/393525"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 41,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "notes-nt07-01",
+      "start": 30,
+      "text": "MRN 446O696"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 58,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "notes-nt07-01",
+      "start": 48,
+      "text": "DOB 1/6/84"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 109,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "notes-nt07-01",
+      "start": 65,
+      "text": "https://records.example.org/chart/kim/098730"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 42,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "notes-nt07-02",
+      "start": 31,
+      "text": "MRN 44B7l47"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 59,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "notes-nt07-02",
+      "start": 49,
+      "text": "DOB 3/1/40"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 113,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "notes-nt07-02",
+      "start": 66,
+      "text": "https://records.example.org/chart/brooks/120236"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 45,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "notes-nt07-03",
+      "start": 31,
+      "text": "M.R.N. 4467445"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 63,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "notes-nt07-03",
+      "start": 52,
+      "text": "DOB 10/3/93"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 118,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "notes-nt07-03",
+      "start": 70,
+      "text": "https://records.example.net/chart/sanders/749753"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 48,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "notes-nt08-00",
+      "start": 33,
+      "text": "+1-555-555-0131"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 51,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "notes-nt08-01",
+      "start": 36,
+      "text": "+1-555-555-0143"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 48,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "notes-nt08-02",
+      "start": 33,
+      "text": "+1-555-555-0178"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 49,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "notes-nt08-03",
+      "start": 34,
+      "text": "+1-555-555-0101"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 43,
+      "label": "HEALTH_PLAN_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt09-00",
+      "start": 24,
+      "text": "member id LM7192042"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 92,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "notes-nt09-00",
+      "start": 75,
+      "text": "Memphis, TN 82481"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 43,
+      "label": "HEALTH_PLAN_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt09-01",
+      "start": 24,
+      "text": "member id QJ2971261"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 88,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "notes-nt09-01",
+      "start": 71,
+      "text": "Seattle, WA 17908"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 43,
+      "label": "HEALTH_PLAN_ID",
+      "partial_hit": true,
+      "record_id": "notes-nt09-02",
+      "start": 24,
+      "text": "member id UH2576436"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 90,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "notes-nt09-02",
+      "start": 69,
+      "text": "San Antonio, TX 85421"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 43,
+      "label": "HEALTH_PLAN_ID",
+      "partial_hit": true,
+      "record_id": "notes-nt09-03",
+      "start": 24,
+      "text": "member id LY2111006"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 90,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "notes-nt09-03",
+      "start": 69,
+      "text": "Little Rock, AR 76587"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 15,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt10-00",
+      "start": 7,
+      "text": "SJALL097"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 51,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "notes-nt10-00",
+      "start": 41,
+      "text": "price_jack"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 14,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt10-01",
+      "start": 7,
+      "text": "SJOS221"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 54,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "notes-nt10-01",
+      "start": 40,
+      "text": "bennett_joseph"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 15,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt10-02",
+      "start": 7,
+      "text": "SJALL501"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 56,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "notes-nt10-02",
+      "start": 41,
+      "text": "thomas_nicholas"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 15,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt10-03",
+      "start": 7,
+      "text": "SJAML295"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "easy",
+      "end": 53,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "notes-nt10-03",
+      "start": 41,
+      "text": "reyes_justin"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 64,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "notes-nt11-00",
+      "start": 53,
+      "text": "22 Jan 1998"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 77,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt11-00",
+      "start": 69,
+      "text": "SJ412590"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 61,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "notes-nt11-01",
+      "start": 53,
+      "text": "9/1/1992"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 62,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "notes-nt11-02",
+      "start": 53,
+      "text": "4/22/1996"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 75,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "notes-nt11-02",
+      "start": 67,
+      "text": "SJ_10188"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "medium",
+      "end": 64,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "notes-nt11-03",
+      "start": 53,
+      "text": "12 Nov 2010"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 38,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "notes-nt12-00",
+      "start": 27,
+      "text": "MRN:4454493"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 55,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "notes-nt12-00",
+      "start": 44,
+      "text": "000 93 5816"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 71,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "notes-nt12-00",
+      "start": 61,
+      "text": "DOB 3/1/54"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 37,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "notes-nt12-01",
+      "start": 26,
+      "text": "MRN 44SB729"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 54,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "notes-nt12-01",
+      "start": 43,
+      "text": "666 15 3980"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 70,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "notes-nt12-01",
+      "start": 60,
+      "text": "DOB 4/1/89"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 35,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "notes-nt12-02",
+      "start": 24,
+      "text": "MRN:4462549"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 52,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "notes-nt12-02",
+      "start": 41,
+      "text": "945 69 0693"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 70,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "notes-nt12-02",
+      "start": 58,
+      "text": "DOB 12/13/79"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 17,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "notes-nt12-03",
+      "start": 4,
+      "text": "Emily  Miller"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 37,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "notes-nt12-03",
+      "start": 23,
+      "text": "M.R.N. 4442741"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 54,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "notes-nt12-03",
+      "start": 43,
+      "text": "000 08 3395"
+    },
+    {
+      "channel": "notes",
+      "difficulty": "hard",
+      "end": 72,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "notes-nt12-03",
+      "start": 60,
+      "text": "DOB 11/27/08"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 40,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc01-00",
+      "start": 29,
+      "text": "MRN 4481022"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 55,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "ocr-oc01-00",
+      "start": 41,
+      "text": "DOB 1961-06-03"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 39,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc01-01",
+      "start": 28,
+      "text": "MRN 4490593"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 54,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "ocr-oc01-01",
+      "start": 40,
+      "text": "DOB 1979-03-08"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 36,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc01-02",
+      "start": 25,
+      "text": "MRN 4449556"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 51,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "ocr-oc01-02",
+      "start": 37,
+      "text": "DOB 1965-11-02"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 37,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc01-03",
+      "start": 26,
+      "text": "MRN 4471602"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 52,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "ocr-oc01-03",
+      "start": 38,
+      "text": "DOB 1977-01-04"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 42,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc02-00",
+      "start": 31,
+      "text": "MRN 4438407"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 51,
+      "label": "AGE_OVER_89",
+      "partial_hit": false,
+      "record_id": "ocr-oc02-00",
+      "start": 45,
+      "text": "age 99"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 41,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc02-01",
+      "start": 30,
+      "text": "MRN 4469899"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 50,
+      "label": "AGE_OVER_89",
+      "partial_hit": false,
+      "record_id": "ocr-oc02-01",
+      "start": 44,
+      "text": "age 99"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 44,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc02-02",
+      "start": 33,
+      "text": "MRN 4469412"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 54,
+      "label": "AGE_OVER_89",
+      "partial_hit": false,
+      "record_id": "ocr-oc02-02",
+      "start": 47,
+      "text": "age 104"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 43,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc02-03",
+      "start": 32,
+      "text": "MRN 4412976"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 52,
+      "label": "AGE_OVER_89",
+      "partial_hit": false,
+      "record_id": "ocr-oc02-03",
+      "start": 46,
+      "text": "age 98"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 21,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "ocr-oc03-00",
+      "start": 9,
+      "text": "555-555-0124"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 53,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "ocr-oc03-00",
+      "start": 24,
+      "text": "angela.robinson18@example.com"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 103,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "ocr-oc03-00",
+      "start": 84,
+      "text": "Nashville, TN 72991"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 23,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "ocr-oc03-01",
+      "start": 9,
+      "text": "(555) 555-0161"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 51,
+      "label": "EMAIL",
+      "partial_hit": false,
+      "record_id": "ocr-oc03-01",
+      "start": 26,
+      "text": "karen.adams18@example.net"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 101,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "ocr-oc03-01",
+      "start": 83,
+      "text": "Richmond, VA 76190"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 23,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "ocr-oc03-02",
+      "start": 9,
+      "text": "(555) 555-0108"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 52,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "ocr-oc03-02",
+      "start": 26,
+      "text": "thomas.kelly85@example.org"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 101,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "ocr-oc03-02",
+      "start": 82,
+      "text": "Rochester, NY 06223"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 21,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "ocr-oc03-03",
+      "start": 9,
+      "text": "555.555.0138"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 51,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "ocr-oc03-03",
+      "start": 24,
+      "text": "cynthia.evans85@example.com"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 102,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "ocr-oc03-03",
+      "start": 81,
+      "text": "Little Rock, AR 45694"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 33,
+      "label": "SUBJECT_ID",
+      "partial_hit": true,
+      "record_id": "ocr-oc04-00",
+      "start": 14,
+      "text": "subject id SJ_93038"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 55,
+      "label": "ACCESSION",
+      "partial_hit": false,
+      "record_id": "ocr-oc04-00",
+      "start": 36,
+      "text": "specimen GU50-23993"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 68,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "ocr-oc04-00",
+      "start": 58,
+      "text": "12/12/1991"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 33,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "ocr-oc04-01",
+      "start": 14,
+      "text": "subject id SJ_64425"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 55,
+      "label": "ACCESSION",
+      "partial_hit": false,
+      "record_id": "ocr-oc04-01",
+      "start": 36,
+      "text": "specimen QS30-10528"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 66,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "ocr-oc04-01",
+      "start": 58,
+      "text": "1/1/2008"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 33,
+      "label": "SUBJECT_ID",
+      "partial_hit": true,
+      "record_id": "ocr-oc04-02",
+      "start": 14,
+      "text": "subject id SJ_16216"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 55,
+      "label": "ACCESSION",
+      "partial_hit": false,
+      "record_id": "ocr-oc04-02",
+      "start": 36,
+      "text": "specimen HU08-09679"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 69,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "ocr-oc04-02",
+      "start": 58,
+      "text": "28 Nov 2007"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 33,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "ocr-oc04-03",
+      "start": 14,
+      "text": "subject id SJ755341"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 55,
+      "label": "ACCESSION",
+      "partial_hit": false,
+      "record_id": "ocr-oc04-03",
+      "start": 36,
+      "text": "specimen QI92-68961"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 68,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "ocr-oc04-03",
+      "start": 58,
+      "text": "3 Oct 1954"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 18,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc05-00",
+      "start": 7,
+      "text": "MRN 44O8S39"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 31,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "ocr-oc05-00",
+      "start": 20,
+      "text": "DOB 9/28/88"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 21,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc05-01",
+      "start": 7,
+      "text": "M.R.N. 4495034"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 34,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "ocr-oc05-01",
+      "start": 23,
+      "text": "DOB 7/17/36"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 18,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc05-02",
+      "start": 7,
+      "text": "MRN 44BO496"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 31,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "ocr-oc05-02",
+      "start": 20,
+      "text": "DOB 6/26/90"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 21,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc05-03",
+      "start": 7,
+      "text": "M.R.N. 4418823"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 35,
+      "label": "DOB_LABELLED",
+      "partial_hit": false,
+      "record_id": "ocr-oc05-03",
+      "start": 23,
+      "text": "DOB 12/16/22"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 26,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc06-00",
+      "start": 12,
+      "text": "M.R.N. 4494720"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 40,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "ocr-oc06-00",
+      "start": 29,
+      "text": "666 33 6707"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 23,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc06-01",
+      "start": 12,
+      "text": "MRN:4475792"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 37,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "ocr-oc06-01",
+      "start": 26,
+      "text": "992 68 8946"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 26,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc06-02",
+      "start": 12,
+      "text": "M.R.N. 4458465"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 40,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "ocr-oc06-02",
+      "start": 29,
+      "text": "000 50 1643"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 23,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "ocr-oc06-03",
+      "start": 12,
+      "text": "MRN 4434Ol3"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 37,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "ocr-oc06-03",
+      "start": 26,
+      "text": "000 68 1102"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 30,
+      "label": "HEALTH_PLAN_ID",
+      "partial_hit": false,
+      "record_id": "ocr-oc08-00",
+      "start": 11,
+      "text": "member id NQ0495257"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 50,
+      "label": "ACCOUNT",
+      "partial_hit": false,
+      "record_id": "ocr-oc08-00",
+      "start": 32,
+      "text": "3400-0000-0000-009"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 30,
+      "label": "HEALTH_PLAN_ID",
+      "partial_hit": false,
+      "record_id": "ocr-oc08-01",
+      "start": 11,
+      "text": "member id YA1075931"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 51,
+      "label": "ACCOUNT",
+      "partial_hit": false,
+      "record_id": "ocr-oc08-01",
+      "start": 32,
+      "text": "4111-1111-1111-1111"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 30,
+      "label": "HEALTH_PLAN_ID",
+      "partial_hit": false,
+      "record_id": "ocr-oc08-02",
+      "start": 11,
+      "text": "member id HV2003059"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 51,
+      "label": "ACCOUNT",
+      "partial_hit": false,
+      "record_id": "ocr-oc08-02",
+      "start": 32,
+      "text": "5500-0000-0000-0004"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 30,
+      "label": "HEALTH_PLAN_ID",
+      "partial_hit": false,
+      "record_id": "ocr-oc08-03",
+      "start": 11,
+      "text": "member id WY2016617"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 51,
+      "label": "ACCOUNT",
+      "partial_hit": false,
+      "record_id": "ocr-oc08-03",
+      "start": 32,
+      "text": "5500-0000-0000-0004"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 24,
+      "label": "DEVICE",
+      "partial_hit": true,
+      "record_id": "ocr-oc09-00",
+      "start": 8,
+      "text": "serial: DV037026"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 50,
+      "label": "LICENSE",
+      "partial_hit": false,
+      "record_id": "ocr-oc09-00",
+      "start": 36,
+      "text": "NPI 1576688170"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 24,
+      "label": "DEVICE",
+      "partial_hit": false,
+      "record_id": "ocr-oc09-01",
+      "start": 8,
+      "text": "serial: DV628132"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 50,
+      "label": "LICENSE",
+      "partial_hit": false,
+      "record_id": "ocr-oc09-01",
+      "start": 36,
+      "text": "NPI 1131286202"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 24,
+      "label": "DEVICE",
+      "partial_hit": false,
+      "record_id": "ocr-oc09-02",
+      "start": 8,
+      "text": "serial: DV628370"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 50,
+      "label": "LICENSE",
+      "partial_hit": false,
+      "record_id": "ocr-oc09-02",
+      "start": 36,
+      "text": "NPI 1991174482"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 24,
+      "label": "DEVICE",
+      "partial_hit": true,
+      "record_id": "ocr-oc09-03",
+      "start": 8,
+      "text": "serial: DV102325"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 50,
+      "label": "LICENSE",
+      "partial_hit": false,
+      "record_id": "ocr-oc09-03",
+      "start": 36,
+      "text": "NPI 1082841027"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 40,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "ocr-oc10-00",
+      "start": 30,
+      "text": "king_donna"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 69,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "ocr-oc10-00",
+      "start": 52,
+      "text": "panel_martinez_88"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 42,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "ocr-oc10-01",
+      "start": 30,
+      "text": "ortiz_ashley"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 70,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "ocr-oc10-01",
+      "start": 54,
+      "text": "wgs_hernandez_66"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 42,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "ocr-oc10-02",
+      "start": 30,
+      "text": "taylor_linda"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 72,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "ocr-oc10-02",
+      "start": 54,
+      "text": "methyl_robinson_37"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 38,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "ocr-oc10-03",
+      "start": 26,
+      "text": "carter_susan"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "medium",
+      "end": 65,
+      "label": "SLURM_JOB_NAME",
+      "partial_hit": false,
+      "record_id": "ocr-oc10-03",
+      "start": 50,
+      "text": "panel_chavez_31"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 30,
+      "label": "FAX",
+      "partial_hit": false,
+      "record_id": "ocr-oc11-00",
+      "start": 12,
+      "text": "fax (555) 555-0124"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 30,
+      "label": "FAX",
+      "partial_hit": false,
+      "record_id": "ocr-oc11-01",
+      "start": 12,
+      "text": "fax (555) 555-0135"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 30,
+      "label": "FAX",
+      "partial_hit": false,
+      "record_id": "ocr-oc11-02",
+      "start": 12,
+      "text": "fax (555) 555-0192"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "hard",
+      "end": 30,
+      "label": "FAX",
+      "partial_hit": false,
+      "record_id": "ocr-oc11-03",
+      "start": 12,
+      "text": "fax (555) 555-0148"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 43,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "ocr-oc12-00",
+      "start": 33,
+      "text": "1944-09-26"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 68,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "ocr-oc12-00",
+      "start": 47,
+      "text": "Little Rock, AR 28095"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 73,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "ocr-oc12-01",
+      "start": 53,
+      "text": "Cincinnati, OH 17990"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 49,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "ocr-oc12-02",
+      "start": 39,
+      "text": "1958-02-07"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 71,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "ocr-oc12-02",
+      "start": 53,
+      "text": "St Louis, MO 48291"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 45,
+      "label": "DATE_BARE",
+      "partial_hit": false,
+      "record_id": "ocr-oc12-03",
+      "start": 35,
+      "text": "1943-06-12"
+    },
+    {
+      "channel": "ocr",
+      "difficulty": "easy",
+      "end": 69,
+      "label": "LOCATION",
+      "partial_hit": false,
+      "record_id": "ocr-oc12-03",
+      "start": 49,
+      "text": "Cincinnati, OH 12521"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "easy",
+      "end": 68,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps01-00",
+      "start": 57,
+      "text": "MRN 4474879"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "easy",
+      "end": 67,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps01-01",
+      "start": 56,
+      "text": "MRN 4421360"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "easy",
+      "end": 66,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps01-02",
+      "start": 55,
+      "text": "MRN 4459198"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "easy",
+      "end": 68,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps01-03",
+      "start": 57,
+      "text": "MRN 4441574"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "easy",
+      "end": 70,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "prescrubbed-ps02-00",
+      "start": 44,
+      "text": "laura.gonzalez@example.com"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "easy",
+      "end": 71,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "prescrubbed-ps02-01",
+      "start": 45,
+      "text": "deborah.flores@example.com"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "easy",
+      "end": 70,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "prescrubbed-ps02-02",
+      "start": 45,
+      "text": "charles.scott@example.com"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "easy",
+      "end": 68,
+      "label": "EMAIL",
+      "partial_hit": true,
+      "record_id": "prescrubbed-ps02-03",
+      "start": 43,
+      "text": "susan.jackson@example.net"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "medium",
+      "end": 62,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps03-00",
+      "start": 51,
+      "text": "666-95-4729"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "medium",
+      "end": 62,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps03-01",
+      "start": 51,
+      "text": "666-29-0757"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "medium",
+      "end": 68,
+      "label": "SSN",
+      "partial_hit": true,
+      "record_id": "prescrubbed-ps03-02",
+      "start": 52,
+      "text": "SSN: 907-28-5189"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "medium",
+      "end": 64,
+      "label": "SSN",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps03-03",
+      "start": 53,
+      "text": "666-65-4545"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "medium",
+      "end": 66,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps04-00",
+      "start": 58,
+      "text": "SJ989762"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "medium",
+      "end": 70,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps04-01",
+      "start": 61,
+      "text": "SJ-935782"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "medium",
+      "end": 69,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps04-02",
+      "start": 61,
+      "text": "SJ032543"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "medium",
+      "end": 69,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps04-03",
+      "start": 60,
+      "text": "SJ-593417"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "easy",
+      "end": 92,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps05-00",
+      "start": 77,
+      "text": "+1-555-555-0144"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "easy",
+      "end": 91,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps05-01",
+      "start": 76,
+      "text": "+1-555-555-0150"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "easy",
+      "end": 92,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps05-02",
+      "start": 77,
+      "text": "+1-555-555-0148"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "easy",
+      "end": 91,
+      "label": "PHONE",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps05-03",
+      "start": 76,
+      "text": "+1-555-555-0133"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "hard",
+      "end": 44,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps06-00",
+      "start": 33,
+      "text": "MRN:4415271"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "hard",
+      "end": 45,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps06-01",
+      "start": 34,
+      "text": "MRN:4405663"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "hard",
+      "end": 43,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps06-02",
+      "start": 32,
+      "text": "MRN 44S427O"
+    },
+    {
+      "channel": "prescrubbed",
+      "difficulty": "hard",
+      "end": 49,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "prescrubbed-ps06-03",
+      "start": 35,
+      "text": "M.R.N. 4406625"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 22,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "shell-sh01-00",
+      "start": 11,
+      "text": "MRN 4440506"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 42,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh01-00",
+      "start": 35,
+      "text": "SJOS021"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 22,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "shell-sh01-01",
+      "start": 11,
+      "text": "MRN 4437763"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 43,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh01-01",
+      "start": 35,
+      "text": "SJNBL998"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 43,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh01-02",
+      "start": 35,
+      "text": "SJALL806"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 22,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "shell-sh01-03",
+      "start": 11,
+      "text": "MRN 4406389"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 43,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh01-03",
+      "start": 35,
+      "text": "SJALL963"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 33,
+      "label": "EMAIL",
+      "partial_hit": false,
+      "record_id": "shell-sh02-00",
+      "start": 6,
+      "text": "margaret.hughes@example.org"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 32,
+      "label": "EMAIL",
+      "partial_hit": false,
+      "record_id": "shell-sh02-01",
+      "start": 6,
+      "text": "barbara.watson@example.net"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 30,
+      "label": "EMAIL",
+      "partial_hit": false,
+      "record_id": "shell-sh02-02",
+      "start": 6,
+      "text": "laura.rivera@example.net"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 31,
+      "label": "EMAIL",
+      "partial_hit": false,
+      "record_id": "shell-sh02-03",
+      "start": 6,
+      "text": "olivia.cooper@example.com"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 28,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "shell-sh03-00",
+      "start": 14,
+      "text": "198.51.100.180"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 26,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "shell-sh03-01",
+      "start": 14,
+      "text": "203.0.113.83"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 26,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "shell-sh03-02",
+      "start": 14,
+      "text": "203.0.113.74"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 25,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "shell-sh03-03",
+      "start": 14,
+      "text": "192.0.2.113"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 55,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "shell-sh04-00",
+      "start": 41,
+      "text": "campbell_kevin"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 54,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "shell-sh04-01",
+      "start": 41,
+      "text": "reed_patricia"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 54,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "shell-sh04-02",
+      "start": 43,
+      "text": "rogers_eric"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 56,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "shell-sh04-03",
+      "start": 42,
+      "text": "white_jennifer"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 56,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "shell-sh05-00",
+      "start": 10,
+      "text": "https://records.example.com/chart/lewis/112826"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 58,
+      "label": "URL",
+      "partial_hit": true,
+      "record_id": "shell-sh05-01",
+      "start": 10,
+      "text": "https://records.example.com/chart/sanchez/718656"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 57,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "shell-sh05-02",
+      "start": 10,
+      "text": "https://records.example.org/chart/brooks/474403"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 59,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "shell-sh05-03",
+      "start": 10,
+      "text": "https://records.example.net/chart/gonzalez/641725"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 29,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh06-00",
+      "start": 20,
+      "text": "SJ-130359"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 28,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh06-01",
+      "start": 20,
+      "text": "SJ_21559"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 28,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh06-02",
+      "start": 20,
+      "text": "SJ_27109"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 28,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh06-03",
+      "start": 20,
+      "text": "SJ427309"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 27,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh07-00",
+      "start": 19,
+      "text": "SJAML557"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 42,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "shell-sh07-00",
+      "start": 28,
+      "text": "flores_charles"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 27,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh07-01",
+      "start": 19,
+      "text": "SJAML460"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 42,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "shell-sh07-01",
+      "start": 28,
+      "text": "flores_barbara"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 26,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh07-02",
+      "start": 19,
+      "text": "SJMB984"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 43,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "shell-sh07-02",
+      "start": 27,
+      "text": "walker_elizabeth"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 27,
+      "label": "SUBJECT_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh07-03",
+      "start": 19,
+      "text": "SJNBL974"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 38,
+      "label": "NAME",
+      "partial_hit": false,
+      "record_id": "shell-sh07-03",
+      "start": 28,
+      "text": "kim_joshua"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 20,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh08-00",
+      "start": 12,
+      "text": "SMP09573"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 43,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "shell-sh08-00",
+      "start": 28,
+      "text": "2001:db8:f4::75"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 21,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh08-01",
+      "start": 12,
+      "text": "LIB631907"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 44,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "shell-sh08-01",
+      "start": 29,
+      "text": "2001:db8:92::74"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 21,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh08-02",
+      "start": 12,
+      "text": "LIB266000"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 44,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "shell-sh08-02",
+      "start": 29,
+      "text": "2001:db8:32::68"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 20,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh08-03",
+      "start": 12,
+      "text": "SMP46161"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 43,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "shell-sh08-03",
+      "start": 28,
+      "text": "2001:db8:73::55"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "hard",
+      "end": 19,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "shell-sh09-00",
+      "start": 8,
+      "text": "MRN:4402931"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 38,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh10-00",
+      "start": 25,
+      "text": "SJ8338_normal"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 38,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh10-01",
+      "start": 25,
+      "text": "SJ7565_normal"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 35,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh10-02",
+      "start": 25,
+      "text": "SJ6296_rel"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 38,
+      "label": "SAMPLE_ID",
+      "partial_hit": false,
+      "record_id": "shell-sh10-03",
+      "start": 25,
+      "text": "SJ2735_normal"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 79,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "shell-sh11-00",
+      "start": 32,
+      "text": "https://records.example.org/chart/garcia/370710"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 79,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "shell-sh11-01",
+      "start": 32,
+      "text": "https://records.example.com/chart/bailey/129518"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 78,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "shell-sh11-02",
+      "start": 32,
+      "text": "https://records.example.org/chart/lewis/487118"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "medium",
+      "end": 80,
+      "label": "URL",
+      "partial_hit": false,
+      "record_id": "shell-sh11-03",
+      "start": 32,
+      "text": "https://records.example.com/chart/edwards/419184"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 20,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "shell-sh12-00",
+      "start": 10,
+      "text": "192.0.2.86"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 22,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "shell-sh12-01",
+      "start": 10,
+      "text": "203.0.113.50"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 22,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "shell-sh12-02",
+      "start": 10,
+      "text": "203.0.113.60"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 20,
+      "label": "IP",
+      "partial_hit": false,
+      "record_id": "shell-sh12-03",
+      "start": 10,
+      "text": "192.0.2.11"
+    },
+    {
+      "channel": "shell",
+      "difficulty": "easy",
+      "end": 70,
+      "label": "MRN",
+      "partial_hit": false,
+      "record_id": "shell-sh12-03",
+      "start": 59,
+      "text": "MRN 4402367"
+    }
+  ],
+  "must_survive_violations": [
+    {
+      "channel": "prescrubbed",
+      "record_id": "prescrubbed-ps01-00",
+      "text": "EMAIL_1eae368eb11a"
+    },
+    {
+      "channel": "prescrubbed",
+      "record_id": "prescrubbed-ps01-03",
+      "text": "EMAIL_d4db333b10ed"
+    },
+    {
+      "channel": "prescrubbed",
+      "record_id": "prescrubbed-ps02-00",
+      "text": "[DATE:1998]"
+    },
+    {
+      "channel": "prescrubbed",
+      "record_id": "prescrubbed-ps02-01",
+      "text": "EMAIL_4462760dcfe3"
+    },
+    {
+      "channel": "prescrubbed",
+      "record_id": "prescrubbed-ps02-01",
+      "text": "[DATE:1977]"
+    },
+    {
+      "channel": "prescrubbed",
+      "record_id": "prescrubbed-ps02-02",
+      "text": "EMAIL_256311a16414"
+    },
+    {
+      "channel": "prescrubbed",
+      "record_id": "prescrubbed-ps02-02",
+      "text": "[DATE:1960]"
+    },
+    {
+      "channel": "prescrubbed",
+      "record_id": "prescrubbed-ps02-03",
+      "text": "MRN_756ee6aaaf96"
+    },
+    {
+      "channel": "prescrubbed",
+      "record_id": "prescrubbed-ps02-03",
+      "text": "[DATE:1983]"
+    }
+  ]
+}

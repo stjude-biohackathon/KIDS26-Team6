@@ -27,12 +27,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
-from .. import detect, mask_token, normalize_text, render
+from .. import detect, mask_token, normalize_text, render, resolve
 from ..allowlist import Allowlist
 from ..labels import HIPAA_BY_LABEL, hipaa_rollup
 from ..engines.base import EngineUnavailable
 from ..engines.registry import load as load_engine
-from ..spans import Detector
+from ..spans import Detector, Span
 from .corpus import Corpus, load as load_corpus
 from .generate import GATED_DIFFICULTIES
 from .scorer import Prediction, Scorecard, score
@@ -40,6 +40,10 @@ from .scorer import Prediction, Scorecard, score
 DEFAULT_DENY_TERMS = ("patient", "diagnosis", "pathology")
 
 THRESHOLDS_FILENAME = "thresholds.json"
+MODEL_ONLY_ENGINES = {
+    "gliner-only": "gliner",
+    "gliner2-pii-only": "gliner2-pii",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,8 +76,29 @@ def build_detectors(engine: str) -> list[Detector]:
 
     if engine == "regex":
         return []
+    if engine in MODEL_ONLY_ENGINES:
+        return [load_engine(MODEL_ONLY_ENGINES[engine])]
     names = [name for name in engine.split("+") if name and name != "regex"]
     return [load_engine(name) for name in names]
+
+
+def _detect_model_only(
+    texts: Sequence[str],
+    detectors: Sequence[Detector],
+    allowlist: Allowlist,
+) -> list[list[Span]]:
+    """Run model detectors without the production regex floor.
+
+    This path exists only for evaluation. Production capture and sealing always
+    use :func:`autocab.deid.detect`, which includes regex rules.
+    """
+
+    per_detector = [detector.detect(texts) for detector in detectors]
+    output: list[list[Span]] = []
+    for index, text in enumerate(texts):
+        candidates = [span for results in per_detector for span in results[index]]
+        output.append(resolve(text, candidates, keeps=allowlist.keeps))
+    return output
 
 
 def predict(
@@ -82,6 +107,7 @@ def predict(
     engine: str = "regex",
     deny_terms: Sequence[str] = DEFAULT_DENY_TERMS,
     allowlist: Allowlist | None = None,
+    detectors: Sequence[Detector] | None = None,
 ) -> tuple[list[Prediction], Latency]:
     """Detect and mask every record.
 
@@ -90,12 +116,16 @@ def predict(
     pseudonymizer would make the scorecard depend on an ephemeral key.
     """
 
-    detectors = build_detectors(engine)
+    if detectors is None:
+        detectors = build_detectors(engine)
     texts = [normalize_text(record.text) for record in corpus]
     allowlist = allowlist or Allowlist.default()
 
     started = time.perf_counter()
-    all_spans = detect(texts, detectors=detectors, deny_terms=deny_terms, allowlist=allowlist)
+    if engine in MODEL_ONLY_ENGINES:
+        all_spans = _detect_model_only(texts, detectors, allowlist)
+    else:
+        all_spans = detect(texts, detectors=detectors, deny_terms=deny_terms, allowlist=allowlist)
     elapsed = time.perf_counter() - started
 
     predictions: list[Prediction] = []

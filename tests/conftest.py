@@ -30,8 +30,9 @@ def no_weight_downloads(tmp_path_factory):
     have to remember to request is a guard that is missing from the test that
     needed it.
 
-    This is in place before ``engines/gliner_onnx.py`` exists, on purpose: the
-    guard should predate the thing it guards against.
+    The GLiNER engine resolves only verified files under ``WFREC_HOME``. These
+    variables provide a second guard against a future library change that might
+    otherwise introduce an implicit Hub request.
     """
 
     cache = tmp_path_factory.mktemp("hf-cache-guard")

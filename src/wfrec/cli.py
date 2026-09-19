@@ -279,10 +279,23 @@ def build_parser() -> argparse.ArgumentParser:
     deid = sub.add_parser("deid", help="De-identification model weights and provider status.")
     deid_verbs = deid.add_subparsers(dest="deid_command", required=True)
     fetch = deid_verbs.add_parser("fetch", help="Download and verify the pinned model weights.")
-    fetch.add_argument("--bundle", type=Path, default=None, help="Write an air-gap bundle instead.")
+    fetch.add_argument(
+        "--bundle",
+        type=Path,
+        default=None,
+        help="Write a verified ZIP for transfer to an offline computer.",
+    )
+    fetch.add_argument(
+        "--model",
+        choices=("gliner", "gliner2-pii"),
+        default="gliner",
+        help="Pinned model snapshot to download. Default: gliner.",
+    )
     load_weights = deid_verbs.add_parser("load", help="Install an air-gap bundle.")
     load_weights.add_argument("bundle", type=Path)
-    deid_verbs.add_parser("verify", help="Re-verify every weight file's sha256.")
+    load_weights.add_argument("--model", choices=("gliner", "gliner2-pii"), default="gliner")
+    verify_weights = deid_verbs.add_parser("verify", help="Re-verify every weight file's sha256.")
+    verify_weights.add_argument("--model", choices=("gliner", "gliner2-pii"), default="gliner")
     deid_verbs.add_parser("providers", help="List LLM providers with their resolved egress class.")
 
     return parser
@@ -1016,6 +1029,7 @@ def _seal(args: argparse.Namespace, as_json: bool) -> int:
 
 def _deid(args: argparse.Namespace, as_json: bool) -> int:
     from autocab.deid.engines.registry import available_engines
+    from autocab.deid.models import fetch_weights, load_bundle, verify_weights
 
     verb = args.deid_command
     if verb == "providers":
@@ -1038,12 +1052,56 @@ def _deid(args: argparse.Namespace, as_json: bool) -> int:
         assert callable(classify)
         return 0
 
-    error(
-        f"`wfrec deid {verb}` needs the packaged model tier, which is build spec "
-        "step 8 and is not implemented in this build. The regex tier works with "
-        "no weights: `wfrec seal --engine regex`."
-    )
-    return 1
+    if verb == "fetch":
+        result = fetch_weights(args.bundle, model=args.model)
+        payload = (
+            {"bundle": str(result), "model_key": args.model}
+            if isinstance(result, Path)
+            else result.to_dict()
+        )
+        if as_json:
+            _emit(payload, True)
+        elif isinstance(result, Path):
+            summary("Created model offline bundle", [("Model", args.model), ("Bundle", result)])
+        else:
+            summary(
+                "Downloaded de-identification model",
+                [("Path", result.path), ("Revision", payload["revision"]), ("Verified", "yes")],
+            )
+        return 0
+
+    if verb == "load":
+        status = load_bundle(args.bundle, model=args.model)
+        if as_json:
+            _emit(status.to_dict(), True)
+        else:
+            summary(
+                "Installed de-identification model",
+                [
+                    ("Path", status.path),
+                    ("Revision", status.to_dict()["revision"]),
+                    ("Verified", "yes"),
+                ],
+            )
+        return 0
+
+    if verb == "verify":
+        status = verify_weights(model=args.model)
+        if as_json:
+            _emit(status.to_dict(), True)
+        elif status.valid:
+            summary(
+                "Verified de-identification model",
+                [("Path", status.path), ("Revision", status.to_dict()["revision"])],
+            )
+        else:
+            error(f"{status.spec.name} verification failed at {status.path}")
+            for problem in status.problems:
+                warning(problem)
+            warning(f"Run `wfrec deid fetch --model {args.model}` to install or repair it.")
+        return 0 if status.valid else 1
+
+    raise ValueError(f"Unhandled de-identification command: {verb}")
 
 
 def _export(args: argparse.Namespace, as_json: bool) -> int:

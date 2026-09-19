@@ -488,6 +488,13 @@ class Allowlist:
         for pattern in self.surface_patterns:
             if pattern.fullmatch(surface):
                 return True
+            # Contextual models sometimes clip punctuation from an otherwise
+            # exact structured token, such as returning `Leu392Cys` from
+            # `p.Leu392Cys`. A span contained inside a known public-data shape
+            # is no more sensitive than the complete token.
+            for match in pattern.finditer(text):
+                if match.start() <= span.start and span.end <= match.end():
+                    return True
         for pattern in self.context_patterns:
             for match in pattern.finditer(text):
                 # An exact span adds nothing beyond the surface patterns.
