@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import shutil
+import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,10 +27,16 @@ SOURCE_REVISION = "4e091416cf7c3481db542c2a3d26156916f3a47f"
 MODEL_LICENSE = "apache-2.0"
 MANIFEST_FILENAME = "manifest.json"
 DEFAULT_DOWNLOAD_CONCURRENCY = 8
-DOWNLOAD_PROGRESS_NOTE = (
-    "Downloading model weights. Xet progress may remain at 0% until its first "
-    "chunk completes."
+HTTP_DOWNLOAD_TIMEOUT_SECONDS = 300
+XET_DOWNLOAD_PROGRESS_NOTE = (
+    "Downloading model weights. Xet progress may remain at 0% until its first chunk completes."
 )
+HTTP_DOWNLOAD_PROGRESS_NOTE = (
+    "Downloading model weights over resumable HTTP. Run the same command again "
+    "to resume after an interruption."
+)
+HUB_DISABLE_XET_VARIABLE = "HF_HUB_DISABLE_XET"
+HUB_DOWNLOAD_TIMEOUT_VARIABLE = "HF_HUB_DOWNLOAD_TIMEOUT"
 XET_INITIAL_CONCURRENCY_VARIABLE = "HF_XET_CLIENT_AC_INITIAL_DOWNLOAD_CONCURRENCY"
 XET_CACHE_VARIABLE = "HF_XET_CACHE"
 
@@ -215,6 +222,15 @@ def model_xet_cache_root() -> Path:
     return paths.home() / "models" / ".xet-cache"
 
 
+def download_progress_note(model: str) -> str:
+    """Describe the transfer mode used for a model download."""
+
+    _model_spec(model)
+    if model == "gliner2-pii":
+        return HTTP_DOWNLOAD_PROGRESS_NOTE
+    return XET_DOWNLOAD_PROGRESS_NOTE
+
+
 def manifest(model: str = "gliner") -> dict[str, object]:
     """Return the exact metadata written beside installed files and bundles."""
 
@@ -309,25 +325,57 @@ def resolve_weights(directory: Path | None = None, *, model: str = "gliner") -> 
 
 
 @contextmanager
-def _download_environment(value: int = DEFAULT_DOWNLOAD_CONCURRENCY) -> Iterator[None]:
-    """Start Xet promptly while preserving adaptive control and local storage.
+def _download_environment(
+    *,
+    use_xet: bool = True,
+    value: int = DEFAULT_DOWNLOAD_CONCURRENCY,
+) -> Iterator[None]:
+    """Set transfer defaults while preserving operator overrides.
 
     Hugging Face reads transfer settings when its download stack starts. Model
     fetching is an explicit foreground operation, so temporarily setting the
     process environment here keeps the policy local to that operation.
     """
 
-    defaults = {
-        XET_INITIAL_CONCURRENCY_VARIABLE: str(value),
-        XET_CACHE_VARIABLE: str(model_xet_cache_root()),
+    settings = {
+        HUB_DOWNLOAD_TIMEOUT_VARIABLE: str(HTTP_DOWNLOAD_TIMEOUT_SECONDS),
     }
-    previous = {name: os.environ.get(name) for name in defaults}
-    for name, default in defaults.items():
-        if previous[name] is None:
-            os.environ[name] = default
+    if use_xet:
+        settings.update(
+            {
+                XET_INITIAL_CONCURRENCY_VARIABLE: str(value),
+                XET_CACHE_VARIABLE: str(model_xet_cache_root()),
+            }
+        )
+    else:
+        settings[HUB_DISABLE_XET_VARIABLE] = "1"
+    previous = {name: os.environ.get(name) for name in settings}
+    for name, setting in settings.items():
+        if name == HUB_DISABLE_XET_VARIABLE or previous[name] is None:
+            os.environ[name] = setting
+
+    hub_constants = sys.modules.get("huggingface_hub.constants")
+    previous_constants: dict[str, object] = {}
+    if hub_constants is not None:
+        previous_constants[HUB_DOWNLOAD_TIMEOUT_VARIABLE] = getattr(
+            hub_constants, HUB_DOWNLOAD_TIMEOUT_VARIABLE
+        )
+        setattr(
+            hub_constants,
+            HUB_DOWNLOAD_TIMEOUT_VARIABLE,
+            int(os.environ[HUB_DOWNLOAD_TIMEOUT_VARIABLE]),
+        )
+        if not use_xet:
+            previous_constants[HUB_DISABLE_XET_VARIABLE] = getattr(
+                hub_constants, HUB_DISABLE_XET_VARIABLE
+            )
+            setattr(hub_constants, HUB_DISABLE_XET_VARIABLE, True)
     try:
         yield
     finally:
+        if hub_constants is not None:
+            for name, original in previous_constants.items():
+                setattr(hub_constants, name, original)
         for name, original in previous.items():
             if original is None:
                 os.environ.pop(name, None)
@@ -340,7 +388,7 @@ def _download_to(directory: Path, spec: ModelSpec) -> None:
     cache.mkdir(parents=True, exist_ok=True)
     model_xet_cache_root().mkdir(parents=True, exist_ok=True)
 
-    with _download_environment():
+    with _download_environment(use_xet=spec.key != "gliner2-pii"):
         try:
             from huggingface_hub import hf_hub_download
         except ImportError as exc:  # pragma: no cover - dependency metadata prevents this

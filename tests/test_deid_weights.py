@@ -60,6 +60,9 @@ def test_fetch_bundle_load_and_verify_are_hash_checked(
             models.DEFAULT_DOWNLOAD_CONCURRENCY
         )
         assert Path(os.environ[models.XET_CACHE_VARIABLE]) == models.model_xet_cache_root()
+        assert os.environ[models.HUB_DOWNLOAD_TIMEOUT_VARIABLE] == str(
+            models.HTTP_DOWNLOAD_TIMEOUT_SECONDS
+        )
         destination = Path(cache_dir) / filename
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(source_files[filename])
@@ -79,6 +82,7 @@ def test_fetch_bundle_load_and_verify_are_hash_checked(
     assert models.verify_weights().valid is True
     assert models.XET_INITIAL_CONCURRENCY_VARIABLE not in os.environ
     assert models.XET_CACHE_VARIABLE not in os.environ
+    assert models.HUB_DOWNLOAD_TIMEOUT_VARIABLE not in os.environ
 
     installed.path.joinpath(pinned[0].local_name).write_bytes(b"corrupt")
     corrupt = models.verify_weights()
@@ -108,19 +112,73 @@ def test_interrupted_download_keeps_the_hub_cache(
     assert partial.read_bytes() == b"partial model data"
 
 
+def test_gliner2_download_uses_resumable_http(
+    autocab_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    content = b"small-gliner2-fixture"
+    model_file = _model_file("model.safetensors", "model.safetensors", content)
+    spec = models.ModelSpec(
+        key="gliner2-pii",
+        name="gliner2-fixture",
+        repository="example/gliner2-fixture",
+        revision="abc123",
+        source_repository="example/gliner2-fixture",
+        source_revision="abc123",
+        license="apache-2.0",
+        variant="fixture",
+        files=(model_file,),
+    )
+    monkeypatch.setitem(models.MODEL_SPECS, "gliner2-pii", spec)
+
+    def fake_download(*, filename: str, cache_dir: Path, **_kwargs: object) -> str:
+        import huggingface_hub.constants as hub_constants
+
+        assert os.environ[models.HUB_DISABLE_XET_VARIABLE] == "1"
+        assert os.environ[models.HUB_DOWNLOAD_TIMEOUT_VARIABLE] == str(
+            models.HTTP_DOWNLOAD_TIMEOUT_SECONDS
+        )
+        assert hub_constants.HF_HUB_DISABLE_XET is True
+        assert hub_constants.HF_HUB_DOWNLOAD_TIMEOUT == models.HTTP_DOWNLOAD_TIMEOUT_SECONDS
+        destination = Path(cache_dir) / filename
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(content)
+        return str(destination)
+
+    import huggingface_hub
+    import huggingface_hub.constants as hub_constants
+
+    previous_disable_xet = hub_constants.HF_HUB_DISABLE_XET
+    previous_timeout = hub_constants.HF_HUB_DOWNLOAD_TIMEOUT
+
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", fake_download)
+
+    status = models.fetch_weights(model="gliner2-pii")
+
+    assert isinstance(status, models.WeightStatus)
+    assert status.valid is True
+    assert models.HUB_DISABLE_XET_VARIABLE not in os.environ
+    assert models.HUB_DOWNLOAD_TIMEOUT_VARIABLE not in os.environ
+    assert hub_constants.HF_HUB_DISABLE_XET is previous_disable_xet
+    assert hub_constants.HF_HUB_DOWNLOAD_TIMEOUT == previous_timeout
+
+
 def test_download_environment_preserves_operator_overrides(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     custom_cache = Path("/custom/xet-cache")
     monkeypatch.setenv(models.XET_INITIAL_CONCURRENCY_VARIABLE, "3")
     monkeypatch.setenv(models.XET_CACHE_VARIABLE, str(custom_cache))
+    monkeypatch.setenv(models.HUB_DOWNLOAD_TIMEOUT_VARIABLE, "600")
 
     with models._download_environment():
         assert os.environ[models.XET_INITIAL_CONCURRENCY_VARIABLE] == "3"
         assert Path(os.environ[models.XET_CACHE_VARIABLE]) == custom_cache
+        assert os.environ[models.HUB_DOWNLOAD_TIMEOUT_VARIABLE] == "600"
 
     assert os.environ[models.XET_INITIAL_CONCURRENCY_VARIABLE] == "3"
     assert Path(os.environ[models.XET_CACHE_VARIABLE]) == custom_cache
+    assert os.environ[models.HUB_DOWNLOAD_TIMEOUT_VARIABLE] == "600"
 
 
 def test_bundle_must_match_the_pinned_manifest(
