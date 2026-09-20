@@ -19,6 +19,8 @@ from rich.table import Table
 from rich.text import Text
 
 from autocab.output import (
+    ACCENT_STYLE,
+    heading_text,
     plain_text as _plain_text,
     status_table as _status_table,
     status_text as _status_text,
@@ -396,7 +398,7 @@ def render(report: dict[str, Any]) -> Group:
 
     platform_info = report["platform"]
     heading = Text.assemble(
-        (f"wfrec {report['wfrec_version']}", "bold cyan"),
+        heading_text(f"wfrec {report['wfrec_version']}"),
         (f"  Python {report['python']}", "dim"),
     )
 
@@ -415,7 +417,9 @@ def render(report: dict[str, Any]) -> Group:
     daemon = report.get("daemon")
     system.add_row(
         "Daemon",
-        _plain_text(daemon["url"], "cyan") if daemon else Text("Not running", style="yellow"),
+        _plain_text(daemon["url"], ACCENT_STYLE)
+        if daemon
+        else Text("Not running", style="yellow"),
     )
 
     state = report["state"]
@@ -486,16 +490,16 @@ def render(report: dict[str, Any]) -> Group:
     sections: list[Any] = [
         heading,
         Text(""),
-        Text("System", style="bold"),
+        heading_text("System"),
         system,
         Text(""),
-        Text("Sources", style="bold"),
+        heading_text("Sources"),
         sources,
         Text(""),
-        Text("Shell hooks", style="bold"),
+        heading_text("Shell hooks"),
         hooks,
         Text(""),
-        Text("PHI redaction", style="bold"),
+        heading_text("PHI redaction"),
         deid,
     ]
     if report["warnings"]:

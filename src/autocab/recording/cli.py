@@ -19,9 +19,11 @@ from rich.text import Text
 from autocab.deid.engines.registry import ENGINE_CHOICES
 from autocab.deid.policy import PROFILES
 from autocab.output import (
+    ACCENT_STYLE,
     console,
     data_table,
     error,
+    heading_text,
     plain_text,
     status_table,
     status_text,
@@ -405,7 +407,7 @@ def _dispatch(args: argparse.Namespace, as_json: bool) -> int:
                     plain_text(", ".join(people) or "None"),
                     coverage,
                 )
-            console.print(Text("\nWorkflow families", style="bold"), families)
+            console.print(heading_text("Workflow families", leading_blank=True), families)
             for entry in result["skipped"]:
                 warning(f"Skipped {entry['session']}: {entry['error']}")
         return 0
@@ -725,7 +727,7 @@ def _print_status(result: dict) -> None:
             Text(""),
             plain_text(result.get("shell_output_reason", "")),
         )
-    console.print(Text("\nSources", style="bold"), sources)
+    console.print(heading_text("Sources", leading_blank=True), sources)
 
 
 def _note_text(args: argparse.Namespace) -> str:
@@ -753,7 +755,7 @@ def _hooks(args: argparse.Namespace, as_json: bool) -> int:
                     plain_text(entry.get("rc_file") or ""),
                     plain_text(entry.get("backup") or ""),
                 )
-            console.print(Text("Shell hooks", style="bold cyan"), table)
+            console.print(heading_text("Shell hooks"), table)
             console.print(
                 Text(
                     "\nOpen a new terminal, or run this in an existing one:",
@@ -763,7 +765,7 @@ def _hooks(args: argparse.Namespace, as_json: bool) -> int:
             console.print(
                 plain_text(
                     hookinstall.eval_line(shells[0] if shells else "bash"),
-                    "cyan",
+                    ACCENT_STYLE,
                 )
             )
         return 0
@@ -779,7 +781,7 @@ def _hooks(args: argparse.Namespace, as_json: bool) -> int:
                     plain_text(entry["shell"]),
                     plain_text(entry["rc_file"]),
                 )
-            console.print(Text("Removed shell hooks", style="bold cyan"), table)
+            console.print(heading_text("Removed shell hooks"), table)
         else:
             success("No wfrec hooks were installed.")
         return 0
@@ -804,7 +806,7 @@ def _hooks(args: argparse.Namespace, as_json: bool) -> int:
                 plain_text(entry["shell"]),
                 plain_text(", ".join(locations) or "Not installed"),
             )
-        console.print(Text("Shell hooks", style="bold cyan"), table)
+        console.print(heading_text("Shell hooks"), table)
     return 0
 
 
@@ -847,7 +849,7 @@ def _sessions(as_json: bool) -> int:
             plain_text(s.manifest.analyst),
             plain_text(s.manifest.title or "Untitled"),
         )
-    console.print(Text("Sessions", style="bold cyan"), table)
+    console.print(heading_text("Sessions"), table)
     return 0
 
 
@@ -883,7 +885,7 @@ def _events(args: argparse.Namespace, as_json: bool) -> int:
             plain_text(_event_type_label(event)),
             plain_text(event_summary),
         )
-    console.print(Text("Timeline events", style="bold cyan"), table)
+    console.print(heading_text("Timeline events"), table)
     return 0
 
 
@@ -1131,12 +1133,12 @@ def _export(args: argparse.Namespace, as_json: bool) -> int:
     files = data_table("Written file")
     for path in result["written"]:
         files.add_row(plain_text(path))
-    console.print(Text("\nFiles", style="bold"), files)
-    console.print(Text("\nRun with AutoCAB", style="bold"))
+    console.print(heading_text("Files", leading_blank=True), files)
+    console.print(heading_text("Run with AutoCAB", leading_blank=True))
     console.print(
         plain_text(
             f"autocab demo --input-mode session --session-dir {session.root}",
-            "cyan",
+            ACCENT_STYLE,
         )
     )
     return 0
@@ -1206,5 +1208,5 @@ def _pull(args: argparse.Namespace, as_json: bool) -> int:
             files = data_table("Spool file")
             for name in pulled["pulled"]:
                 files.add_row(plain_text(name))
-            console.print(Text("\nFiles", style="bold"), files)
+            console.print(heading_text("Files", leading_blank=True), files)
     return 0
