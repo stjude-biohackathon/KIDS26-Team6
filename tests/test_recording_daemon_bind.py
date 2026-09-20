@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from autocab.recording.daemon import _dashboard_panel_content
 from autocab.recording.bind import (
     DaemonBind,
     daemon_summary_rows,
@@ -98,6 +99,29 @@ def test_daemon_summary_rows_loopback(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "http://192.168.186.6:8787" in rows["Private"]
     assert "http://10.220.17.6:8787" in rows["Public"]
     assert "bind-all" in rows["Remote access"].lower()
+
+
+def test_dashboard_panel_content_condenses_duplicate_loopback_urls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "autocab.recording.bind.hostname_interface_ips",
+        lambda: ("10.220.17.6", "192.168.186.6"),
+    )
+    monkeypatch.setattr("autocab.recording.bind.socket.gethostname", lambda: "node")
+    bind = DaemonBind(
+        listen_host="127.0.0.1",
+        port=8787,
+        public_url="http://127.0.0.1:8787",
+    )
+
+    panel_rows, hint = _dashboard_panel_content(daemon_summary_rows(bind))
+    labels = [label for label, _value in panel_rows]
+
+    assert labels[:4] == ["Status", "Browser", "Bind", "Host"]
+    assert "Local" not in labels
+    assert labels[-1] == "Sessions"
+    assert hint == "Network access: use --bind-all --allow-remote for Private/Public URLs"
 
 
 def test_daemon_summary_rows_bind_all(monkeypatch: pytest.MonkeyPatch) -> None:
