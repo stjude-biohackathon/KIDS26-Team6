@@ -72,26 +72,20 @@
   content: "";
 }
 
-.forge-workflow__stages li::after {
-  position: absolute;
-  z-index: 0;
-  top: 50%;
-  right: 8px;
-  left: 15px;
-  height: 1px;
-  background: var(--line);
-  content: "";
-}
-
 .forge-workflow__stages li > span {
   position: relative;
   z-index: 1;
-  padding-right: 8px;
   background: var(--panel);
 }
 
-.forge-workflow__stages li:last-child::after {
-  display: none;
+.forge-workflow__arrow {
+  width: auto;
+  height: 12px;
+  min-width: 14px;
+  flex: 1 1 auto;
+  margin-right: 8px;
+  color: var(--line);
+  overflow: visible;
 }
 
 .forge-workflow__stages li.is-complete {
@@ -331,16 +325,23 @@
 
   .forge-workflow__stages {
     grid-template-columns: 1fr;
-    gap: 6px;
+    gap: 18px;
   }
 
-  .forge-workflow__stages li::after {
-    display: none;
+  .forge-workflow__arrow {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: -3px;
+    width: 16px;
+    height: 8px;
+    margin: 0;
+    transform: rotate(90deg);
   }
 }
 
 @media (forced-colors: active) {
-  .forge-workflow__stages li::before {
+  .forge-workflow__stages li::before,
+  .forge-workflow__arrow {
     forced-color-adjust: none;
   }
 }

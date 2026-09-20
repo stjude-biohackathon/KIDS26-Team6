@@ -971,7 +971,8 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert "Apply PHI redaction?" in body
     assert "seal it for skill creation" in body
     assert ">Apply redaction</button>" in body
-    assert '<li data-stage="redacted"><span>Redacted</span></li>' in body
+    assert '<li data-stage="redacted">' in body
+    assert "<span>Redacted</span>" in body
     assert "Add notes, errors, or decisions." in body
     assert 'id="forge-dialog-open"' in body
     assert ">Open in editor</button>" in body
@@ -1037,6 +1038,20 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert 'class="skip-link" href="#main-content"' in body
     assert '<main id="main-content" tabindex="-1">' in body
     assert "style=" not in body
+
+
+def test_ui_renders_accessible_skill_workflow_arrows(client):
+    body = client.get("/").text
+    stylesheet = client.get("/forge-workflow.css").text
+    arrow_markup = (
+        '<svg class="forge-workflow__arrow" viewBox="0 0 24 12" '
+        'preserveAspectRatio="none" aria-hidden="true" focusable="false">'
+    )
+
+    assert body.count(arrow_markup) == 5
+    assert body.count('vector-effect="non-scaling-stroke"') == 5
+    assert ".forge-workflow__arrow" in stylesheet
+    assert "transform: rotate(90deg)" in stylesheet
 
 
 def test_ui_serves_packaged_stylesheet(client):
