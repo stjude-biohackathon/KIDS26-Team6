@@ -10,6 +10,8 @@ const {
   isSealIntegrityError,
   resolveDependencyQuestion,
   resolveInputOutputQuestion,
+  runOptionLabel,
+  selectRun,
   stateModel
 } = window.WfrecForgeWorkflow;
 
@@ -83,6 +85,27 @@ test('approval and packaging remain separate actions', () => {
   assert.equal(approved.label, 'Package skill');
 });
 
+test('forge run history labels identify the newest run and its state', () => {
+  const label = runOptionLabel({
+    run_id:'20260920T120000Z-1234abcd',
+    state:'blocked',
+    created_at:'2026-09-20T12:00:00Z'
+  }, 0);
+
+  assert.equal(label, 'Newest · Blocked · 2026-09-20 12:00:00Z · 1234abcd');
+});
+
+test('forge run selection preserves history choices and defaults to newest', () => {
+  const runs = [
+    {run_id:'new-run', state:'blocked'},
+    {run_id:'old-run', state:'packaged'}
+  ];
+
+  assert.equal(selectRun(runs, 'old-run').run_id, 'old-run');
+  assert.equal(selectRun(runs, 'missing-run').run_id, 'new-run');
+  assert.equal(selectRun([], 'missing-run'), null);
+});
+
 test('input and output answers become structured user-confirmed roles', () => {
   const spec = {
     assumptions:[], evidence:[], inputs:[], outputs:[],
@@ -143,7 +166,8 @@ test('dependency review keeps selected tools and removes false detections', () =
     runtimeEnvironment:{manager:'none'},
     unresolvedQuestions:[
       {id:'q-input-output-roles', blocking:true},
-      {id:'q-dependency-closure', blocking:true}
+      {id:'q-dependency-closure', blocking:true},
+      {id:'q-runtime-verification', blocking:true}
     ],
     dependencies:[
       {
@@ -173,7 +197,8 @@ test('dependency review keeps selected tools and removes false detections', () =
   assert.match(updated.dependencies[0].notes, /Detected version 2\.51\.0/);
   assert.match(updated.dependencies[0].notes, /Reviewed license: GPL-2\.0-only/);
   assert.deepEqual(updated.unresolvedQuestions, [
-    {id:'q-input-output-roles', blocking:true}
+    {id:'q-input-output-roles', blocking:true},
+    {id:'q-runtime-verification', blocking:true}
   ]);
   assert.equal(updated.steps[0].status, 'blocked');
 });
@@ -183,7 +208,8 @@ test('user-managed dependencies create a manual review-ready skill', () => {
     decision:'blocked', requestedPackaging:'auto', packaging:'cbd', name:'work-cbd',
     codebase:{roots:[]}, evidence:[], licenseDecision:'Unknown',
     runtimeEnvironment:{manager:'none'}, unresolvedQuestions:[
-      {id:'q-dependency-closure', blocking:true}
+      {id:'q-dependency-closure', blocking:true},
+      {id:'q-runtime-verification', blocking:true}
     ],
     dependencies:[{name:'git', evidenceIds:['event-1']}],
     steps:[{
@@ -203,6 +229,7 @@ test('user-managed dependencies create a manual review-ready skill', () => {
   assert.equal(updated.decision, 'novel');
   assert.equal(updated.packaging, 'std');
   assert.equal(updated.name, 'work-std');
+  assert.deepEqual(updated.unresolvedQuestions, []);
 });
 
 test('review resolves current and legacy generated activity rationales', () => {
@@ -210,7 +237,10 @@ test('review resolves current and legacy generated activity rationales', () => {
     decision:'blocked', requestedPackaging:'auto', packaging:'cbd', name:'work-cbd',
     codebase:{roots:[]}, evidence:[], licenseDecision:'Unknown',
     runtimeEnvironment:{manager:'none'}, dependencies:[],
-    unresolvedQuestions:[{id:'q-dependency-closure', blocking:true}],
+    unresolvedQuestions:[
+      {id:'q-dependency-closure', blocking:true},
+      {id:'q-runtime-verification', blocking:true}
+    ],
     steps:[
       {
         status:'blocked', dependencies:[],
@@ -228,6 +258,7 @@ test('review resolves current and legacy generated activity rationales', () => {
   });
 
   assert.deepEqual(updated.steps.map(step => step.status), ['manual', 'manual']);
+  assert.deepEqual(updated.unresolvedQuestions, []);
 });
 
 test('dependency review requires versions and a resolved license status', () => {

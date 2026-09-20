@@ -177,7 +177,12 @@
             <h2 id="forge-workflow-heading">Skill workflow</h2>
             <p id="forge-workflow-summary" class="forge-workflow__summary">Loading skill workflow…</p>
           </div>
-          <button id="forge-workflow-action" type="button" disabled>Create skill draft</button>
+          <div class="forge-workflow__actions">
+            <label class="sr-only" for="forge-run-select">Forge run</label>
+            <select id="forge-run-select" aria-label="Forge run history" hidden></select>
+            <button id="forge-new-run" type="button" hidden>Start new draft</button>
+            <button id="forge-workflow-action" type="button" disabled>Create skill draft</button>
+          </div>
         </div>
         <ol id="forge-workflow-stages" class="forge-workflow__stages" aria-label="Skill workflow progress">
           <li data-stage="recorded"><span>Recorded</span></li>
@@ -364,6 +369,7 @@
     <div class="forge-dialog__actions">
       <button id="forge-dialog-cancel" type="button">Close</button>
       <button id="forge-dialog-open" type="button" hidden title="Open skill-spec.json in the default editor">Open in editor</button>
+      <button id="forge-dialog-reopen" type="button" hidden>Reopen for review</button>
       <button id="forge-dialog-action" class="primary" type="button" hidden></button>
     </div>
   </div>
