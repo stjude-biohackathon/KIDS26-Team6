@@ -20,6 +20,18 @@ NON_MATERIAL_PREFIXES = ("session.", "source.", "screen.recording.")
 GENERATED_ACTIVITY_RATIONALE = (
     "The activity was observed, but its inputs and dependency closure need review."
 )
+RUNTIME_VERIFICATION_QUESTION = {
+    "id": "q-runtime-verification",
+    "question": (
+        "How was the declared runtime rebuilt from scratch and smoke-tested?"
+    ),
+    "blocking": True,
+    "neededArtifacts": [
+        "clean environment or immutable container",
+        "verification platform",
+        "smoke-test result",
+    ],
+}
 SHELL_ONLY_COMMANDS = {
     ".",
     ":",
@@ -267,6 +279,7 @@ def build_blocked_spec(
                 "blocking": True,
                 "neededArtifacts": ["environment lock file", "dependency license records"],
             },
+            dict(RUNTIME_VERIFICATION_QUESTION),
         ],
         "qualityChecks": ["Compare a clean-environment run with the reviewed expected outputs."],
         "failureModes": [

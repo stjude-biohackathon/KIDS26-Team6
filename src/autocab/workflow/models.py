@@ -31,7 +31,7 @@ ALLOWED_TRANSITIONS: dict[ForgeState, frozenset[ForgeState]] = {
     ForgeState.DRAFT: frozenset({ForgeState.BLOCKED, ForgeState.NEEDS_REVIEW}),
     ForgeState.BLOCKED: frozenset({ForgeState.NEEDS_REVIEW}),
     ForgeState.NEEDS_REVIEW: frozenset({ForgeState.BLOCKED, ForgeState.APPROVED}),
-    ForgeState.APPROVED: frozenset({ForgeState.PACKAGED}),
+    ForgeState.APPROVED: frozenset({ForgeState.BLOCKED, ForgeState.PACKAGED}),
     ForgeState.PACKAGED: frozenset(),
 }
 

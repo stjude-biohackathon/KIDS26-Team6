@@ -141,6 +141,16 @@ class ForgeApprovalRequest(BaseModel):
     notes: str = Field(default="", max_length=5_000)
 
 
+class RuntimeVerificationRequest(BaseModel):
+    reviewer: str = Field(min_length=1, max_length=200)
+    result: Literal["passed", "failed", "not_run"]
+    environment: str = Field(default="", max_length=500)
+    platform: str = Field(default="", max_length=500)
+    smoke_test: str = Field(default="", max_length=2_000)
+    notes: str = Field(min_length=1, max_length=5_000)
+    evidence_ref: str = Field(default="", max_length=1_000)
+
+
 def _event_count(session: Session) -> int:
     """Return the append counter without parsing the complete event timeline."""
 
@@ -625,6 +635,31 @@ def create_app(recorder: Recorder, token: str) -> FastAPI:
     @app.post("/forge-runs/{run_id}/approve", dependencies=guard)
     def approve_forge_run(run_id: str, payload: ForgeApprovalRequest) -> dict[str, Any]:
         run = forge_workflow.approve(
+            run_id,
+            reviewer=payload.reviewer,
+            notes=payload.notes,
+        )
+        return forge_detail(run.run_id)
+
+    @app.post("/forge-runs/{run_id}/verify-runtime", dependencies=guard)
+    def verify_forge_runtime(
+        run_id: str, payload: RuntimeVerificationRequest
+    ) -> dict[str, Any]:
+        run = forge_workflow.verify_runtime(
+            run_id,
+            reviewer=payload.reviewer,
+            result=payload.result,
+            environment=payload.environment,
+            platform=payload.platform,
+            smoke_test=payload.smoke_test,
+            notes=payload.notes,
+            evidence_ref=payload.evidence_ref,
+        )
+        return forge_detail(run.run_id)
+
+    @app.post("/forge-runs/{run_id}/reopen", dependencies=guard)
+    def reopen_forge_run(run_id: str, payload: ForgeApprovalRequest) -> dict[str, Any]:
+        run = forge_workflow.reopen(
             run_id,
             reviewer=payload.reviewer,
             notes=payload.notes,

@@ -417,10 +417,13 @@ def _apply_redaction(session_id: str, engine: str | None, *, reseal: bool = Fals
 @click.option("--session", "session_id", required=True, help="Sealed session ID.")
 @click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
 def forge_command(session_id: str, as_json: bool) -> None:
-    """Create an evidence-linked, blocked skill draft from a sealed session."""
+    """Create a new skill draft while preserving any earlier forge runs."""
 
+    prior_runs = RunStore().list(session_id=session_id)
     run = ForgeWorkflow().forge(session_id)
-    _emit(run.to_dict(), title="Skill draft", as_json=as_json)
+    payload = run.to_dict()
+    payload["prior_run_ids"] = [prior_run.run_id for prior_run in prior_runs]
+    _emit(payload, title="New skill draft", as_json=as_json)
 
 
 @cli.command("review")
@@ -452,6 +455,47 @@ def review_command(
     _emit(run.to_dict(), title="Review", as_json=as_json)
 
 
+@cli.command("verify-runtime")
+@click.argument("run_id")
+@click.option("--reviewer", required=True, help="Person who observed the verification.")
+@click.option(
+    "--result",
+    type=click.Choice(("passed", "failed", "not_run")),
+    required=True,
+    help="Observed clean-environment result.",
+)
+@click.option("--environment", default="", help="Clean environment or container used.")
+@click.option("--platform", default="", help="Platform used for verification.")
+@click.option("--smoke-test", default="", help="Smoke-test command or procedure.")
+@click.option("--notes", required=True, help="Verification findings or blocker.")
+@click.option("--evidence-ref", default="", help="Optional log or artifact reference.")
+@click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
+def verify_runtime_command(
+    run_id: str,
+    reviewer: str,
+    result: str,
+    environment: str,
+    platform: str,
+    smoke_test: str,
+    notes: str,
+    evidence_ref: str,
+    as_json: bool,
+) -> None:
+    """Record a runtime check without executing captured workflow commands."""
+
+    run = ForgeWorkflow().verify_runtime(
+        run_id,
+        reviewer=reviewer,
+        result=result,
+        environment=environment,
+        platform=platform,
+        smoke_test=smoke_test,
+        notes=notes,
+        evidence_ref=evidence_ref,
+    )
+    _emit(run.to_dict(), title="Runtime verification", as_json=as_json)
+
+
 @cli.command("approve")
 @click.argument("run_id")
 @click.option("--reviewer", required=True, help="Person granting approval.")
@@ -462,6 +506,18 @@ def approve_command(run_id: str, reviewer: str, notes: str, as_json: bool) -> No
 
     run = ForgeWorkflow().approve(run_id, reviewer=reviewer, notes=notes)
     _emit(run.to_dict(), title="Approval", as_json=as_json)
+
+
+@cli.command("reopen")
+@click.argument("run_id")
+@click.option("--reviewer", required=True, help="Person reopening the approved run.")
+@click.option("--notes", default="", help="Reason the approval must be revisited.")
+@click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
+def reopen_command(run_id: str, reviewer: str, notes: str, as_json: bool) -> None:
+    """Invalidate approval and return an un-packaged run to blocked review."""
+
+    run = ForgeWorkflow().reopen(run_id, reviewer=reviewer, notes=notes)
+    _emit(run.to_dict(), title="Reopened skill draft", as_json=as_json)
 
 
 @cli.command("package")

@@ -13,6 +13,7 @@ from autocab.deid.models import WeightStatus
 from autocab.orchestrator import run_demo
 import autocab.unified_cli as unified_cli
 from autocab.unified_cli import cli
+from autocab.recording.events import Event
 from autocab.recording.session import SessionStore
 
 
@@ -26,7 +27,9 @@ def test_help_lists_the_integrated_workflow_commands() -> None:
         "record",
         "forge",
         "review",
+        "verify-runtime",
         "approve",
+        "reopen",
         "package",
         "status",
     ):
@@ -404,6 +407,113 @@ def test_record_start_uses_the_existing_recorder_service(autocab_home: Path) -> 
     assert result.exit_code == 0, result.output
     session = SessionStore().resolve(None)
     assert session.manifest.title == "Unified CLI"
+
+
+def test_forge_reports_prior_runs_when_creating_a_new_draft(
+    autocab_home: Path,
+    seal_now,
+) -> None:
+    session, _created = SessionStore().start(title="Repeated forge", analyst="analyst")
+    session.writer.append(
+        Event(
+            source="shell",
+            type="shell.command.completed",
+            payload={"command": "python workflow.py", "exit_code": 0},
+        )
+    )
+    seal_now(session)
+
+    first = CliRunner().invoke(cli, ["forge", "--session", session.session_id, "--json"])
+    second = CliRunner().invoke(cli, ["forge", "--session", session.session_id, "--json"])
+
+    assert first.exit_code == 0, first.output
+    assert second.exit_code == 0, second.output
+    first_payload = json.loads(first.output)
+    second_payload = json.loads(second.output)
+    assert first_payload["prior_run_ids"] == []
+    assert second_payload["prior_run_ids"] == [first_payload["run_id"]]
+    assert second_payload["run_id"] != first_payload["run_id"]
+
+
+def test_verify_runtime_cli_records_observed_verification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, str]] = []
+
+    def verify_runtime(_workflow, run_id: str, **details: str) -> SimpleNamespace:
+        calls.append({"run_id": run_id, **details})
+        return SimpleNamespace(to_dict=lambda: {"run_id": run_id, "state": "needs_review"})
+
+    monkeypatch.setattr(unified_cli.ForgeWorkflow, "verify_runtime", verify_runtime)
+    result = CliRunner().invoke(
+        cli,
+        [
+            "verify-runtime",
+            "run-1",
+            "--reviewer",
+            "Verifier",
+            "--result",
+            "passed",
+            "--environment",
+            "fresh prefix",
+            "--platform",
+            "linux-64",
+            "--smoke-test",
+            "python workflow.py fixture.txt",
+            "--notes",
+            "Expected output reproduced.",
+            "--evidence-ref",
+            "verification/run.log",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls == [
+        {
+            "run_id": "run-1",
+            "reviewer": "Verifier",
+            "result": "passed",
+            "environment": "fresh prefix",
+            "platform": "linux-64",
+            "smoke_test": "python workflow.py fixture.txt",
+            "notes": "Expected output reproduced.",
+            "evidence_ref": "verification/run.log",
+        }
+    ]
+
+
+def test_reopen_cli_invalidates_approval_through_the_workflow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, str, str]] = []
+
+    def reopen(
+        _workflow,
+        run_id: str,
+        *,
+        reviewer: str,
+        notes: str,
+    ) -> SimpleNamespace:
+        calls.append((run_id, reviewer, notes))
+        return SimpleNamespace(to_dict=lambda: {"run_id": run_id, "state": "blocked"})
+
+    monkeypatch.setattr(unified_cli.ForgeWorkflow, "reopen", reopen)
+    result = CliRunner().invoke(
+        cli,
+        [
+            "reopen",
+            "run-1",
+            "--reviewer",
+            "Maintainer",
+            "--notes",
+            "Correct runtime evidence.",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls == [("run-1", "Maintainer", "Correct runtime evidence.")]
 
 
 def test_migrate_copies_legacy_sessions_into_autocab_home(tmp_path: Path) -> None:

@@ -257,6 +257,31 @@ def test_forge_api_exposes_blocked_review_state(client):
     assert "needs_review" in approval.json()["detail"]
 
 
+def test_forge_api_preserves_prior_runs_when_starting_a_new_draft(client):
+    started = client.post(
+        "/sessions/start", json={"title": "Repeatable workflow", "analyst": "analyst"}
+    ).json()
+    session_id = started["session"]["id"]
+    session = Session.load(session_id)
+    session.writer.append(
+        Event(
+            source="shell",
+            type="shell.command.completed",
+            payload={"command": "python workflow.py", "exit_code": 0},
+        )
+    )
+    client.post("/sessions/stop", json={"session_id": session_id})
+    assert client.post("/sessions/seal", json={"session_id": session_id}).status_code == 200
+
+    first = client.post(f"/sessions/{session_id}/forge-runs").json()["run"]
+    second = client.post(f"/sessions/{session_id}/forge-runs").json()["run"]
+    listed = client.get(f"/sessions/{session_id}/forge-runs").json()["runs"]
+
+    assert first["run_id"] != second["run_id"]
+    assert [run["run_id"] for run in listed] == [second["run_id"], first["run_id"]]
+    assert all(run["state"] == "blocked" for run in listed)
+
+
 def test_forge_api_opens_the_current_skill_spec(client, autocab_home: Path, monkeypatch):
     started = client.post("/sessions/start", json={"title": "Editable draft"}).json()
     session_id = started["session"]["id"]
@@ -339,11 +364,14 @@ def test_forge_api_keeps_review_approval_and_packaging_separate(client, monkeypa
     spec = created["skill_spec"]
     spec["requestedPackaging"] = "std"
     spec["packaging"] = "std"
-    spec["decision"] = "novel"
+    spec["decision"] = "blocked"
     spec["name"] = spec["name"].removesuffix("-cbd") + "-std"
-    spec["unresolvedQuestions"] = []
+    spec["unresolvedQuestions"] = [
+        question
+        for question in spec["unresolvedQuestions"]
+        if question["id"] == "q-runtime-verification"
+    ]
     spec["dependencies"] = []
-    spec["runtimeEnvironment"]["verified"] = True
     spec["licenseDecision"] = "No copied third-party source is included."
     for step in spec["steps"]:
         step["status"] = "supported"
@@ -354,7 +382,22 @@ def test_forge_api_keeps_review_approval_and_packaging_separate(client, monkeypa
         json={"reviewer": "Reviewer One", "skill_spec": spec},
     )
     assert reviewed.status_code == 200
-    assert reviewed.json()["run"]["state"] == "needs_review"
+    assert reviewed.json()["run"]["state"] == "blocked"
+
+    verified = client.post(
+        f"/forge-runs/{run_id}/verify-runtime",
+        json={
+            "reviewer": "Runtime Verifier",
+            "result": "passed",
+            "environment": "fresh test environment",
+            "platform": "linux-64",
+            "smoke_test": "python workflow.py fixture.txt",
+            "notes": "Expected output was reproduced.",
+            "evidence_ref": "verification/run.log",
+        },
+    )
+    assert verified.status_code == 200
+    assert verified.json()["run"]["state"] == "needs_review"
 
     approved = client.post(
         f"/forge-runs/{run_id}/approve",
@@ -362,6 +405,27 @@ def test_forge_api_keeps_review_approval_and_packaging_separate(client, monkeypa
     )
     assert approved.status_code == 200
     assert approved.json()["run"]["state"] == "approved"
+
+    reopened = client.post(
+        f"/forge-runs/{run_id}/reopen",
+        json={"reviewer": "Reviewer Two", "notes": "Recheck runtime evidence."},
+    )
+    assert reopened.status_code == 200
+    assert reopened.json()["run"]["state"] == "blocked"
+    assert reopened.json()["run"]["approved_by"] is None
+
+    reviewed_again = client.post(
+        f"/forge-runs/{run_id}/review",
+        json={"reviewer": "Reviewer One", "notes": "No changes required."},
+    )
+    assert reviewed_again.status_code == 200
+    assert reviewed_again.json()["run"]["state"] == "needs_review"
+
+    approved = client.post(
+        f"/forge-runs/{run_id}/approve",
+        json={"reviewer": "Reviewer Two"},
+    )
+    assert approved.status_code == 200
 
     packaged = client.post(f"/forge-runs/{run_id}/package")
     assert packaged.status_code == 200
