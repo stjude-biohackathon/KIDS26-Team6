@@ -19,7 +19,7 @@ from typing import Any
 
 from rich.logging import RichHandler
 
-from autocab.output import error_console, success
+from autocab.output import completed, error_console
 
 from .skill_spec import (
     RENDERABLE_DECISIONS,
@@ -1107,7 +1107,7 @@ def runForge(args: argparse.Namespace) -> int:
     logger = configureLogging(runDir)
     appendCommandLog(runDir, runId, args)
     logger.debug("Starting skill-forge run %s", runId)
-    logger.info("Building skill package %s", spec["name"])
+    logger.debug("Building skill package %s", spec["name"])
 
     copyTextInput(
         args.agentRequestFile,
@@ -1211,7 +1211,7 @@ def runForge(args: argparse.Namespace) -> int:
     }
     writeJson(runDir / "run_metadata.json", metadata)
     logger.debug("Completed skill-forge run %s", runId)
-    success(f"Finished skill package {spec['name']}", stderr=True)
+    completed(f"Skill package built · {spec['name']}", stderr=True)
     closeLogging(logger)
     return 0
 

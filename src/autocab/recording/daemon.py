@@ -10,7 +10,9 @@ import threading
 import time
 from typing import Any
 
-from autocab.output import plain_text, summary, warning
+from rich.text import Text
+
+from autocab.output import ACCENT_STYLE, panel_summary, plain_text, warning
 
 from . import paths
 from .bind import resolve_daemon_bind, daemon_summary_rows
@@ -218,11 +220,8 @@ def run(
             "WFREC_ADVERTISE_URL or --advertise-url so your browser can connect."
         )
 
-    styled_rows = [
-        (label, plain_text(value, style="cyan") if label == "Sessions" else value)
-        for label, value in rows
-    ]
-    summary("AutoCAB dashboard", styled_rows)
+    panel_rows, panel_hint = _dashboard_panel_content(rows)
+    panel_summary("AutoCAB dashboard", panel_rows, hint=panel_hint)
 
     if open_gui:
         threading.Thread(
@@ -242,6 +241,38 @@ def run(
         with contextlib.suppress(FileNotFoundError):
             paths.pid_path().unlink()
     return 0
+
+
+def _dashboard_panel_content(
+    rows: list[tuple[str, str]],
+) -> tuple[list[tuple[str, object]], str | None]:
+    """Condense daemon connection details into the human-facing startup panel."""
+
+    values = dict(rows)
+    browser_url = values["Open in browser"]
+    local_url = values["Local"]
+    local_only = "Remote access" in values
+    bind_scope = "local only" if local_only else "network"
+    bind_value = Text.assemble(
+        plain_text(values["Bind"]),
+        (f" · {bind_scope}", "dim"),
+    )
+    panel_rows: list[tuple[str, object]] = [
+        ("Status", Text("Running", style="bold green")),
+        ("Browser", plain_text(browser_url, style=ACCENT_STYLE)),
+        ("Bind", bind_value),
+        ("Host", values["Host"]),
+    ]
+    if local_url != browser_url:
+        panel_rows.append(("Local", plain_text(local_url, style=ACCENT_STYLE)))
+    for label in ("Listen (all interfaces)", "Private", "Public", "Security"):
+        if label in values:
+            panel_rows.append((label, values[label]))
+    panel_rows.append(("Sessions", plain_text(values["Sessions"], style=ACCENT_STYLE)))
+    remote_hint = values.get("Remote access")
+    if remote_hint:
+        remote_hint = f"Network access: {remote_hint[0].lower()}{remote_hint[1:]}"
+    return panel_rows, remote_hint
 
 
 def _wait_for_server(base_url: str, timeout: float = _GUI_READY_TIMEOUT) -> bool:
