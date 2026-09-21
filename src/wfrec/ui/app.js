@@ -39,8 +39,8 @@ THEME_MEDIA.addEventListener('change', event => {
 const TOKEN = document.querySelector('meta[name="wfrec-token"]').content;
 const H = {'Content-Type':'application/json','Authorization':'Bearer '+TOKEN};
 const SOURCE_HELP = {
-  screen:'Screenshots, OCR, and window titles',
-  context:'Notes and pasted context. Clipboard is not watched.',
+  screen:'Screenshots, recognized screen text, and window titles',
+  context:'Notes and pasted context. AutoCAB does not read the clipboard.',
   shell:'Commands, exit codes, and durations',
   agents:'Agent transcripts',
   files:'Git-verified file changes in declared roots'
@@ -530,13 +530,13 @@ function renderExportControls(){
     && (session.status === 'paused' || session.status === 'stopped');
   const canExport = Boolean(exportable) && !EXPORT_IN_PROGRESS;
   const help = EXPORT_IN_PROGRESS
-    ? 'Preparing a pattern-checked export.'
+    ? 'Preparing and checking the export.'
     : session && session.status === 'active'
-      ? 'Pause or archive the session before exporting events.'
-      : 'Choose where to save exported events.';
+      ? 'Pause or archive the session before exporting it.'
+      : 'Choose where to save the export.';
   primary.disabled = !canExport;
   toggle.disabled = !canExport;
-  primary.textContent = EXPORT_IN_PROGRESS ? 'Preparing…' : 'Export Session';
+  primary.textContent = EXPORT_IN_PROGRESS ? 'Preparing…' : 'Export session';
   primary.title = help;
   toggle.title = help;
   control.setAttribute('aria-busy', String(EXPORT_IN_PROGRESS));
@@ -685,7 +685,7 @@ function renderSessionStats(){
     sessionStat(`${session.events} events`),
     sessionStat(`${elapsedDuration(activeNow)} active`),
     sessionStat(
-      session.sealed ? 'PHI redaction applied' : 'PHI redaction pending',
+      session.sealed ? 'PHI redaction applied' : 'PHI redaction not applied',
       session.sealed ? 'phi-applied' : 'phi-pending'
     )
   ];
@@ -848,7 +848,7 @@ function sessionButton(session){
 
 function sessionMetaText(session){
   return `${session.events} events · ${sessionDuration(session.active_seconds)} · `
-    + (session.sealed ? 'PHI redaction applied' : 'PHI redaction pending');
+    + (session.sealed ? 'PHI redaction applied' : 'PHI redaction not applied');
 }
 
 function renderMobileSessionMenu(recording, paused, archived){

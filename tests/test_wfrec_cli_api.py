@@ -453,8 +453,8 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert '<script src="/app.js" defer></script>' in body
     assert "<style>" not in body
     assert "<script>" not in body
-    assert "Recent Events Log" in body
-    assert "<title>AutoCAB Activity Dashboard</title>" in body
+    assert "Recent events" in body
+    assert "<title>AutoCAB activity dashboard</title>" in body
     assert "<h1>AutoCAB</h1>" in body
     assert "Commands appear after they finish." in body
     assert 'id="session-title"' in body
@@ -468,14 +468,14 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert '<label for="pause-reason">Pause reason (optional)</label>' in body
     assert "Optionally record why the session is being paused." not in body
     assert 'id="export-dialog"' in body
-    assert "Redact PHI and export?" in body
-    assert "Add notes, errors, or decisions." in body
-    assert "AutoCAB masks detected personal information before saving." in body
-    assert "AutoCAB will remove detected PHI from a copy." in body
-    assert "Your session will not change." in body
+    assert "Redact detected PHI and export?" in body
+    assert "Record errors, decisions, and rerun reasons." in body
+    assert "AutoCAB masks detected personal information before saving the note." in body
+    assert "AutoCAB will redact detected PHI in an exported copy." in body
+    assert "The original session will not change." in body
     assert "Redaction can miss PHI." in body
     assert 'class="dialog-warning" role="note"' in body
-    assert ">Select Folder</button>" in body
+    assert ">Choose folder</button>" in body
     assert '<label for="title">Session title</label>' in body
     assert '<label for="analyst">Analyst name or ID</label>' in body
     assert '<label for="note">Session note</label>' in body
@@ -491,7 +491,7 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert 'id="activity-dashboard" class="activity-dashboard"' in body
     assert 'id="dash-timeline-summary"' in body
     assert 'class="activity-timeline-chart" id="dash-timeline"' in body
-    assert "Top windows / apps by events" in body
+    assert "Windows and apps by event count" in body
     assert 'id="trash-session"' in body
     assert 'aria-label="Remove archived session from dashboard"' in body
     assert 'aria-label="Copy session path"' in body
@@ -507,7 +507,7 @@ def test_ui_injects_token_and_loads_packaged_assets(client):
     assert "Workflow trace JSON" in body
     assert "Terminal log" in body
     assert "Screen events JSON" in body
-    assert "Export Session" in body
+    assert "Export session" in body
     assert 'aria-label="Export session"' in body
     assert "Export Events" not in body
     assert "AutoCAB inputs" not in body
@@ -641,9 +641,9 @@ def test_ui_serves_packaged_javascript_without_credentials(client):
     assert "dateTimeLabel:eventDateTime" in source
     assert "limit=100000" not in source
     assert "session.sealed ? 'PHI redaction applied'" in source
-    assert "'PHI redaction pending'" in source
-    assert "Pause or archive the session before exporting events." in source
-    assert "Preparing a pattern-checked export." in source
+    assert "'PHI redaction not applied'" in source
+    assert "Pause or archive the session before exporting it." in source
+    assert "Preparing and checking the export." in source
 
 
 def test_ui_serves_component_scoped_dashboard_styles(client):
