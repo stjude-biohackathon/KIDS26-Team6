@@ -168,6 +168,7 @@ const FORGE_WORKFLOW = window.WfrecForgeWorkflow.create({
   dialogContent:document.getElementById('forge-dialog-content'),
   dialogMessage:document.getElementById('forge-dialog-message'),
   dialogAction:document.getElementById('forge-dialog-action'),
+  dialogOpen:document.getElementById('forge-dialog-open'),
   dialogClose:document.getElementById('forge-dialog-close'),
   dialogCancel:document.getElementById('forge-dialog-cancel'),
   redactionDialog:document.getElementById('redaction-dialog'),
@@ -175,11 +176,22 @@ const FORGE_WORKFLOW = window.WfrecForgeWorkflow.create({
   redactionConfirm:document.getElementById('redaction-confirm'),
   redactionCancel:document.getElementById('redaction-cancel'),
   listRuns:sessionId => api(`/sessions/${encodeURIComponent(sessionId)}/forge-runs`),
-  sealSession:sessionId => api('/sessions/seal', {session_id:sessionId}, 'POST'),
+  sealSession:(sessionId, reseal=false) => api(
+    '/sessions/seal', {session_id:sessionId, reseal}, 'POST'
+  ),
   createRun:sessionId => api(
     `/sessions/${encodeURIComponent(sessionId)}/forge-runs`, {}, 'POST'
   ),
   loadRun:runId => api(`/forge-runs/${encodeURIComponent(runId)}`),
+  openSpec:runId => api(`/forge-runs/${encodeURIComponent(runId)}/open-spec`, {}, 'POST'),
+  openPackage:runId => api(
+    `/forge-runs/${encodeURIComponent(runId)}/open-package`, {}, 'POST'
+  ),
+  reviewRun:(runId, reviewer, skillSpec, notes='') => api(
+    `/forge-runs/${encodeURIComponent(runId)}/review`,
+    {reviewer, notes, skill_spec:skillSpec},
+    'POST'
+  ),
   approveRun:(runId, reviewer) => api(
     `/forge-runs/${encodeURIComponent(runId)}/approve`, {reviewer}, 'POST'
   ),

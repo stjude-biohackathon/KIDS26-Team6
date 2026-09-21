@@ -13,6 +13,10 @@ class DirectoryOpenError(RuntimeError):
     """Raised when the host cannot open a directory in its file manager."""
 
 
+class FileOpenError(RuntimeError):
+    """Raised when the host cannot open a file in its default application."""
+
+
 class DirectorySelectionError(RuntimeError):
     """Raised when the host cannot present a usable folder picker."""
 
@@ -124,6 +128,39 @@ def open_directory(path: Path) -> None:
     raise DirectoryOpenError(f"Opening folders is unsupported on {sys.platform}.")
 
 
+def open_file(path: Path) -> None:
+    """Open an existing file with the host platform's default application."""
+
+    file_path = path.expanduser().resolve()
+    if not file_path.is_file():
+        raise FileOpenError(f"File does not exist: {file_path}")
+
+    if sys.platform == "win32":  # pragma: no cover - exercised with a mock
+        startfile = getattr(os, "startfile", None)
+        if startfile is None:
+            raise FileOpenError("The Windows application launcher is unavailable.")
+        try:
+            startfile(str(file_path))
+        except OSError as error:
+            raise FileOpenError(f"Could not open the file: {error}") from error
+        return
+
+    if sys.platform == "darwin":
+        _launch_default_application(["open", str(file_path)])
+        return
+
+    if sys.platform.startswith("linux"):
+        if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+            raise FileOpenError("No graphical desktop is available on this Linux host.")
+        opener = shutil.which("xdg-open")
+        if opener is None:
+            raise FileOpenError("xdg-open is not installed on this Linux host.")
+        _launch_default_application([opener, str(file_path)])
+        return
+
+    raise FileOpenError(f"Opening files is unsupported on {sys.platform}.")
+
+
 def _run_directory_picker(command: list[str], *, cancel_return_codes: set[int]) -> Path | None:
     """Run a platform picker and normalize its selected directory."""
 
@@ -165,3 +202,18 @@ def _launch_file_manager(command: list[str]) -> None:
         )
     except OSError as error:
         raise DirectoryOpenError(f"Could not open the session folder: {error}") from error
+
+
+def _launch_default_application(command: list[str]) -> None:
+    """Start a default application without tying it to the recorder daemon."""
+
+    try:
+        subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except OSError as error:
+        raise FileOpenError(f"Could not open the file: {error}") from error

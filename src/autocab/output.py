@@ -107,8 +107,8 @@ def info(message: object, *, stderr: bool = False) -> None:
     notice("Info", message, style="bold cyan", stderr=stderr)
 
 
-def success(message: object) -> None:
-    notice("OK", message, style="bold green")
+def success(message: object, *, stderr: bool = False) -> None:
+    notice("OK", message, style="bold green", stderr=stderr)
 
 
 def warning(message: object) -> None:

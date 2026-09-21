@@ -79,7 +79,9 @@ test('skill workflow requires archiving before PHI redaction', () => {
   assert.equal(model.action, 'redact');
   assert.equal(model.label, 'Apply PHI redaction');
   assert.equal(model.disabled, true);
-  assert.match(model.summary, /Archive the session/);
+  assert.equal(model.current, 0);
+  assert.equal(model.complete, -1);
+  assert.match(model.summary, /Archive this session/);
 });
 
 test('skill workflow offers PHI redaction for an archived session', () => {
