@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AutoCAB Activity Dashboard</title>
+<title>AutoCAB activity dashboard</title>
 <meta name="wfrec-token" content="@WFREC_TOKEN@">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/dashboard.css">
@@ -91,7 +91,7 @@
             <button id="resume-session" onclick="act('resume')" disabled>Resume</button>
             <div id="export-control" class="export-control">
               <div class="export-split" role="group" aria-label="Export session">
-                <button id="export-events" class="export-primary" type="button" onclick="exportSession(['events', 'terminal-log', 'screen-capture', 'trace'], 'All files')">Export Session</button>
+                <button id="export-events" class="export-primary" type="button" onclick="exportSession(['events', 'terminal-log', 'screen-capture', 'trace'], 'All files')">Export session</button>
                 <button id="export-menu-toggle" class="export-menu-toggle" type="button" aria-label="Choose export format" aria-haspopup="menu" aria-expanded="false" aria-controls="export-format-menu" onclick="toggleExportMenu()" onkeydown="handleExportToggleKeydown(event)">
                   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path d="m7 9 5 5 5-5" />
@@ -108,7 +108,7 @@
             </div>
           </div>
           <div class="row">
-            <button id="archive-session" class="danger-quiet" onclick="act('stop')" disabled>Archive Session</button>
+            <button id="archive-session" class="danger-quiet" onclick="act('stop')" disabled>Archive session</button>
             <button id="trash-session" class="danger-quiet icon-action" type="button" aria-label="Remove archived session from dashboard" title="Archive the selected session before removing it from the dashboard" onclick="trashSelectedSession()" disabled>
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="M3 6h18" />
@@ -122,7 +122,7 @@
       </div>
 
       <form id="session-create" onsubmit="startSession(event)" hidden>
-        <h2 class="detail-title">Start a New Session</h2>
+        <h2 class="detail-title">Start a new session</h2>
         <div class="grid2 session-create-fields">
           <div class="field">
             <label for="title">Session title</label>
@@ -134,7 +134,7 @@
           </div>
         </div>
         <div class="row">
-          <button id="start-session" class="primary" type="submit">Start Session</button>
+          <button id="start-session" class="primary" type="submit">Start session</button>
           <button id="cancel-create" type="button" onclick="cancelNewSession()">Cancel</button>
         </div>
       </form>
@@ -165,7 +165,7 @@
             <div id="dash-event-types"></div>
           </section>
           <section class="activity-dashboard__card activity-dashboard__card--top-windows" aria-labelledby="top-windows-heading">
-            <h3 id="top-windows-heading">Top windows / apps by events</h3>
+            <h3 id="top-windows-heading">Windows and apps by event count</h3>
             <div id="dash-top-windows"></div>
           </section>
           <section class="activity-dashboard__card activity-dashboard__card--agent-activity" aria-labelledby="agent-activity-heading">
@@ -181,8 +181,8 @@
       </section>
 
       <section>
-        <h2>Notes and Context</h2>
-        <p class="stat">Add notes, errors, or decisions. AutoCAB masks detected personal information before saving.</p>
+        <h2>Notes and context</h2>
+        <p class="stat">Record errors, decisions, and rerun reasons. AutoCAB masks detected personal information before saving the note.</p>
         <form id="note-form" onsubmit="saveNote(event)">
           <div class="field">
             <label for="note">Session note</label>
@@ -193,14 +193,14 @@
               <label for="label">Label (optional)</label>
               <input id="label" placeholder="e.g. Rerun reason">
             </div>
-            <button id="add-note" class="primary" type="submit">Add to Timeline</button>
+            <button id="add-note" class="primary" type="submit">Add to timeline</button>
           </div>
         </form>
       </section>
 
       <section>
         <div class="section-head">
-          <h2 id="recent-events-heading">Recent Events Log</h2>
+          <h2 id="recent-events-heading">Recent events</h2>
           <span class="log-count" id="log-count"></span>
         </div>
         <p class="log-note">Commands appear after they finish.</p>
@@ -217,22 +217,22 @@
 
 <dialog id="pause-dialog" aria-labelledby="pause-dialog-title">
   <form onsubmit="confirmPause(event)">
-    <h2 id="pause-dialog-title">Pause Session</h2>
+    <h2 id="pause-dialog-title">Pause session</h2>
     <div class="field">
       <label for="pause-reason">Pause reason (optional)</label>
       <input id="pause-reason" placeholder="e.g. Waiting on the alignment job">
     </div>
     <div class="row dialog-actions">
       <button type="button" onclick="closePauseDialog()">Cancel</button>
-      <button type="submit" class="warning-quiet">Pause Session</button>
+      <button type="submit" class="warning-quiet">Pause session</button>
     </div>
   </form>
 </dialog>
 
 <dialog id="export-dialog" aria-labelledby="export-dialog-title" oncancel="clearPendingExport()">
   <form onsubmit="confirmExport(event)">
-    <h2 id="export-dialog-title">Redact PHI and export?</h2>
-    <p>AutoCAB will remove detected PHI from a copy. Your session will not change.</p>
+    <h2 id="export-dialog-title">Redact detected PHI and export?</h2>
+    <p>AutoCAB will redact detected PHI in an exported copy. The original session will not change.</p>
     <div class="dialog-warning" role="note">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path d="M12 3 2.5 20h19Z"></path>
@@ -242,7 +242,7 @@
     </div>
     <div class="row dialog-actions">
       <button type="button" onclick="closeExportDialog()">Cancel</button>
-      <button type="submit" class="primary">Select Folder</button>
+      <button type="submit" class="primary">Choose folder</button>
     </div>
   </form>
 </dialog>

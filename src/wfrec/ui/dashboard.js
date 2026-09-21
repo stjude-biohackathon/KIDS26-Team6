@@ -27,7 +27,7 @@
     },
     {
       key:'files-git',
-      label:'Files & Git',
+      label:'Files and Git',
       types:new Set(['file.changed', 'file.diff', 'file.flood', 'git.snapshot']),
       color:'var(--chart-4)'
     },
@@ -39,7 +39,7 @@
     },
     {
       key:'notes-session',
-      label:'Notes & Session',
+      label:'Notes and session',
       types:new Set(),
       color:'var(--chart-6)'
     }
@@ -209,8 +209,8 @@
       const topCount = Math.max(...latestCounts);
       const topIndex = latestCounts.indexOf(topCount);
       defaultCaption = topCount
-        ? `${eventCountLabel(latestTotal)} in this session, mostly `
-          + `${CATEGORIES[topIndex].label.toLowerCase()} activity `
+        ? `${eventCountLabel(latestTotal)} in this session. `
+          + `${CATEGORIES[topIndex].label} has the largest share `
           + `(${percentage(topCount, latestTotal)}%).`
         : 'No activity yet.';
       plot.hidden = !latestTotal;
