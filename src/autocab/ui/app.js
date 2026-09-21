@@ -163,6 +163,8 @@ const FORGE_WORKFLOW = window.WfrecForgeWorkflow.create({
   summary:document.getElementById('forge-workflow-summary'),
   stages:document.getElementById('forge-workflow-stages'),
   action:document.getElementById('forge-workflow-action'),
+  newRun:document.getElementById('forge-new-run'),
+  runSelect:document.getElementById('forge-run-select'),
   dialog:document.getElementById('forge-dialog'),
   dialogTitle:document.getElementById('forge-dialog-title'),
   dialogStatus:document.getElementById('forge-dialog-status'),
@@ -170,6 +172,7 @@ const FORGE_WORKFLOW = window.WfrecForgeWorkflow.create({
   dialogMessage:document.getElementById('forge-dialog-message'),
   dialogAction:document.getElementById('forge-dialog-action'),
   dialogOpen:document.getElementById('forge-dialog-open'),
+  dialogReopen:document.getElementById('forge-dialog-reopen'),
   dialogClose:document.getElementById('forge-dialog-close'),
   dialogCancel:document.getElementById('forge-dialog-cancel'),
   redactionDialog:document.getElementById('redaction-dialog'),
@@ -195,6 +198,12 @@ const FORGE_WORKFLOW = window.WfrecForgeWorkflow.create({
   ),
   approveRun:(runId, reviewer) => api(
     `/forge-runs/${encodeURIComponent(runId)}/approve`, {reviewer}, 'POST'
+  ),
+  verifyRuntime:(runId, payload) => api(
+    `/forge-runs/${encodeURIComponent(runId)}/verify-runtime`, payload, 'POST'
+  ),
+  reopenRun:(runId, reviewer, notes='') => api(
+    `/forge-runs/${encodeURIComponent(runId)}/reopen`, {reviewer, notes}, 'POST'
   ),
   packageRun:runId => api(`/forge-runs/${encodeURIComponent(runId)}/package`, {}, 'POST'),
   reviewer:() => STATE && STATE.default_analyst || 'unknown-analyst',

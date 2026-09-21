@@ -21,11 +21,24 @@
   font-size: 12px;
 }
 
-.forge-workflow__header > button {
+.forge-workflow__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.forge-workflow__actions select,
+.forge-workflow__actions button {
   flex: 0 0 auto;
   min-height: var(--control-field);
   padding: 5px 10px;
   font-size: 12px;
+}
+
+.forge-workflow__actions select {
+  max-width: min(290px, 42vw);
 }
 
 .forge-workflow__stages {
@@ -59,26 +72,20 @@
   content: "";
 }
 
-.forge-workflow__stages li::after {
-  position: absolute;
-  z-index: 0;
-  top: 50%;
-  right: 8px;
-  left: 15px;
-  height: 1px;
-  background: var(--line);
-  content: "";
-}
-
 .forge-workflow__stages li > span {
   position: relative;
   z-index: 1;
-  padding-right: 8px;
   background: var(--panel);
 }
 
-.forge-workflow__stages li:last-child::after {
-  display: none;
+.forge-workflow__arrow {
+  width: auto;
+  height: 12px;
+  min-width: 14px;
+  flex: 1 1 auto;
+  margin-right: 8px;
+  color: var(--line);
+  overflow: visible;
 }
 
 .forge-workflow__stages li.is-complete {
@@ -189,11 +196,29 @@
   font-weight: 600;
 }
 
+.forge-dialog__answer-field input,
+.forge-dialog__answer-field select,
 .forge-dialog__answer-field textarea {
   min-height: 58px;
   resize: vertical;
   font: inherit;
   font-weight: 400;
+}
+
+.forge-dialog__answer-field input,
+.forge-dialog__answer-field select {
+  min-height: 36px;
+  resize: none;
+}
+
+.forge-dialog__runtime-editor {
+  display: grid;
+  gap: 8px;
+}
+
+.forge-dialog__runtime-summary {
+  color: var(--dim);
+  font-size: 12px;
 }
 
 .forge-dialog__question-actions {
@@ -288,18 +313,35 @@
     flex-direction: column;
   }
 
-  .forge-workflow__stages {
-    grid-template-columns: 1fr;
-    gap: 6px;
+  .forge-workflow__actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
-  .forge-workflow__stages li::after {
-    display: none;
+  .forge-workflow__actions select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .forge-workflow__stages {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .forge-workflow__arrow {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: -3px;
+    width: 16px;
+    height: 8px;
+    margin: 0;
+    transform: rotate(90deg);
   }
 }
 
 @media (forced-colors: active) {
-  .forge-workflow__stages li::before {
+  .forge-workflow__stages li::before,
+  .forge-workflow__arrow {
     forced-color-adjust: none;
   }
 }

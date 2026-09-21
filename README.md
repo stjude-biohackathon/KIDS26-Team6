@@ -97,6 +97,13 @@ autocab forge --session <session-id>
 autocab review <run-id> \
   --reviewer "Analyst name" \
   --spec reviewed-skill-spec.json
+autocab verify-runtime <run-id> \
+  --reviewer "Analyst name" \
+  --result passed \
+  --environment "fresh conda prefix" \
+  --platform linux-64 \
+  --smoke-test "command used for the smoke test" \
+  --notes "Expected output reproduced"
 autocab approve <run-id> --reviewer "Maintainer name"
 autocab package <run-id>
 autocab status
@@ -257,8 +264,14 @@ blocked -> needs_review -> approved -> packaged
 
 - `review` validates edited skill specifications and reports remaining
   blockers.
+- `verify-runtime` records a human-observed clean-environment smoke test. It
+  never executes commands reconstructed from the recording.
 - `approve` records a separate human decision after review.
 - `package` renders the approved skill and applies strict package validation.
+
+An approved but un-packaged run can be reopened for correction. Reopening
+preserves the earlier approval in `reviews.jsonl`, invalidates the current
+approval, and requires review and approval again.
 
 Every forge run preserves `evidence.json`, `skill-spec.json`, append-only
 `reviews.jsonl`, and the current `run.json` state. Packaged runs also contain

@@ -93,8 +93,24 @@ autocab review <run-id> \
   --spec reviewed-skill-spec.json
 ```
 
-The run stays blocked while any blocking question remains. A valid `compose` or
-`novel` decision with no blocking questions moves the run to `needs_review`.
+The run stays blocked while any blocking question remains. Dependency-bearing
+skills also require a human-observed clean-environment smoke test. AutoCAB
+records that result but never executes commands reconstructed from the session:
+
+```bash
+autocab verify-runtime <run-id> \
+  --reviewer "Analyst name" \
+  --result passed \
+  --environment "fresh conda prefix" \
+  --platform linux-64 \
+  --smoke-test "command used for the smoke test" \
+  --notes "Expected output reproduced" \
+  --evidence-ref verification/run.log
+```
+
+A valid `compose` or `novel` decision with no blocking questions and, for an
+executable skill, successful runtime verification moves the run to
+`needs_review`.
 
 Approval and packaging are separate commands:
 
@@ -105,6 +121,18 @@ autocab package <run-id>
 
 Packaging renders the skill into the run directory and applies strict package
 validation. It does not publish, push, or open a pull request.
+
+If an approved run needs correction before packaging, invalidate its current
+approval and return it to blocked review:
+
+```bash
+autocab reopen <run-id> \
+  --reviewer "Maintainer name" \
+  --notes "Correct the runtime verification evidence"
+```
+
+The earlier approval remains in the append-only review log. A reopened run must
+be reviewed and approved again.
 
 ## Stored data
 
@@ -153,5 +181,7 @@ Use `autocab status` to see the active recording and recent forge runs. Use
 - A malformed or credential-bearing `config.toml` is rejected.
 - Blocking questions prevent approval.
 - Approval does not package automatically.
-- Package validation failure leaves the approved run available for review.
+- Executable drafts cannot be approved until runtime verification succeeds.
+- Package validation failure leaves the approved run available to reopen for
+  review without erasing its earlier approval record.
 - Setup never deletes legacy recordings or stores provider credentials.

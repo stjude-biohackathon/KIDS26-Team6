@@ -24,7 +24,11 @@ from autocab.recording.locking import atomic_write_text
 from autocab.recording.seal import require_sealed
 from autocab.recording.session import Session
 
-from .builder import build_blocked_spec, build_evidence_snapshot
+from .builder import (
+    RUNTIME_VERIFICATION_QUESTION,
+    build_blocked_spec,
+    build_evidence_snapshot,
+)
 from .models import ForgeRun, ForgeState, WorkflowError
 from .store import RunStore
 
@@ -59,6 +63,90 @@ def _load_spec(path: Path) -> dict[str, Any]:
         return loadSpec(path)
     except SkillSpecError as exc:
         raise WorkflowError(str(exc)) from exc
+
+
+def _single_line(value: str) -> str:
+    """Normalize reviewer-supplied provenance into one schema-safe line."""
+
+    return " ".join(value.split())
+
+
+def _manual_only_spec(spec: dict[str, Any]) -> bool:
+    """Return whether a package deliberately documents only manual actions."""
+
+    environment = spec.get("runtimeEnvironment") or {}
+    steps = spec.get("steps") or []
+    return (
+        bool(steps)
+        and all(step.get("status") == "manual" for step in steps)
+        and spec.get("dependencies") == []
+        and environment.get("manager") == "none"
+        and environment.get("lockStrategy") == "none"
+        and all(
+            environment.get(field) == []
+            for field in (
+                "condaDependencies",
+                "pipDependencies",
+                "systemDependencies",
+                "externalArtifacts",
+            )
+        )
+        and environment.get("containerImage") is None
+        and environment.get("codebaseEnvironmentFile") is None
+    )
+
+
+def _runtime_approval_issue(spec: dict[str, Any]) -> str | None:
+    """Return the reproducibility blocker that must stop approval."""
+
+    if _manual_only_spec(spec):
+        return None
+    environment = spec.get("runtimeEnvironment") or {}
+    if environment.get("lockStrategy") == "unresolved":
+        return "resolve the runtime lock strategy before approval"
+    if environment.get("verified") is not True:
+        return "record a successful clean-environment smoke test before approval"
+    return None
+
+
+def _ensure_runtime_question(spec: dict[str, Any]) -> None:
+    """Restore the runtime blocker when an older run lacks the new question."""
+
+    questions = spec.setdefault("unresolvedQuestions", [])
+    if not any(question.get("id") == RUNTIME_VERIFICATION_QUESTION["id"] for question in questions):
+        questions.append(dict(RUNTIME_VERIFICATION_QUESTION))
+
+
+def _finalize_resolved_spec(spec: dict[str, Any]) -> None:
+    """Apply conservative defaults after the final blocking question is resolved."""
+
+    if any(question.get("blocking") is True for question in spec["unresolvedQuestions"]):
+        return
+    if spec.get("decision") == "blocked":
+        spec["decision"] = "novel"
+    spec["requestedPackaging"] = "std"
+    spec["packaging"] = "std"
+    name = str(spec.get("name") or "recorded-workflow")
+    for suffix in ("-cbd", "-std"):
+        if name.endswith(suffix):
+            name = name[: -len(suffix)]
+            break
+    spec["name"] = f"{name}-std"
+    spec["codebase"] = {"roots": []}
+    managed_dependencies = bool(spec.get("dependencies"))
+    generated_rationales = {
+        "The command was observed, but its inputs and dependency closure need review.",
+        "The activity was observed, but its inputs and dependency closure need review.",
+    }
+    for step in spec.get("steps") or []:
+        if step.get("status") != "blocked" or step.get("rationale") not in generated_rationales:
+            continue
+        step["status"] = "supported" if managed_dependencies else "manual"
+        step["rationale"] = (
+            "The command was observed and its dependencies were reviewed."
+            if managed_dependencies
+            else "The command was observed and remains a manual action in the user environment."
+        )
 
 
 class ForgeWorkflow:
@@ -162,6 +250,9 @@ class ForgeWorkflow:
                 )
             if any(question.get("blocking") for question in spec["unresolvedQuestions"]):
                 raise WorkflowError("Blocking questions must be resolved before approval.")
+            runtime_issue = _runtime_approval_issue(spec)
+            if runtime_issue:
+                raise WorkflowError(f"Runtime verification is incomplete: {runtime_issue}.")
             approved_at = utc_now()
             run.transition(ForgeState.APPROVED, reason="Reviewer explicitly approved the run.")
             run.approved_by = reviewer
@@ -174,6 +265,182 @@ class ForgeWorkflow:
                     "notes": notes,
                     "at": approved_at,
                     "result": ForgeState.APPROVED.value,
+                },
+            )
+            self.store.save(run)
+            return run
+
+    def verify_runtime(
+        self,
+        run_id: str,
+        *,
+        reviewer: str,
+        result: str,
+        environment: str,
+        platform: str,
+        smoke_test: str,
+        notes: str,
+        evidence_ref: str = "",
+    ) -> ForgeRun:
+        """Record a human-observed runtime check without executing captured commands."""
+
+        if result not in {"passed", "failed", "not_run"}:
+            raise ValueError("Runtime verification result must be passed, failed, or not_run.")
+        normalized = {
+            "environment": _single_line(environment),
+            "platform": _single_line(platform),
+            "smoke_test": _single_line(smoke_test),
+            "notes": _single_line(notes),
+            "evidence_ref": _single_line(evidence_ref),
+        }
+        if not normalized["notes"]:
+            raise ValueError("Runtime verification notes are required.")
+        if result == "passed":
+            missing = [
+                label
+                for field, label in (
+                    ("environment", "environment or container"),
+                    ("platform", "platform"),
+                    ("smoke_test", "smoke test"),
+                )
+                if not normalized[field]
+            ]
+            if missing:
+                raise ValueError(
+                    "Passed runtime verification requires: " + ", ".join(missing) + "."
+                )
+
+        with self.store.lock(run_id) as run_dir:
+            run = self.store.load(run_id)
+            if run.state != ForgeState.BLOCKED:
+                raise WorkflowError(
+                    f"Run {run_id} must be blocked to record runtime verification, "
+                    f"not {run.state}."
+                )
+            spec = _load_spec(run_dir / "skill-spec.json")
+            questions = spec.get("unresolvedQuestions") or []
+            if result == "passed" and any(
+                question.get("id") == "q-dependency-closure" for question in questions
+            ):
+                raise WorkflowError(
+                    "Resolve dependency versions and licenses before verifying the runtime."
+                )
+            runtime = spec["runtimeEnvironment"]
+            if result == "passed" and runtime.get("lockStrategy") == "unresolved":
+                raise WorkflowError(
+                    "Resolve the runtime lock strategy before recording a passing verification."
+                )
+
+            evidence_id = f"review-{run_id}-runtime-verification"
+            detail_parts = [
+                f"result={result}",
+                f"environment={normalized['environment'] or 'not recorded'}",
+                f"platform={normalized['platform'] or 'not recorded'}",
+                f"smoke_test={normalized['smoke_test'] or 'not run'}",
+            ]
+            if normalized["evidence_ref"]:
+                detail_parts.append(f"evidence={normalized['evidence_ref']}")
+            spec["evidence"] = [
+                record for record in spec["evidence"] if record.get("id") != evidence_id
+            ] + [
+                {
+                    "id": evidence_id,
+                    "source": "runtime-review",
+                    "locator": f"forge-run:{run_id}#runtime-verification",
+                    "basis": "user_confirmed",
+                    "confidence": "high",
+                    "summary": "Runtime verification recorded: " + "; ".join(detail_parts),
+                }
+            ]
+            runtime["verified"] = result == "passed"
+            runtime["notes"] = [
+                f"Verification result: {result}.",
+                f"Environment or container: {normalized['environment'] or 'not recorded'}.",
+                f"Platform: {normalized['platform'] or 'not recorded'}.",
+                f"Smoke test: {normalized['smoke_test'] or 'not run'}.",
+                f"Reviewer notes: {normalized['notes']}",
+            ]
+            if normalized["evidence_ref"]:
+                runtime["notes"].append(
+                    f"Verification evidence: {normalized['evidence_ref']}"
+                )
+            if result == "passed":
+                spec["unresolvedQuestions"] = [
+                    question
+                    for question in questions
+                    if question.get("id") != RUNTIME_VERIFICATION_QUESTION["id"]
+                ]
+                _finalize_resolved_spec(spec)
+            else:
+                _ensure_runtime_question(spec)
+
+            issues = validateSpec(spec)
+            if issues:
+                raise WorkflowError("Runtime verification failed: " + "; ".join(issues))
+            blockers = [
+                question
+                for question in spec["unresolvedQuestions"]
+                if question.get("blocking") is True
+            ]
+            next_state = ForgeState.BLOCKED if blockers else ForgeState.NEEDS_REVIEW
+            if next_state == ForgeState.NEEDS_REVIEW and spec["decision"] not in RENDERABLE_DECISIONS:
+                raise WorkflowError("Resolve the remaining SkillSpec decisions before approval.")
+            atomic_write_text(
+                run_dir / "skill-spec.json",
+                json.dumps(spec, indent=2, sort_keys=True) + "\n",
+            )
+            run.unresolved_count = len(spec["unresolvedQuestions"])
+            run.transition(next_state, reason="Reviewer recorded runtime verification.")
+            self.store.append_review(
+                run_id,
+                {
+                    "kind": "runtime_verification",
+                    "reviewer": reviewer,
+                    "notes": normalized["notes"],
+                    "at": utc_now(),
+                    "result": result,
+                    "environment": normalized["environment"],
+                    "platform": normalized["platform"],
+                    "smoke_test": normalized["smoke_test"],
+                    "evidence_ref": normalized["evidence_ref"],
+                },
+            )
+            self.store.save(run)
+            return run
+
+    def reopen(self, run_id: str, *, reviewer: str, notes: str = "") -> ForgeRun:
+        """Invalidate current approval and return an un-packaged run to review."""
+
+        with self.store.lock(run_id) as run_dir:
+            run = self.store.load(run_id)
+            if run.state != ForgeState.APPROVED:
+                raise WorkflowError(
+                    f"Run {run_id} must be approved to reopen it, not {run.state}."
+                )
+            spec = _load_spec(run_dir / "skill-spec.json")
+            if _runtime_approval_issue(spec):
+                _ensure_runtime_question(spec)
+                atomic_write_text(
+                    run_dir / "skill-spec.json",
+                    json.dumps(spec, indent=2, sort_keys=True) + "\n",
+                )
+            previous_approval = {
+                "reviewer": run.approved_by,
+                "at": run.approved_at,
+            }
+            run.approved_by = None
+            run.approved_at = None
+            run.unresolved_count = len(spec["unresolvedQuestions"])
+            run.transition(ForgeState.BLOCKED, reason="Approved run reopened for review.")
+            self.store.append_review(
+                run_id,
+                {
+                    "kind": "reopen",
+                    "reviewer": reviewer,
+                    "notes": _single_line(notes),
+                    "at": utc_now(),
+                    "result": ForgeState.BLOCKED.value,
+                    "invalidated_approval": previous_approval,
                 },
             )
             self.store.save(run)

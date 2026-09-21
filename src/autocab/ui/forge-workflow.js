@@ -7,12 +7,25 @@
   };
   const INPUT_OUTPUT_QUESTION = 'q-input-output-roles';
   const DEPENDENCY_QUESTION = 'q-dependency-closure';
+  const RUNTIME_VERIFICATION_QUESTION = 'q-runtime-verification';
   const NO_FORMAL_IO_ASSUMPTION =
     'This skill describes an interactive work practice with no formal input or output artifacts.';
   const GENERATED_STEP_RATIONALES = new Set([
     'The command was observed, but its inputs and dependency closure need review.',
     'The activity was observed, but its inputs and dependency closure need review.'
   ]);
+
+  function runOptionLabel(run, index){
+    const state = STATE_LABELS[run.state] || run.state;
+    const created = String(run.created_at || '').replace('T', ' ').replace(/\.\d+Z$/, 'Z');
+    const shortId = String(run.run_id || '').slice(-8);
+    const newest = index === 0 ? 'Newest · ' : '';
+    return `${newest}${state} · ${created || 'Unknown time'} · ${shortId}`;
+  }
+
+  function selectRun(runs, selectedRunId){
+    return runs.find(candidate => candidate.run_id === selectedRunId) || runs[0] || null;
+  }
 
   function stateModel(session, run, busy=false, needsRepair=false){
     if(!session){
@@ -178,8 +191,10 @@
 
   function resolveDependencyQuestion(spec, options){
     const next = JSON.parse(JSON.stringify(spec));
+    const resolvedQuestionIds = new Set([DEPENDENCY_QUESTION]);
+    if(options.notPackaged) resolvedQuestionIds.add(RUNTIME_VERIFICATION_QUESTION);
     next.unresolvedQuestions = (next.unresolvedQuestions || []).filter(
-      question => question.id !== DEPENDENCY_QUESTION
+      question => !resolvedQuestionIds.has(question.id)
     );
     if(options.notPackaged){
       next.dependencies = [];
@@ -309,6 +324,74 @@
     return {wrapper, input};
   }
 
+  function labeledInput(label, placeholder){
+    const wrapper = element('label', '', 'forge-dialog__answer-field');
+    wrapper.appendChild(element('span', label));
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = placeholder;
+    wrapper.appendChild(input);
+    return {wrapper, input};
+  }
+
+  function runtimeVerificationReview(spec, onSave){
+    const editor = element('div', '', 'forge-dialog__runtime-editor');
+    const runtime = spec.runtimeEnvironment || {};
+    editor.appendChild(element(
+      'p',
+      `Declared runtime: ${runtime.manager || 'unknown'} · ${runtime.lockStrategy || 'unknown lock'}`,
+      'forge-dialog__runtime-summary'
+    ));
+    const fields = element('div', '', 'forge-dialog__answer-fields');
+    const result = element('label', '', 'forge-dialog__answer-field');
+    result.appendChild(element('span', 'Verification result'));
+    const resultSelect = document.createElement('select');
+    for(const [value, label] of [
+      ['not_run', 'Not run'], ['failed', 'Failed'], ['passed', 'Passed']
+    ]){
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      resultSelect.appendChild(option);
+    }
+    result.appendChild(resultSelect);
+    const environment = labeledInput(
+      'Clean environment or container', 'e.g. fresh conda prefix or image digest'
+    );
+    const platform = labeledInput('Platform', 'e.g. linux-64');
+    const smokeTest = labeledTextarea(
+      'Smoke test', 'Command or manual procedure that was actually performed'
+    );
+    const evidenceRef = labeledInput(
+      'Evidence reference (optional)', 'Log, run ID, or artifact path'
+    );
+    const notes = labeledTextarea(
+      'Verification notes', 'Required findings, failure, or unresolved blocker'
+    );
+    fields.append(
+      result,
+      environment.wrapper,
+      platform.wrapper,
+      smokeTest.wrapper,
+      evidenceRef.wrapper,
+      notes.wrapper
+    );
+    const controls = element('div', '', 'forge-dialog__question-actions');
+    const save = element('button', 'Record runtime verification');
+    save.type = 'button';
+    save.addEventListener('click', () => onSave({
+      result:resultSelect.value,
+      environment:environment.input.value,
+      platform:platform.input.value,
+      smoke_test:smokeTest.input.value,
+      evidence_ref:evidenceRef.input.value,
+      notes:notes.input.value
+    }));
+    controls.appendChild(save);
+    editor.append(fields, controls);
+    return editor;
+  }
+
   function dependencyReview(spec, onSave, onSkip){
     const editor = element('div', '', 'forge-dialog__dependency-editor');
     const rows = [];
@@ -364,15 +447,17 @@
 
   function create(options){
     const {
-      root, summary, stages, action, dialog, dialogTitle, dialogStatus,
-      dialogContent, dialogMessage, dialogAction, dialogOpen, dialogClose, dialogCancel,
+      root, summary, stages, action, newRun, runSelect, dialog, dialogTitle, dialogStatus,
+      dialogContent, dialogMessage, dialogAction, dialogOpen, dialogReopen,
+      dialogClose, dialogCancel,
       redactionDialog, redactionForm, redactionConfirm, redactionCancel,
       listRuns, sealSession, createRun, loadRun, openSpec, openPackage,
-      reviewRun, approveRun, packageRun,
+      reviewRun, approveRun, verifyRuntime, reopenRun, packageRun,
       reviewer, notify, refreshSession
     } = options;
     let session = null;
     let run = null;
+    let runs = [];
     let detail = null;
     let busy = false;
     let needsRepair = false;
@@ -381,6 +466,11 @@
 
     function model(){ return stateModel(session, run, busy, needsRepair); }
 
+    function setCurrentRun(nextRun){
+      run = nextRun;
+      runs = runs.map(candidate => candidate.run_id === run.run_id ? run : candidate);
+    }
+
     function render(){
       const view = model();
       root.hidden = !session;
@@ -388,6 +478,17 @@
       action.textContent = view.label;
       action.disabled = view.disabled;
       action.title = view.disabled ? view.summary : '';
+      newRun.hidden = !session || !session.sealed || runs.length === 0;
+      newRun.disabled = busy;
+      runSelect.hidden = runs.length === 0;
+      runSelect.disabled = busy;
+      runSelect.replaceChildren(...runs.map((candidate, index) => {
+        const option = document.createElement('option');
+        option.value = candidate.run_id;
+        option.textContent = runOptionLabel(candidate, index);
+        option.selected = Boolean(run && candidate.run_id === run.run_id);
+        return option;
+      }));
       for(const [index, stage] of [...stages.children].entries()){
         stage.classList.toggle('is-complete', index <= (view.complete ?? -1));
         stage.classList.toggle('is-current', index === view.current);
@@ -399,7 +500,7 @@
     function setSession(nextSession){
       const changed = (session && session.id) !== (nextSession && nextSession.id);
       session = nextSession || null;
-      if(changed){ run = null; detail = null; needsRepair = false; }
+      if(changed){ runs = []; run = null; detail = null; needsRepair = false; }
       render();
     }
 
@@ -414,7 +515,9 @@
           refreshPending = false;
           const result = await listRuns(sessionId);
           if(!session || session.id !== sessionId) return;
-          run = (result.runs || [])[0] || null;
+          const selectedRunId = run && run.run_id;
+          runs = result.runs || [];
+          run = selectRun(runs, selectedRunId);
           render();
         }while(refreshPending);
       }catch(error){
@@ -469,6 +572,11 @@
               dependencies => answerDependencies(dependencies),
               () => answerDependencies([], true)
             ));
+          } else if(question.id === RUNTIME_VERIFICATION_QUESTION){
+            item.appendChild(runtimeVerificationReview(
+              spec,
+              verification => recordRuntimeVerification(verification)
+            ));
           }
           list.appendChild(item);
         }
@@ -499,6 +607,8 @@
         : '';
       dialogOpen.hidden = currentRun.state !== 'blocked';
       dialogOpen.disabled = busy;
+      dialogReopen.hidden = currentRun.state !== 'approved';
+      dialogReopen.disabled = busy;
       const actions = {
         blocked:['Validate changes', 'review'],
         needs_review:['Approve skill', 'approve'],
@@ -535,6 +645,7 @@
       try{
         detail = await createRun(session.id);
         run = detail.run;
+        runs = [run, ...runs.filter(candidate => candidate.run_id !== run.run_id)];
         render();
         notify('Skill draft created for review.', 'success');
         await open();
@@ -578,7 +689,7 @@
       render();
       try{
         detail = await packageRun(run.run_id);
-        run = detail.run;
+        setCurrentRun(detail.run);
         notify('Skill package created.', 'success');
         renderDialog();
       }catch(error){
@@ -633,7 +744,7 @@
       renderDialog();
       try{
         detail = await reviewRun(run.run_id, reviewer(), skillSpec, notes);
-        run = detail.run;
+        setCurrentRun(detail.run);
         const remaining = Number(run.unresolved_count) || 0;
         notify(
           remaining
@@ -688,7 +799,7 @@
       renderDialog();
       try{
         detail = await approveRun(run.run_id, reviewer());
-        run = detail.run;
+        setCurrentRun(detail.run);
         notify('Skill draft approved.', 'success');
         renderDialog();
       }catch(error){
@@ -696,7 +807,64 @@
       }finally{
         busy = false;
         render();
-        dialogAction.disabled = false;
+        renderDialog();
+      }
+    }
+
+    async function recordRuntimeVerification(verification){
+      if(!run || run.state !== 'blocked') return;
+      busy = true;
+      renderDialog();
+      try{
+        detail = await verifyRuntime(run.run_id, {
+          reviewer:reviewer(),
+          ...verification
+        });
+        setCurrentRun(detail.run);
+        const passed = verification.result === 'passed';
+        notify(
+          passed ? 'Runtime verification passed.' : 'Runtime verification recorded.',
+          passed ? 'success' : ''
+        );
+        render();
+        renderDialog();
+      }catch(error){
+        const message = error.message || 'Could not record runtime verification.';
+        dialogMessage.textContent = message;
+        notify(message, 'error');
+      }finally{
+        busy = false;
+        render();
+        renderDialog();
+      }
+    }
+
+    async function reopenSkill(){
+      if(!run || run.state !== 'approved' || busy) return;
+      const confirmed = global.confirm(
+        'Reopen this approved draft? The approval will be invalidated and a new approval will be required.'
+      );
+      if(!confirmed) return;
+      busy = true;
+      renderDialog();
+      try{
+        detail = await reopenRun(
+          run.run_id,
+          reviewer(),
+          'Reopened from the dashboard to correct review or package validation issues.'
+        );
+        setCurrentRun(detail.run);
+        notify('Skill draft reopened for review.', 'success');
+        render();
+        renderDialog();
+      }catch(error){
+        const message = error.message || 'Could not reopen the skill draft.';
+        dialogMessage.textContent = message;
+        notify(message, 'error');
+      }finally{
+        busy = false;
+        render();
+        renderDialog();
       }
     }
 
@@ -706,6 +874,20 @@
       else if(next === 'forge') createDraft();
       else if(next === 'package') packageSkill();
       else if(next === 'view') open();
+    });
+    newRun.addEventListener('click', () => {
+      if(!session || !session.sealed || busy) return;
+      const confirmed = global.confirm(
+        'Create a new draft from the original sealed evidence? Existing drafts and packages will be preserved.'
+      );
+      if(confirmed) createDraft();
+    });
+    runSelect.addEventListener('change', () => {
+      const selected = runs.find(candidate => candidate.run_id === runSelect.value);
+      if(!selected) return;
+      run = selected;
+      detail = null;
+      render();
     });
     redactionForm.addEventListener('submit', event => {
       event.preventDefault();
@@ -720,6 +902,7 @@
       else if(dialogAction.dataset.action === 'package') packageSkill();
     });
     dialogOpen.addEventListener('click', openSkillSpec);
+    dialogReopen.addEventListener('click', reopenSkill);
     for(const closeButton of [dialogClose, dialogCancel]){
       closeButton.addEventListener('click', () => dialog.close());
     }
@@ -730,6 +913,6 @@
 
   global.WfrecForgeWorkflow = {
     create, stateModel, isSealIntegrityError,
-    resolveDependencyQuestion, resolveInputOutputQuestion
+    resolveDependencyQuestion, resolveInputOutputQuestion, runOptionLabel, selectRun
   };
 })(window);
