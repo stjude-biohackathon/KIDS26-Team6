@@ -5,52 +5,49 @@
 [![Tests](https://github.com/stjude-biohackathon/KIDS26-Team6/actions/workflows/tests.yml/badge.svg)](https://github.com/stjude-biohackathon/KIDS26-Team6/actions/workflows/tests.yml)
 [![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](src/wfrec/README.md)
 
-Every recurring fix, workaround, and analysis step that lives only in one
-person's head or one messy terminal history is knowledge the next analyst has
-to rediscover from scratch. AutoCAB watches how you actually work, and turns
-that observation into a shared, reviewed skill — instead of leaving it tacit
-or duplicated across the team.
+Recurring fixes, workarounds, and analysis steps often survive only in one
+person's memory or terminal history. The next analyst must rediscover them.
+AutoCAB records real work and turns recurring workflows into shared skills
+that people review, edit, and approve before sharing.
 
 ![wfrec activity dashboard screenshot](images/clipboard-2893987244.png)
 
 ## Features
 
-- **Governed pipeline**: workflow evidence is normalized, redacted, and
-  compared against existing skills before a draft is proposed — nothing
-  becomes a shared skill without a human reviewing, editing, and approving it.
-- **Cross-platform recording** with `wfrec` (macOS, Linux, Windows, and HPC
-  login nodes): five independently toggleable capture sources — screen, shell,
-  context notes, agent transcripts, and file changes.
-- **Privacy by construction**: an always-on regex redaction tier runs inline
-  during capture, with optional heavier tiers (model-based, Presidio, or
-  LLM-gated) layered on top, plus `wfrec seal` to retroactively scrub an
-  already-recorded session before sharing it.
-- **Live activity dashboard**: session composition, an activity timeline, and
-  event/window/agent breakdowns, right in the recorder's own GUI.
-- **Always know you're being recorded**: a menu-bar/tray indicator and a
-  floating on-screen badge, so recording is never silent or easy to miss.
-- **Remote and multi-analyst workflows**: SSH-based capture on HPC clusters,
-  a remotely reachable dashboard, and session merging across analysts.
-- **skill-forge**: an evidence-linked toolchain for turning incomplete
-  activity records into a validated, human-approved skill package.
+- AutoCAB normalizes and redacts workflow evidence, then compares it with
+  existing skills before proposing a draft. A person must review, edit, and
+  approve every draft before it becomes a shared skill.
+- `wfrec` records on macOS, Linux, Windows, and HPC login nodes. Its five
+  capture sources can be enabled independently: screen, shell, context notes,
+  agent transcripts, and file changes.
+- Regex rules redact detected sensitive text during capture. Optional
+  model-based, Presidio, or LLM-gated checks can add another pass. `wfrec seal`
+  applies redaction to an existing session before it is shared.
+- The live dashboard shows session composition, activity over time, and event
+  counts for windows and agents.
+- A menu-bar or tray indicator and a floating badge remain visible while
+  recording is active.
+- SSH-based capture supports HPC work. Teams can open the dashboard remotely
+  and merge sessions from multiple analysts.
+- `skill-forge` turns incomplete activity records into validated skill
+  packages linked to their source evidence. A person approves each package.
 
-## Project Background
+## Project background
 
-Agent skills package instructions, scripts, examples, and validation steps so AI
-agents can perform scientific workflows consistently. CAB already publishes
-these skills. Creating one currently requires maintainers to recognize a
-repeated workflow, document it, test it, and contribute it to the shared
-library. As a result, recurring work in data preparation, quality control,
-analysis, reporting, and troubleshooting can remain tacit or duplicated.
+Agent skills package the instructions, scripts, examples, and validation steps
+needed for AI agents to repeat scientific workflows. CAB already publishes
+these skills. Creating one requires maintainers to recognize a repeated
+workflow, document it, test it, and contribute it to the shared library. Until
+that happens, teams may repeat the same data preparation, quality control,
+analysis, reporting, or troubleshooting work.
 
-AutoCAB addresses this gap through a governed observation-to-review workflow.
-People review, edit, and approve every proposal before it becomes a shared
-skill.
+AutoCAB records workflow evidence and prepares a skill proposal for review.
+People edit and approve each proposal before it becomes a shared skill.
 
-The BioHackathon prototype uses public or synthetic data and
-volunteer-consented sessions involving public data only. `wfrec` provides the
-current recording layer. Input adapters can extend collection to ActivityWatch,
-Screenpipe, and future activity sources.
+The BioHackathon prototype uses public or synthetic data. Recorded sessions
+involve volunteers who consented to capture while working with public data.
+`wfrec` provides the current recording layer. Input adapters can extend
+collection to ActivityWatch, Screenpipe, and future activity sources.
 
 ```text
 Workflow evidence
@@ -65,7 +62,7 @@ See the [challenge description](docs/proposal/AutoCAB-challenge-description.docx
 and [framework documentation](docs/biohackathon-framework.md) for the project
 rationale and architecture.
 
-## Install & Setup
+## Install and setup
 
 ### Install AutoCAB
 
@@ -83,7 +80,7 @@ AutoCAB requires Python 3.10 or newer. Its Python packages are installed from
 installed separately from the Python environment. Use the activity-tracking
 skill below to manage their setup and removal.
 
-#### Install without uv (pip / venv)
+#### Install without uv (pip and venv)
 
 On HPC and shared Linux hosts, default `python3` is often older than 3.10. Create
 the environment with **Python 3.10+** explicitly:
@@ -100,7 +97,7 @@ python --version                # must be >= 3.10
 If OCR fails with `libGL.so.1`, run `pip install --force-reinstall opencv-python-headless`
 and `wfrec doctor` again.
 
-#### Install and run on HPC (daemon + browser UI)
+#### Install and run on HPC
 
 On a cluster **login or interactive node**, run the recorder daemon in the
 background and open the web UI from your **laptop browser** (do not use
@@ -160,13 +157,14 @@ background and open the web UI from your **laptop browser** (do not use
 See [`src/wfrec/README.md`](src/wfrec/README.md) for capture sources, security
 notes, and troubleshooting.
 
-### Set Up Activity Tracking with Codex or Claude
+### Set up activity tracking with Codex or Claude
 
 The maintained skill in `skills/setup-activity-tracking/` helps Codex or Claude
 verify and install DevSQL and Atuin. It configures Atuin for shell history.
-Agent-attributed Atuin hooks remain opt-in because `wfrec` reads Codex messages
-through DevSQL and Claude Code transcripts directly. The agent shows the
-planned changes and waits for approval before changing the system.
+Atuin hooks that attribute commands to agents remain optional because `wfrec`
+reads Codex messages through DevSQL and reads Claude Code transcripts directly.
+The agent shows its planned changes and waits for approval before changing the
+system.
 
 #### Codex
 
@@ -195,7 +193,7 @@ installation. Then invoke the installed skill:
 
 ## Usage
 
-### Run the Demo Pipeline
+### Run the demo pipeline
 
 Run the default demo pipeline:
 
@@ -220,16 +218,16 @@ uv run autocab ingest-terminal-log path/to/terminal-session.txt --output /tmp/ge
 
 Generated proposals are written to `skills/generated-drafts/` by default.
 
-### Collect Workflow Evidence
+### Collect workflow evidence
 
-`wfrec` records live work and produces the session artifacts that AutoCAB's
-input adapters read. Recorded sessions follow the same path to a reviewed skill
-proposal as the supplied demo inputs.
+`wfrec` records live work and produces session artifacts for AutoCAB's input
+adapters. Recorded sessions and supplied demo inputs follow the same path to a
+reviewed skill proposal.
 
 After completing the setup above, check which backends are available:
 
 ```bash
-wfrec doctor                  # which backend each source resolved to, and why
+wfrec doctor                  # show the backend selected for each source and why
 ```
 
 DevSQL with Atuin is the primary local shell backend. If `wfrec doctor` selects
@@ -249,11 +247,11 @@ wfrec stop
 wfrec export
 ```
 
-#### Capture Sources and Boundaries
+#### Capture sources and session boundaries
 
-Toggles and pause apply to already-open terminals at the next prompt. One
-session is active at a time; starting or resuming another pauses the current
-session and records the handover in both timelines.
+Source changes and pauses take effect in open terminals at the next prompt.
+Only one session can be active. Starting or resuming another session pauses the
+current one and records the handover in both timelines.
 
 Five sources can be toggled independently: `screen` (frames, OCR text, window
 titles), `context` (text deliberately added through the paste box), `shell`
@@ -262,7 +260,7 @@ Chat, and Cursor transcripts), and `files` (git-verified changes in declared
 roots). Local shell collection stores command metadata; bounded Slurm output
 enters through remote job-log collection.
 
-#### Session Data and Exports
+#### Session data and exports
 
 Each session stores an append-only `events.jsonl` timeline plus frames, diffs,
 notes, and job logs. `wfrec export` creates a complete `events.json` document
@@ -270,7 +268,7 @@ plus three **lossy** AutoCAB adapter formats. The timeline remains the source
 of truth. Paused and archived sessions export through a temporary, local,
 pattern-checked snapshot.
 
-#### Remote and Team Workflows
+#### Remote and team workflows
 
 `wfrec ssh <host>` and `wfrec pull <host>` add remote commands, SLURM metadata,
 and bounded `slurm-*.out` slices through a POSIX hook on the HPC login node.
@@ -278,18 +276,18 @@ For multiple analysts, `wfrec merge` or a session folder passed to
 `--session-dir` combines sessions and separates repeated workflows from
 one-off work.
 
-#### Help and Detailed Documentation
+#### Help and detailed documentation
 
 Run `wfrec --help`, or use the `recorder` skill in
 `.claude/skills/recorder/` from Claude Code or Copilot.
 
-**Full usage guide: [`src/wfrec/README.md`](src/wfrec/README.md)**: install,
-per-platform notes (including the macOS Screen Recording restart and the
-Wayland limits), multi-analyst and HPC workflows, and troubleshooting.
+The [full recorder guide](src/wfrec/README.md) covers installation, platform
+notes such as the macOS Screen Recording restart and Wayland limits,
+multi-analyst and HPC workflows, and troubleshooting.
 See [`docs/mgatta42/plan.md`](docs/mgatta42/plan.md) for the design rationale
 and the per-OS backend matrix.
 
-## Development and Testing
+## Development and testing
 
 Run the test suite from the repository-local environment:
 
@@ -297,7 +295,7 @@ Run the test suite from the repository-local environment:
 .venv/bin/python -m pytest
 ```
 
-## Repository Layout
+## Repository layout
 
 ```text
 src/autocab/       CLI, orchestration, pipeline framework, and de-identification engine
