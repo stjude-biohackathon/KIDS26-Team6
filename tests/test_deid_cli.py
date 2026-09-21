@@ -36,15 +36,24 @@ def test_verify_selects_the_gliner2_model(autocab_home: Path, capfd) -> None:
     assert "fetch --model gliner2-pii" in output
 
 
-def test_fetch_explains_xet_progress_before_downloading(
+@pytest.mark.parametrize(
+    ("model", "message"),
+    [
+        ("gliner", "progress may remain at 0%"),
+        ("gliner2-pii", "resumable HTTP"),
+    ],
+)
+def test_fetch_explains_transfer_before_downloading(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capfd: pytest.CaptureFixture[str],
+    model: str,
+    message: str,
 ) -> None:
     bundle = tmp_path / "model.zip"
     monkeypatch.setattr(deid_cli, "fetch_weights", lambda *_args, **_kwargs: bundle)
 
-    assert main(["deid", "fetch", "--bundle", str(bundle)]) == 0
+    assert main(["deid", "fetch", "--model", model, "--bundle", str(bundle)]) == 0
 
     captured = capfd.readouterr()
-    assert "progress may remain at 0%" in captured.err
+    assert message in captured.err
