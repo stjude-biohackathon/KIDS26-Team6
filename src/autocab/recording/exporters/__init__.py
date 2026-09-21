@@ -1,14 +1,8 @@
-"""Export a sealed session into portable and AutoCAB-compatible formats.
+"""Export sealed sessions as complete events or compact AutoCAB inputs.
 
-``events.json`` retains the complete timeline, manifest, and seal provenance.
-The AutoCAB adapter files are deliberately lossy projections.
-``autocab.models.WorkflowStep`` has exactly four fields
-(``timestamp``, ``tool``, ``action``, ``detail``), so exit codes, durations,
-diffs and OCR either collapse into ``detail`` or are dropped.
-
-Keeping the two representations separate is intentional. The pipeline's model
-is tuned for clustering and lexical matching; the recorder's is tuned for
-completeness. Widening ``WorkflowStep`` to fit the recorder would degrade both.
+``events.json`` keeps the full timeline and provenance. AutoCAB adapters
+project events into the smaller ``WorkflowStep`` model for clustering and
+matching.
 """
 
 from __future__ import annotations

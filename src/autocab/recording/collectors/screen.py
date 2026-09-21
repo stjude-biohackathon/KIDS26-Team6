@@ -1,17 +1,8 @@
-"""Screen collector: frames, change detection, OCR, window titles, video.
+"""Record screenshots, detected text, window titles, and review video.
 
-Two decisions shape this module.
-
-**OCR is the point, not the video.** The recorder exists to feed a downstream
-translation skill, and an LLM cannot watch an mp4. Text extracted from frames
-is the consumable artifact; the video is for humans reviewing a session.
-
-**Video is derived from frames, not captured separately.** Rather than three
-per-platform ffmpeg capture pipelines (avfoundation / gdigrab / x11grab), the
-already-captured frames are stitched with ``-f concat``. That is one code path
-on all platforms, adds no second permission surface, and is the only approach
-that produces video at all on Wayland -- where the bundled ffmpeg has neither
-kmsgrab nor pipewire.
+Optical character recognition (OCR) creates text for downstream tools. Video
+uses the same frames, which gives each platform one capture path and one
+permission flow.
 """
 
 from __future__ import annotations

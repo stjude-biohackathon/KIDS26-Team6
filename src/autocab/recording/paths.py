@@ -1,17 +1,8 @@
-"""Filesystem layout for AutoCAB recording.
+"""Resolve durable recording paths and fast runtime state paths.
 
-Two distinct roots, and the split matters:
-
-* The **session root** (``~/.autocab`` by default) holds durable data. Existing
-  ``WFREC_HOME`` overrides remain supported and legacy ``~/.wfrec/sessions``
-  folders remain discoverable.
-* The **runtime root** (``$XDG_RUNTIME_DIR``/``$TMPDIR``/``%LOCALAPPDATA%``)
-  holds the tiny sentinel that shell hooks poll on *every* prompt.
-
-Keeping the sentinel out of ``$HOME`` is deliberate: on an HPC workstation
-``$HOME`` is frequently NFS, where a ``stat`` can block for seconds or hang
-outright on a stale mount. That single choice is the difference between a
-15-microsecond prompt and a three-second one.
+Session data uses ``~/.autocab`` by default and can discover legacy
+``~/.wfrec`` sessions. Prompt hooks read a small sentinel from a local runtime
+directory, which keeps network storage outside the prompt path.
 """
 
 from __future__ import annotations

@@ -1,14 +1,8 @@
-"""Session lifecycle: create, start, pause, resume, stop, preempt.
+"""Manage one active recording session and any number of paused sessions.
 
-The rule that makes everything else simple: **exactly one session is active at
-a time, and any number may be paused.** Starting or resuming session B while A
-is active auto-pauses A and records ``session.preempted`` on A's timeline.
-
-That constraint is deliberate rather than a limitation. If two sessions could
-record simultaneously there would be no correct answer to "which session owns
-this shell command?" -- the shell hook sees one sentinel and one spool
-directory, and an analyst typing in a terminal has no way to express which
-session they meant.
+Starting or resuming a session pauses the current active session and records
+the change. One active session gives shell hooks a single destination for each
+command.
 """
 
 from __future__ import annotations

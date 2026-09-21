@@ -1,12 +1,6 @@
-# wfrec PowerShell hook -- dot-sourced from $PROFILE.CurrentUserAllHosts.
-#
-# PowerShell gives us the richest metadata of any shell for free: Get-History
-# returns CommandLine, StartExecutionTime, EndExecutionTime and ExecutionStatus,
-# so duration needs no clock arithmetic.
-#
-# Deliberately NOT using Set-PSReadLineKeyHandler on Enter: that silently
-# clobbers whatever the user, Oh-My-Posh or PSFzf already bound to it, and is
-# the single most common cause of "your tool broke my terminal" reports.
+# AutoCAB PowerShell hook. The installer loads it from the user profile.
+# Get-History provides the command, timing, and status. The wrapper preserves
+# existing PSReadLine key bindings.
 
 if ($env:__WFREC_LOADED) { return }
 $env:__WFREC_LOADED = 1

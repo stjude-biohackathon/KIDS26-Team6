@@ -1,28 +1,7 @@
-"""The KEEP set: bioinformatics surfaces that must survive de-identification.
+"""Protect bioinformatics terms that models can mistake for personal data.
 
-Without this, a clinical NER model redacts the science. Concretely, and this is
-not hypothetical: ``PipelineConfig.benchmark_dataset`` is ``"GIAB HG008"``
-(``autocab/framework/config.py``), so a name detector pointed at this repo's own
-configuration scrubs the benchmark it is measured against. The gene symbol
-``MET`` reads as a surname to every model ever trained on clinical notes, and
-``p.Phe508del`` contains three capitalized letter groups.
-
-Three mechanisms, because one is not enough:
-
-``LITERALS``
-    exact (normalized) surfaces -- reference builds, GIAB sample names, tool
-    names, the gene symbols that read as English words.
-``SURFACE_PATTERNS``
-    ``fullmatch`` against the surface -- accessions, HGVS, coordinates, barcodes.
-``CONTEXT_PATTERNS``
-    matched against the *whole* string; a span falling entirely inside a match
-    is kept. This is the only way to keep the ``2024-01-15`` in
-    ``biocontainers/gatk:4.5.0.0--2024-01-15`` while still redacting a real date.
-
-``SJ-1234`` is **deliberately not allowlisted.** It is the institutional subject
-identifier shape -- the single most likely direct identifier in this repo's
-domain -- and the temptation to allowlist it because it looks like an internal
-code is exactly the mistake this file exists to make expensive.
+The allowlist covers exact terms, structured values, and values within known
+contexts. Institutional subject identifiers stay outside the allowlist.
 """
 
 from __future__ import annotations

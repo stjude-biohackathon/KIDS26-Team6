@@ -1,15 +1,8 @@
-"""Span algebra: the one place offsets are reasoned about.
+"""Normalize, validate, resolve, and render detected text spans.
 
-**Offsets are half-open NFC code-point offsets.** Every detector, the corpus,
-the audit and the frame box-mapper agree on that, and an offset outside
-``[0, len(text)]`` aborts the whole seal rather than being clipped silently --
-a replacement applied to the wrong region *looks* like success, which is the
-worst possible failure mode for a redaction pass.
-
-Normalize with :func:`normalize_text` before detecting. NFC rather than NFKC
-because NFKC rewrites ligatures and full-width forms, which changes lengths and
-therefore offsets; the aggressive normalization belongs in pseudonym *keying*,
-not in the text we are rewriting.
+Offsets use half-open NFC code-point positions. The seal stops when offsets
+fall outside the source text. NFC preserves text length better than NFKC, which
+keeps replacement offsets stable.
 """
 
 from __future__ import annotations

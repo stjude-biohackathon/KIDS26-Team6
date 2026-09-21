@@ -1,16 +1,7 @@
-"""Backward compatibility with the two return types already in the tree.
+"""Adapt shared redaction results to the two established return types.
 
-``autocab.models.RedactionReport`` (``redacted_text`` + ``findings``) and
-``autocab.recording.redaction.Redacted`` (``text`` + ``findings`` + ``available``) are both
-consumed by code and by assertions that must keep passing unmodified. This
-module is the only place that knows about them, so the detector never has to.
-
-The legacy finding names are **an explicit map, not ``label.lower()``.** The
-four names ``email``, ``sj_id``, ``mrn`` and ``dob`` appear in test assertions
-and in exported skill metadata; deriving them from the label would silently
-rename ``sj_id`` to ``subject_id`` and ``dob`` to ``dob_labelled`` the moment the
-taxonomy grew, which is exactly the kind of change that passes review and breaks
-a consumer nobody remembered.
+An explicit name map preserves finding names such as ``sj_id`` and ``dob`` in
+tests and exported skill metadata.
 """
 
 from __future__ import annotations

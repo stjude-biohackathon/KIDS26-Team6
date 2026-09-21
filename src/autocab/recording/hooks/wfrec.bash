@@ -1,23 +1,8 @@
-# wfrec bash hook -- sourced from ~/.bashrc, installed once, toggled at runtime.
+# AutoCAB Bash hook. The installer sources this file from ~/.bashrc.
 #
-# Design notes that matter:
-#   * Cheap. The only fork is one `$(builtin history 1)` subshell, measured at
-#     ~180us per prompt, which buys the full command line -- pipelines,
-#     redirections and compound statements included. Everything else is a
-#     builtin. Compare ~5-25ms if the hook had to fork `jq` or `python` to
-#     parse JSON state; that users do feel.
-#   * No JSON. Records use ASCII RS/US delimiters, because escaping quotes,
-#     backslashes and newlines out of a command line in shell costs a fork.
-#   * No daemon contact. The hook appends to its own per-process spool file, so
-#     a dead or restarting daemon can never hang an interactive terminal.
-#   * Reads the sentinel every prompt, so toggling capture off takes effect in
-#     terminals that are already open, with no re-sourcing.
-#
-# Why `history 1` and not `$BASH_COMMAND` or `fc`:
-#   $BASH_COMMAND holds only one simple command, so `samtools view x | head`
-#   arrives as `samtools view x`. `fc -ln -1` excludes the currently-executing
-#   command and therefore lags by one. `builtin history 1` inside the DEBUG
-#   trap is the only one of the three that yields the line as typed.
+# The hook uses shell built-ins and `history 1` to record the full command.
+# Each process writes to its own spool file and reads the active sentinel at
+# every prompt. Capture stays responsive while the daemon restarts.
 
 [ -n "${__WFREC_LOADED:-}" ] && return 0
 __WFREC_LOADED=1

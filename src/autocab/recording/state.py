@@ -1,22 +1,8 @@
-"""Recorder state, in two representations.
+"""Store recorder state for applications and prompt hooks.
 
-``state.json`` is authoritative and rich: it is what the CLI, GUI and daemon
-read and mutate. The ``active`` sentinel is a *derived*, one-line projection of
-it, and exists purely so that a shell hook can answer "should I record this
-command, and where do I put it?" using only shell builtins.
-
-Why two files instead of one
-----------------------------
-The hook runs on *every* prompt in *every* open terminal. Parsing JSON there
-would mean forking ``jq`` or ``python`` (5-25 ms), which users feel, and which
-fails outright when the tool is missing. The sentinel is instead a single
-TAB-separated line::
-
-    <session_id>\\t<flags>\\t<spool_dir>
-
-which a hook reads with ``IFS='\\t' read -r`` and tests with ``case``, both
-builtins, in roughly 15 microseconds. ``flags`` is a set of single letters --
-presence means enabled -- so adding a source never changes the parse.
+``state.json`` holds the full state. A tab-separated ``active`` sentinel gives
+shell hooks the session ID, capture flags, and spool directory. Shell built-ins
+read the sentinel at each prompt and avoid starting another process.
 """
 
 from __future__ import annotations

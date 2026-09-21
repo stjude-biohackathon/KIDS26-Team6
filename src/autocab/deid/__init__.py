@@ -1,22 +1,8 @@
-"""De-identification shared by the AutoCAB pipeline and recorder.
+"""Share de-identification tools across the pipeline and recorder.
 
-One detector, one taxonomy, one offset convention. The pipeline's
-``SensitiveDataRedactor`` and the recorder's inline capture path both come
-through here, so a pattern added once is in force on every path.
-
-Typical use::
-
-    from autocab.deid import mask_text
-    text, spans = mask_text("Send to a@example.org with MRN 123456")
-
-The seal uses the lower-level pieces directly (``detect`` ->
-``spans.resolve`` -> ``spans.render`` with a ``Pseudonymizer``), because it
-needs the span list for the audit and for frame box mapping.
-
-**What this does not do.** It detects and rewrites text. It is not a HIPAA Safe
-Harbor determination: Safe Harbor requires all 18 identifier classes removed
-*and* no actual knowledge that the residue is identifiable, and a recall number
-establishes neither. ``docs/deid-evaluation.md`` states the measured limits.
+All paths use the same detector, labels, and text offsets. The seal uses the
+lower-level API to record findings and map screen regions. HIPAA Safe Harbor
+requires a separate review of all identifier classes and remaining risk.
 """
 
 from __future__ import annotations

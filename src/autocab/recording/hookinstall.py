@@ -1,17 +1,8 @@
-"""Install and remove shell hooks.
+"""Install and remove shell capture hooks.
 
-Hooks are installed **once**; every later start, stop, pause and per-source
-toggle is a state-file mutation that already-open shells pick up on their next
-prompt. So this module runs rarely and must be conservative.
-
-Two deliberate choices about rc files:
-
-* The hook body is written to ``~/.autocab/hooks/`` and the rc file only gains a
-  two-line, marker-delimited ``source`` guard. Appending hundreds of lines of
-  someone else's code into a personal ``.zshrc`` is rude and unreviewable.
-* A timestamped backup is taken before any edit. Modifying shell startup files
-  is MITRE ATT&CK T1546.004 (and T1546.013 for PowerShell profiles); the code
-  is therefore plain, un-obfuscated, greppable, and trivially reversible.
+Each shell profile receives a short source block for a hook stored under
+``~/.autocab/hooks/``. A timestamped backup makes each profile edit reversible.
+Open shells read session state at each prompt.
 """
 
 from __future__ import annotations

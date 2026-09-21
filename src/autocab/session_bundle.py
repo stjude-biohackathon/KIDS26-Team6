@@ -1,18 +1,8 @@
-"""Input adapter for wfrec session folders.
+"""Load recording sessions into the AutoCAB workflow pipeline.
 
-This is the native, full-fidelity path from a recorded session into the
-AutoCAB pipeline. It accepts either:
-
-* a **session directory** (``~/.wfrec/sessions/<id>/``), or
-* a **trace JSON file** already exported from one, or
-* a **directory of session directories**, which is how several analysts'
-  sessions are ingested together for the multi-analyst clustering in
-  challenge extension (b).
-
-The conversion is deliberately lossy: ``WorkflowStep`` carries only
-``timestamp``/``tool``/``action``/``detail``, so a session's exit codes,
-durations, diffs and OCR are folded into ``detail``. The session folder remains
-the source of truth for anything that needs the full record.
+The adapter accepts a session directory, an exported trace, or a directory of
+sessions. It projects full events into the smaller ``WorkflowStep`` model while
+the session folder remains the complete source.
 """
 
 from __future__ import annotations

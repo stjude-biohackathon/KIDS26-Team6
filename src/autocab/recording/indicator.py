@@ -1,14 +1,8 @@
-"""Menu-bar (macOS) / system-tray (Windows) recording indicator.
+"""Show recording state in the macOS menu bar or Windows system tray.
 
-Runs as its own process, never a thread inside the daemon: ``pystray`` needs
-to own its platform's native event loop (Cocoa's run loop on macOS, a message
-loop on Windows), which would otherwise fight with the daemon's asyncio
-server for the main thread.
-
-It carries no session state of its own -- it only polls the same control API
-the CLI and GUI already use, so it can never drift from what a user reloading
-the GUI would see, and it needs no wiring into every place a session can
-start, pause, or stop.
+The indicator runs in a separate process because native tray frameworks own
+the main event loop. It polls the control API, which keeps its state aligned
+with the CLI and dashboard.
 """
 
 from __future__ import annotations

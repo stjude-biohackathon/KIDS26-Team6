@@ -1,36 +1,8 @@
-"""Deterministic, network-free corpus generator.
+"""Generate the deterministic, network-free de-identification corpus.
 
-The corpus comes **before** the detector. Without it, "we scrub things" stays an
-assertion; with it, every claim in ``docs/deid-evaluation.md`` is a number
-somebody can reproduce with ``autocab deid gen-corpus --seed 1337 --check``.
-
-Two safety tiers, because the two halves of the taxonomy have different
-options:
-
-**Tier 1 -- structural reservation.** Where a reserved space exists, the
-generator uses it and a test enforces it: ``@example.org`` / ``.com`` / ``.net``
-(RFC 2606), ``555-555-01xx`` (NANP fictitious exchange in an unassignable area
-code), SSN areas ``000`` / ``666`` / ``9xx`` (never issued), ``192.0.2.0/24``,
-``198.51.100.0/24``, ``203.0.113.0/24`` (RFC 5737), ``2001:db8::/32`` (RFC 3849),
-published payment-card test numbers, and a documented test-only ``44xxxxx`` MRN
-band. A fixture physically cannot collide with a live value.
-
-**Tier 2 -- independent-draw provenance.** ``NAME``, ``LOCATION``, ``DATE`` and
-``AGE`` have no reserved space -- every surname is somebody's. So every field of
-every record is an **independent** seeded draw from a committed public-domain
-lexicon. The surname does not know the given name, which does not know the city,
-which does not know the ZIP or the date. No *combination* in this corpus maps to
-a real person, which is the property that matters; a lone surname in a synthetic
-shell command is not a disclosure.
-
-The same reasoning covers ``SUBJECT_ID``, ``SAMPLE_ID`` and ``ACCESSION``: there
-is no reserved band for them either, so they are independent draws carrying no
-linked attributes.
-
-**Everything is ``.jsonl``.** ``.gitignore`` already ignores ``*.vcf``,
-``*.fastq``, ``*.bam`` and ``*.log``, so a fixture file named ``slurm-4213.log``
-would be silently dropped from the commit and CI would score a corpus with a
-missing channel. Those shapes are embedded as strings inside JSONL instead.
+Reserved test ranges cover identifiers with safe synthetic spaces. Seeded,
+independent draws cover names, locations, dates, ages, and research identifiers.
+JSONL stores file-like examples in a format that Git tracks.
 """
 
 from __future__ import annotations

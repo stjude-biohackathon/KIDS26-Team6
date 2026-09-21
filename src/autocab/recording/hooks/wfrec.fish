@@ -1,7 +1,5 @@
-# wfrec fish hook -- sourced from ~/.config/fish/config.fish.
-#
-# fish has the best story of any shell here: $CMD_DURATION is a built-in
-# millisecond timer, so there is no clock arithmetic at all.
+# AutoCAB Fish hook. The installer sources this file from config.fish.
+# $CMD_DURATION provides elapsed milliseconds.
 
 if set -q __WFREC_LOADED
     exit 0

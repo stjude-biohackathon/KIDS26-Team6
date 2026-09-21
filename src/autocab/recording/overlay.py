@@ -1,23 +1,8 @@
-"""Always-on-top floating recording badge.
+"""Show an always-on-top recording badge outside the menu bar.
 
-The menu-bar icon in ``indicator.py`` shares finite menu-bar space with every
-other app, and macOS (and Windows) can push it into an overflow area once
-that space runs out -- no third-party app can override that OS-level
-allocation. This badge sits in a screen corner instead, entirely outside the
-menu bar, so a crowded menu bar can never hide it. It is a companion to the
-menu-bar icon, not a replacement.
-
-macOS gets a native Cocoa window: real per-pixel window transparency needs
-AppKit (``NSWindow.setOpaque_(False)`` + a clear background color), which
-tkinter can only fake through a Tk-build-dependent trick that silently
-degrades to a solid black square on some Tk builds (Anaconda's among them).
-``pyobjc-framework-Cocoa`` is already a wfrec macOS dependency, so this adds
-nothing new. Windows uses ``tkinter`` instead, whose ``-transparentcolor``
-window attribute is a standard, reliable feature of Tk on Windows.
-
-Runs as its own process for the same reason as ``indicator.py``: a GUI
-toolkit's main loop needs the main thread, and each toolkit fights over it,
-so each stays in its own process rather than sharing one.
+macOS uses a Cocoa window for transparent rendering. Windows uses Tk and its
+transparent-color setting. The badge runs in a separate process so each GUI
+event loop owns its main thread.
 """
 
 from __future__ import annotations
