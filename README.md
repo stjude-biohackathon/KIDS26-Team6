@@ -10,7 +10,7 @@ person's memory or terminal history. The next analyst must rediscover them.
 AutoCAB records real work and turns recurring workflows into shared skills
 that people review, edit, and approve before sharing.
 
-![AutoCAB dashboard showing a paused session, activity charts, capture controls, notes, and recent events](images/clipboard-2893987244.png)
+![AutoCAB dashboard showing session details, activity totals, a timeline, and event counts](images/autocab-dashboard.png)
 
 ## In this README
 
