@@ -13,11 +13,15 @@ from autocab.recording.collectors.agents import (
     ClaudeCodeAdapter,
     CursorAdapter,
     DEVSQL_CODEX_COLUMNS,
+    DEVSQL_CODEX_TOOL_COLUMNS,
     DevSQLCodexAdapter,
+    DevSQLCodexToolAdapter,
+    ToolExecution,
     Turn,
     _flatten_content,
     _iso,
     attach_transcript,
+    tool_category,
 )
 from autocab.recording.collectors.shell import (
     active_interval_start,
@@ -25,14 +29,19 @@ from autocab.recording.collectors.shell import (
     parse_devsql_timestamp,
 )
 from autocab.recording.devsql import DevSQLClient, DevSQLUnavailableError
-from autocab.recording.events import AGENT_MESSAGE
+from autocab.recording.events import AGENT_MESSAGE, AGENT_TOOL_COMPLETED
 
 
 class FakeDevSQLClient:
     """Expose deterministic Codex rows while retaining submitted SQL."""
 
-    def __init__(self, rows: list[dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        rows: list[dict[str, Any]],
+        tool_rows: list[dict[str, Any]] | None = None,
+    ) -> None:
         self.rows = rows
+        self.tool_rows = tool_rows or []
         self.queries: list[str] = []
 
     def query(
@@ -44,6 +53,9 @@ class FakeDevSQLClient:
         self.queries.append(sql)
         if sql.endswith("LIMIT 0"):
             return []
+        if "codex_tool_executions" in sql:
+            assert tuple(required_columns) == DEVSQL_CODEX_TOOL_COLUMNS
+            return [dict(row) for row in self.tool_rows]
         assert tuple(required_columns) == DEVSQL_CODEX_COLUMNS
         return [dict(row) for row in self.rows]
 
@@ -68,6 +80,38 @@ def _codex_row(
         "agent_role": "reviewer",
         "originator": "codex",
         "cwd": "/work/project",
+        "git_branch": "feature/capture",
+    }
+
+
+def _codex_tool_row(
+    timestamp: str,
+    *,
+    call_id: str = "call-1",
+    tool_name: str = "exec_command",
+    command: str = "python workflow.py",
+    output: str = "complete",
+    exit_code: int | None = 0,
+) -> dict[str, Any]:
+    return {
+        "thread_id": "thread-1",
+        "call_id": call_id,
+        "call_record_index": 7,
+        "output_record_index": 8,
+        "called_at": timestamp,
+        "completed_at": _after(timestamp, 1),
+        "tool_name": tool_name,
+        "arguments_json": json.dumps({"cmd": command}),
+        "cmd": command,
+        "output_text": output,
+        "exit_code": exit_code,
+        "cwd": "/work/project",
+        "source_path": "/private/codex/session.jsonl",
+        "parent_thread_id": "parent-1",
+        "source_kind": "codex-cli",
+        "agent_path": "agents/reviewer",
+        "agent_role": "reviewer",
+        "originator": "codex",
         "git_branch": "feature/capture",
     }
 
@@ -257,6 +301,60 @@ def test_devsql_codex_adapter_joins_normalized_message_metadata(
     assert "command_events" not in client.queries[1]
 
 
+def test_devsql_codex_tool_adapter_reads_completed_executions(store: Any) -> None:
+    session, _ = store.start(title="A", analyst="a")
+    interval_start = active_interval_start(session)
+    client = FakeDevSQLClient([], [_codex_tool_row(interval_start)])
+    adapter = DevSQLCodexToolAdapter(client, since=interval_start)
+
+    assert adapter.available() is True
+    executions = list(adapter.activities(0.0))
+
+    assert len(executions) == 1
+    execution = executions[0]
+    assert isinstance(execution, ToolExecution)
+    assert execution.key == "codex-tool:thread-1:call-1"
+    assert execution.tool_name == "exec_command"
+    assert execution.command == "python workflow.py"
+    assert execution.exit_code == 0
+    assert execution.meta and execution.meta["agent_role"] == "reviewer"
+    assert "codex_tool_executions" in client.queries[0]
+    assert "codex_events" not in client.queries[1]
+
+
+def test_collector_redacts_and_bounds_codex_tool_content(store: Any) -> None:
+    session, _ = store.start(title="A", analyst="a")
+    interval_start = active_interval_start(session)
+    private_email = "analyst@example.org"
+    long_output = f"{private_email} " + ("x" * 9000)
+    client = FakeDevSQLClient(
+        [],
+        [_codex_tool_row(interval_start, output=long_output)],
+    )
+    collector = AgentCollector(session, devsql_client=client)
+
+    collector.probe()
+    collector._run_once()
+
+    tools = [event for event in session.writer.read() if event.type == AGENT_TOOL_COMPLETED]
+    assert len(tools) == 1
+    payload = tools[0].payload
+    assert private_email not in payload["output"]
+    assert payload["output_truncated"] is True
+    assert payload["output_chars"] == len(long_output)
+    assert payload["category"] == "command"
+    assert payload["duration_ms"] == 1000
+    assert tools[0].redactions
+
+
+def test_tool_category_excludes_workflow_noise_from_action_categories() -> None:
+    assert tool_category("exec_command") == "command"
+    assert tool_category("apply_patch") == "edit"
+    assert tool_category("write_stdin") == "continuation"
+    assert tool_category("wait") == "wait"
+    assert tool_category("request_user_input") == "interaction"
+
+
 def test_collector_captures_claude_and_codex_together(store: Any, monkeypatch: Any) -> None:
     session, _ = store.start(title="A", analyst="a")
     interval_start = active_interval_start(session)
@@ -280,7 +378,7 @@ def test_collector_captures_claude_and_codex_together(store: Any, monkeypatch: A
     collector._run_once()
 
     messages = [event for event in session.writer.read() if event.type == AGENT_MESSAGE]
-    assert status.backend.startswith("devsql-codex,claude-code")
+    assert status.backend.startswith("devsql-codex,devsql-codex-tools,claude-code")
     assert {event.payload["tool"] for event in messages} == {
         "claude-code",
         "codex",
@@ -333,6 +431,31 @@ def test_devsql_codex_dedupes_across_polls_and_restart(
     assert len(messages) == 1
     assert messages[0].payload["capture_id"] == "codex:thread-1:1"
     assert event_time[:19] in client.queries[-1]
+
+
+def test_devsql_codex_tool_calls_dedupe_across_polls_and_restart(store: Any) -> None:
+    session, _ = store.start(title="A", analyst="a")
+    interval_start = active_interval_start(session)
+    client = FakeDevSQLClient([], [_codex_tool_row(interval_start)])
+
+    first = AgentCollector(session)
+    first._adapters = [DevSQLCodexToolAdapter(client, since=interval_start)]
+    first._run_once()
+    first._run_once()
+
+    restarted = AgentCollector(session)
+    restarted._adapters = [
+        DevSQLCodexToolAdapter(
+            client,
+            since=interval_start,
+            existing_events=session.writer.read(),
+        )
+    ]
+    restarted._run_once()
+
+    tools = [event for event in session.writer.read() if event.type == AGENT_TOOL_COMPLETED]
+    assert len(tools) == 1
+    assert tools[0].payload["capture_id"] == "codex-tool:thread-1:call-1"
 
 
 def test_devsql_codex_excludes_messages_before_active_interval(

@@ -15,6 +15,7 @@ from pathlib import Path
 
 from ..events import (
     AGENT_MESSAGE,
+    AGENT_TOOL_COMPLETED,
     CONTEXT_NOTE,
     FILE_DIFF,
     GIT_SNAPSHOT,
@@ -202,6 +203,19 @@ def _project_agent_message(event: Event) -> _TraceProjection:
     )
 
 
+def _project_agent_tool(event: Event) -> _TraceProjection:
+    payload = event.payload
+    detail = str(payload.get("command") or payload.get("arguments") or payload.get("output") or "")
+    tool_name = str(payload.get("tool_name") or "tool")
+    return _projection(
+        event,
+        tool=str(payload.get("agent") or "agent"),
+        action=str(payload.get("category") or "tool"),
+        detail=f"{tool_name}: {detail[:1200]}",
+        corpus_text=detail,
+    )
+
+
 def _project_file_diff(event: Event) -> _TraceProjection:
     payload = event.payload
     path = str(payload.get("path") or "")
@@ -271,6 +285,7 @@ _EVENT_PROJECTORS: dict[str, _EventProjector] = {
     SCREEN_OCR: _project_screen_ocr,
     CONTEXT_NOTE: _project_context_note,
     AGENT_MESSAGE: _project_agent_message,
+    AGENT_TOOL_COMPLETED: _project_agent_tool,
     FILE_DIFF: _project_file_diff,
     GIT_SNAPSHOT: _project_git_snapshot,
     JOB_SUBMITTED: _project_job_submission,

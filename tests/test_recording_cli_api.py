@@ -1021,6 +1021,7 @@ def test_ui_serves_packaged_javascript_without_credentials(client):
     assert "providers:" in source
     assert "Latest ${events.length} of ${total} events" in source
     assert "'agent.message':'Agent message'" in source
+    assert "'agent.tool.completed':'Agent tool completed'" in source
     assert "Start or resume a session to see activity." in source
     assert "[...events].reverse()" in source
     assert "event-source" not in source

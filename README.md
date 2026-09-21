@@ -216,7 +216,7 @@ Five evidence sources can be enabled independently:
 | `shell` | Commands, exit codes, and durations |
 | `screen` | Changed frames, OCR text, and window titles |
 | `context` | Notes deliberately added by the analyst |
-| `agents` | Supported local agent transcripts |
+| `agents` | Supported local agent messages and completed tool calls |
 | `files` | Git-verified changes under declared roots |
 
 One session is active at a time. Starting or resuming another session pauses

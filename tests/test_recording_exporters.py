@@ -132,6 +132,15 @@ def test_screen_capture_export_loads_through_existing_adapter(store):
             Event(
                 source="screen", type="screen.window", payload={"window_title": "iTerm2 - hg008"}
             ),
+            Event(
+                source="agents",
+                type="agent.tool.completed",
+                payload={
+                    "agent": "codex",
+                    "tool_name": "exec_command",
+                    "command": "samtools flagstat HG008.bam",
+                },
+            ),
         ]
     )
     _record_commands(session, ["samtools flagstat HG008.bam"])
@@ -149,6 +158,7 @@ def test_screen_capture_export_loads_through_existing_adapter(store):
     events = document["sessions"][0]["events"]
     assert any(e["ocr_text"] for e in events)
     assert any(e["window_title"] for e in events)
+    assert any("codex/exec_command" in e["notes"] for e in events)
 
 
 def test_trace_export_is_a_list_matching_load_workflow_traces(store):
@@ -250,6 +260,17 @@ def test_trace_projects_each_supported_event_without_changing_details(store):
                 },
             ),
             Event(
+                source="agents",
+                type="agent.tool.completed",
+                ts="2030-01-01T00:00:04.500Z",
+                payload={
+                    "agent": "codex",
+                    "tool_name": "exec_command",
+                    "category": "command",
+                    "command": "python workflow.py",
+                },
+            ),
+            Event(
                 source="files",
                 type="file.diff",
                 ts="2030-01-01T00:00:05.000Z",
@@ -311,7 +332,7 @@ def test_trace_projects_each_supported_event_without_changing_details(store):
 
     trace, step_count = build_trace(session)
 
-    assert step_count == 11
+    assert step_count == 12
     assert [
         {key: step[key] for key in ("tool", "action", "detail")} for step in trace["steps"]
     ] == [
@@ -330,6 +351,11 @@ def test_trace_projects_each_supported_event_without_changing_details(store):
             "detail": "Analyst note (decision): keep sample",
         },
         {"tool": "codex", "action": "converse", "detail": "assistant: inspect output"},
+        {
+            "tool": "codex",
+            "action": "command",
+            "detail": "exec_command: python workflow.py",
+        },
         {"tool": "editor", "action": "edit", "detail": "Edited workflow.py (+3/-1)"},
         {
             "tool": "git",

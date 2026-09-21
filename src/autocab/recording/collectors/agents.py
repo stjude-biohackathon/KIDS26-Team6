@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterator
 
 from ..devsql import DevSQLClient
-from ..events import AGENT_ADAPTER_FAILED, AGENT_MESSAGE, Event
+from ..events import AGENT_ADAPTER_FAILED, AGENT_MESSAGE, AGENT_TOOL_COMPLETED, Event
 from ..redaction import shared as shared_redactor
 from .base import Collector, CollectorStatus, Degraded
 from .shell import (
@@ -50,6 +50,27 @@ DEVSQL_CODEX_COLUMNS = (
     "agent_role",
     "originator",
     "cwd",
+    "git_branch",
+)
+DEVSQL_CODEX_TOOL_COLUMNS = (
+    "thread_id",
+    "call_id",
+    "call_record_index",
+    "output_record_index",
+    "called_at",
+    "completed_at",
+    "tool_name",
+    "arguments_json",
+    "cmd",
+    "output_text",
+    "exit_code",
+    "cwd",
+    "source_path",
+    "parent_thread_id",
+    "source_kind",
+    "agent_path",
+    "agent_role",
+    "originator",
     "git_branch",
 )
 DevSQLDiscoverer = Callable[[], DevSQLClient]
@@ -132,6 +153,23 @@ class Turn:
     meta: dict[str, Any] | None = None
 
 
+@dataclass(slots=True)
+class ToolExecution:
+    """One completed tool call from an agent transcript."""
+
+    agent: str
+    tool_name: str
+    arguments: str = ""
+    output: str = ""
+    command: str = ""
+    exit_code: int | None = None
+    called_at: str | None = None
+    completed_at: str | None = None
+    cwd: str | None = None
+    key: str = ""
+    meta: dict[str, Any] | None = None
+
+
 class BaseAdapter:
     """One agent tool's on-disk transcript format."""
 
@@ -145,6 +183,11 @@ class BaseAdapter:
 
     def turns(self, since: float) -> Iterator[Turn]:
         raise NotImplementedError
+
+    def activities(self, since: float) -> Iterator[Turn | ToolExecution]:
+        """Yield normalized records from this adapter."""
+
+        yield from self.turns(since)
 
 
 class DevSQLCodexAdapter(BaseAdapter):
@@ -272,6 +315,154 @@ class DevSQLCodexAdapter(BaseAdapter):
                 "source_id": str(normalized_index),
                 "parent_session_id": row["parent_thread_id"],
                 "parent_record_index": row["parent_record_index"],
+                "source_kind": row["source_kind"],
+                "agent_id": row["agent_path"],
+                "agent_role": row["agent_role"],
+                "originator": row["originator"],
+                "git_branch": row["git_branch"],
+            },
+        )
+
+
+class DevSQLCodexToolAdapter(BaseAdapter):
+    """Completed Codex tool calls exposed through DevSQL."""
+
+    name = "devsql-codex-tools"
+
+    def __init__(
+        self,
+        client: DevSQLClient,
+        *,
+        since: str,
+        existing_events: Iterable[Event] = (),
+    ) -> None:
+        interval_start = parse_devsql_timestamp(since)
+        if interval_start is None:
+            raise ValueError("DevSQL interval start must be a timezone-aware timestamp.")
+        self.client = client
+        self.interval_start = interval_start
+        self._query_start = interval_start
+        self._restore_query_start(existing_events)
+
+    def available(self) -> bool:
+        """Validate the joined tool schema without reading activity content."""
+
+        self.client.query(f"{self._select()} LIMIT 0")
+        return True
+
+    def turns(self, since: float) -> Iterator[Turn]:
+        """Tool adapters do not emit conversation turns."""
+
+        return iter(())
+
+    def activities(self, since: float) -> Iterator[Turn | ToolExecution]:
+        """Return completed tool calls from the active recording interval."""
+
+        query_second = self._query_start.strftime("%Y-%m-%dT%H:%M:%S")
+        sql = (
+            f"{self._select()} "
+            "WHERE execution.completed_at IS NOT NULL "
+            f"AND substr(execution.completed_at, 1, 19) >= '{query_second}' "
+            "ORDER BY execution.completed_at, execution.thread_id, "
+            "execution.call_record_index"
+        )
+        rows = self.client.query(sql, required_columns=DEVSQL_CODEX_TOOL_COLUMNS)
+
+        latest = self._query_start
+        for row in rows:
+            completed_at = parse_devsql_timestamp(row["completed_at"])
+            if completed_at is None or completed_at < self._query_start:
+                continue
+            latest = max(latest, completed_at)
+            execution = self._convert(row, completed_at)
+            if execution is not None:
+                yield execution
+        self._query_start = latest
+
+    @staticmethod
+    def _select() -> str:
+        """Build the tool execution and thread metadata projection."""
+
+        return (
+            "SELECT "
+            "execution.thread_id AS thread_id, "
+            "execution.call_id AS call_id, "
+            "execution.call_record_index AS call_record_index, "
+            "execution.output_record_index AS output_record_index, "
+            "execution.called_at AS called_at, "
+            "execution.completed_at AS completed_at, "
+            "execution.tool_name AS tool_name, "
+            "execution.arguments_json AS arguments_json, "
+            "execution.cmd AS cmd, "
+            "execution.output_text AS output_text, "
+            "execution.exit_code AS exit_code, "
+            "execution.cwd AS cwd, "
+            "execution.source_path AS source_path, "
+            "thread.parent_thread_id AS parent_thread_id, "
+            "thread.source_kind AS source_kind, "
+            "thread.agent_path AS agent_path, "
+            "thread.agent_role AS agent_role, "
+            "thread.originator AS originator, "
+            "thread.git_branch AS git_branch "
+            "FROM codex_tool_executions AS execution "
+            "JOIN codex_threads AS thread "
+            "ON thread.thread_id = execution.thread_id"
+        )
+
+    def _restore_query_start(self, events: Iterable[Event]) -> None:
+        """Resume near the last captured execution after a daemon restart."""
+
+        for event in events:
+            if event.type != AGENT_TOOL_COMPLETED:
+                continue
+            if event.payload.get("provider") != "devsql":
+                continue
+            capture_id = event.payload.get("capture_id")
+            if not isinstance(capture_id, str) or not capture_id.startswith("codex-tool:"):
+                continue
+            occurred_at = parse_devsql_timestamp(event.ts)
+            if occurred_at is not None and occurred_at >= self.interval_start:
+                self._query_start = max(self._query_start, occurred_at)
+
+    @staticmethod
+    def _convert(row: dict[str, Any], completed_at: datetime) -> ToolExecution | None:
+        """Normalize one joined tool execution row."""
+
+        thread_id = row["thread_id"]
+        call_id = row["call_id"]
+        tool_name = row["tool_name"]
+        if not all(isinstance(value, str) and value for value in (thread_id, call_id, tool_name)):
+            return None
+
+        exit_code: int | None = None
+        raw_exit_code = row["exit_code"]
+        if raw_exit_code is not None and not isinstance(raw_exit_code, bool):
+            with contextlib.suppress(TypeError, ValueError):
+                exit_code = int(raw_exit_code)
+
+        arguments = row["arguments_json"]
+        if not isinstance(arguments, str):
+            arguments = json.dumps(arguments, default=str) if arguments is not None else ""
+        output = row["output_text"] if isinstance(row["output_text"], str) else ""
+        command = row["cmd"] if isinstance(row["cmd"], str) else ""
+        return ToolExecution(
+            agent="codex",
+            tool_name=tool_name,
+            arguments=arguments,
+            output=output,
+            command=command,
+            exit_code=exit_code,
+            called_at=_iso(row["called_at"]),
+            completed_at=datetime_to_iso(completed_at),
+            cwd=row["cwd"] if isinstance(row["cwd"], str) else None,
+            key=f"codex-tool:{thread_id}:{call_id}",
+            meta={
+                "provider": "devsql",
+                "session_id": thread_id,
+                "call_id": call_id,
+                "call_record_index": row["call_record_index"],
+                "output_record_index": row["output_record_index"],
+                "parent_session_id": row["parent_thread_id"],
                 "source_kind": row["source_kind"],
                 "agent_id": row["agent_path"],
                 "agent_role": row["agent_role"],
@@ -540,6 +731,58 @@ class CursorAdapter(BaseAdapter):
             )
 
 
+COMMAND_TOOLS = {"exec", "exec_command"}
+EDIT_TOOLS = {"apply_patch", "set_value", "type_text", "_perform_editing_operations"}
+CONTINUATION_TOOLS = {"write_stdin"}
+WAIT_TOOLS = {"wait"}
+INTERACTION_TOOLS = {"request_user_input"}
+
+
+def tool_category(tool_name: str) -> str:
+    """Assign a stable, small category without interpreting tool output."""
+
+    normalized = tool_name.lower()
+    if normalized in COMMAND_TOOLS:
+        return "command"
+    if normalized in EDIT_TOOLS:
+        return "edit"
+    if normalized in CONTINUATION_TOOLS:
+        return "continuation"
+    if normalized in WAIT_TOOLS:
+        return "wait"
+    if normalized in INTERACTION_TOOLS:
+        return "interaction"
+    if "search" in normalized or normalized in {"_fetch", "_fetch_file"}:
+        return "search"
+    if normalized in {"js", "click", "press_key", "get_app_state"}:
+        return "interface"
+    if normalized == "view_image":
+        return "inspect"
+    return "tool"
+
+
+def _bounded_redacted(value: str) -> tuple[str, int, bool, list[str]]:
+    """Bound one captured field, then apply the shared storage redactor."""
+
+    original_chars = len(value)
+    truncated = original_chars > MAX_TEXT_CHARS
+    if truncated:
+        half = MAX_TEXT_CHARS // 2
+        value = f"{value[:half]}\n... [{original_chars - MAX_TEXT_CHARS} chars elided] ...\n{value[-half:]}"
+    redacted = shared_redactor().apply(value)
+    return redacted.text, original_chars, truncated, redacted.findings
+
+
+def _duration_ms(called_at: str | None, completed_at: str | None) -> int | None:
+    """Return a non-negative tool duration when both timestamps are valid."""
+
+    start = parse_devsql_timestamp(called_at) if called_at else None
+    end = parse_devsql_timestamp(completed_at) if completed_at else None
+    if start is None or end is None or end < start:
+        return None
+    return round((end - start).total_seconds() * 1000)
+
+
 class AgentCollector(Collector):
     """Polls every available agent adapter and folds turns into the timeline."""
 
@@ -563,7 +806,7 @@ class AgentCollector(Collector):
         self._seen_keys = {
             capture_id
             for event in session.writer.read()
-            if event.type == AGENT_MESSAGE
+            if event.type in {AGENT_MESSAGE, AGENT_TOOL_COMPLETED}
             and isinstance(capture_id := event.payload.get("capture_id"), str)
             and capture_id
         }
@@ -574,17 +817,26 @@ class AgentCollector(Collector):
             CopilotChatAdapter(),
             CursorAdapter(),
         ]
-        detected: dict[str, bool] = {DevSQLCodexAdapter.name: False}
+        detected: dict[str, bool] = {
+            DevSQLCodexAdapter.name: False,
+            DevSQLCodexToolAdapter.name: False,
+        }
         try:
             client = self._devsql_client or self._devsql_discover()
-            candidates.insert(
-                0,
+            existing_events = self.session.writer.read()
+            interval_start = active_interval_start(self.session)
+            candidates[0:0] = [
                 DevSQLCodexAdapter(
                     client,
-                    since=active_interval_start(self.session),
-                    existing_events=self.session.writer.read(),
+                    since=interval_start,
+                    existing_events=existing_events,
                 ),
-            )
+                DevSQLCodexToolAdapter(
+                    client,
+                    since=interval_start,
+                    existing_events=existing_events,
+                ),
+            ]
         except Exception:
             # DevSQL is optional for agent capture. Direct adapters must remain
             # available if discovery or schema validation fails.
@@ -625,8 +877,9 @@ class AgentCollector(Collector):
             if adapter.name in self._failed:
                 continue
             try:
-                for turn in adapter.turns(self._since):
-                    event = self._to_event(turn)
+                read_activities = getattr(adapter, "activities", adapter.turns)
+                for activity in read_activities(self._since):
+                    event = self._to_event(activity)
                     if event is not None:
                         events.append(event)
             except Exception as exc:
@@ -646,11 +899,19 @@ class AgentCollector(Collector):
                 )
         self.emit(events)
 
-    def _to_event(self, turn: Turn) -> Event | None:
-        if turn.key:
-            if turn.key in self._seen_keys:
+    def _to_event(self, activity: Turn | ToolExecution) -> Event | None:
+        if activity.key:
+            if activity.key in self._seen_keys:
                 return None
-            self._seen_keys.add(turn.key)
+            self._seen_keys.add(activity.key)
+
+        if isinstance(activity, ToolExecution):
+            return self._tool_event(activity)
+        return self._message_event(activity)
+
+    @staticmethod
+    def _message_event(turn: Turn) -> Event:
+        """Convert one conversation turn into a redacted event."""
 
         text = turn.text
         truncated = len(text) > MAX_TEXT_CHARS
@@ -663,7 +924,7 @@ class AgentCollector(Collector):
 
         redacted = shared_redactor().apply(text)
         event = Event(
-            source=self.source,
+            source="agents",
             type=AGENT_MESSAGE,
             payload={
                 "tool": turn.tool,
@@ -679,6 +940,61 @@ class AgentCollector(Collector):
         )
         if turn.ts:
             event.ts = turn.ts
+        return event
+
+    @staticmethod
+    def _tool_event(execution: ToolExecution) -> Event:
+        """Convert one completed tool execution into a bounded, redacted event."""
+
+        command, command_chars, command_truncated, command_findings = _bounded_redacted(
+            execution.command
+        )
+        arguments, argument_chars, arguments_truncated, argument_findings = _bounded_redacted(
+            execution.arguments
+        )
+        output, output_chars, output_truncated, output_findings = _bounded_redacted(
+            execution.output
+        )
+        findings = list(
+            dict.fromkeys([*command_findings, *argument_findings, *output_findings])
+        )
+        status = (
+            "completed"
+            if execution.exit_code is None
+            else "succeeded"
+            if execution.exit_code == 0
+            else "failed"
+        )
+        event = Event(
+            source="agents",
+            type=AGENT_TOOL_COMPLETED,
+            payload={
+                "agent": execution.agent,
+                "tool": execution.agent,
+                "tool_name": execution.tool_name,
+                "category": tool_category(execution.tool_name),
+                "command": command,
+                "arguments": arguments,
+                "output": output,
+                "exit_code": execution.exit_code,
+                "status": status,
+                "cwd": execution.cwd,
+                "called_at": execution.called_at,
+                "completed_at": execution.completed_at,
+                "duration_ms": _duration_ms(execution.called_at, execution.completed_at),
+                "command_chars": command_chars,
+                "command_truncated": command_truncated,
+                "argument_chars": argument_chars,
+                "arguments_truncated": arguments_truncated,
+                "output_chars": output_chars,
+                "output_truncated": output_truncated,
+                **({"capture_id": execution.key} if execution.key else {}),
+                **(execution.meta or {}),
+            },
+            redactions=findings,
+        )
+        if execution.completed_at:
+            event.ts = execution.completed_at
         return event
 
 
