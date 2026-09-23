@@ -235,7 +235,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Detect identifiers across the whole session, rewrite them "
             "destructively to per-run surrogates, and write seal.json. "
             "Irreversible by design: no reverse map is kept and the key is "
-            "discarded. See docs/deid-evaluation.md for measured recall and, "
+            "discarded. See docs/phi-redaction-benchmarking.md for measured recall and, "
             "more importantly, for what the numbers do not prove."
         ),
     )

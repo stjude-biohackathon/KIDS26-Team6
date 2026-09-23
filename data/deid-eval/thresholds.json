@@ -20,7 +20,7 @@
     "Computed over the `easy` and `medium` difficulty tiers only. Gating `easy`",
     "alone would be a tautology (the generator and the regex table share an",
     "understanding of the same shapes); gating `hard` would fail the suite for the",
-    "wrong reason. The `hard` tier is reported in docs/deid-evaluation.md.",
+    "wrong reason. The `hard` tier is reported in docs/phi-redaction-benchmarking.md.",
     "",
     "Precision gets a CEILING, not a floor. A precision floor would let a detector",
     "trade recall away; max_over_redaction_rate only stops it trading the other",

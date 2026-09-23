@@ -48,6 +48,7 @@ def _card(engine: str, value: float) -> dict[str, object]:
             "over_redaction_rate": 0.01,
         },
         "by_label_gated": [{"label": "NAME", "recall_strict": value}],
+        "by_label": [{"label": "NAME", "recall_strict": value}],
         "by_channel": [{"label": "notes", "recall_strict": value}],
     }
 
@@ -87,6 +88,7 @@ def test_accuracy_svg_is_deterministic_and_accessible() -> None:
     assert "PHI Redaction Accuracy" in first
     assert "Full-coverage rate" in first
     assert "Evaluation metric" in first
+    assert "Zero missed spans" in first
 
 
 def test_comparison_report_names_additive_engine_and_cites_gliner() -> None:
@@ -96,9 +98,96 @@ def test_comparison_report_names_additive_engine_and_cites_gliner() -> None:
 
     assert "Regex + GLiNER" in rendered
     assert "GLiNER only (diagnostic)" in rendered
-    assert "arXiv:2311.08526" in rendered
+    assert "10.18653/v1/2024.naacl-long.300" in rendered
     assert "seven runs" in rendered
     assert "Full-coverage recall" in rendered
+    assert "Records with zero missed spans" in rendered
+    assert "Missed spans per 1,000 records" in rendered
+    assert "named entity recognition (NER)" in rendered
+    assert "protected health information (PHI)" in rendered
+    assert "personally identifiable information (PII)" in rendered
+    assert "PHI redaction benchmarking" in rendered
+    assert "Limitations and security boundaries" in rendered
+    assert "figures/phi-redaction-accuracy.png" in rendered
+    assert "[View the scalable SVG figure]" not in rendered
+
+
+def test_comparison_report_includes_versioned_historical_baseline() -> None:
+    cards = [
+        _card("regex", 0.7),
+        _card("gliner", 0.9),
+        _card("gliner2-pii", 0.95),
+    ]
+    baseline = {
+        "corpus_fingerprint": "fixture-fingerprint",
+        "records": 10,
+        "gold_spans": 12,
+        "metrics": {
+            "safe_record_rate": 0.6,
+            "leaks_per_1000_records": 400.0,
+            "recall_strict_overall": 0.65,
+            "name_recall_gated": 0.5,
+            "name_recall_overall": 0.45,
+        },
+    }
+
+    rendered = comparison.render_markdown(cards, historical_baseline=baseline)
+
+    assert "Improvement since v0.2" in rendered
+    assert "| Records with zero missed spans | 0.6000 | 0.7000 | 0.9000 | 0.9500 |" in rendered
+    assert "| Name recall, gated | 0.5000 | 0.7000 | 0.9000 | 0.9500 |" in rendered
+    assert "| Name recall, all | 0.4500 | 0.7000 | 0.9000 | 0.9500 |" in rendered
+    assert "principal NER contribution is contextual name detection" in rendered
+
+
+def test_comparison_report_documents_full_reproduction_workflow() -> None:
+    rendered = comparison.render_markdown([_card("regex", 0.7)])
+
+    assert "uv sync --extra deid-gliner2" in rendered
+    assert "autocab deid fetch --model gliner" in rendered
+    assert "autocab deid fetch --model gliner2-pii" in rendered
+    assert "autocab deid eval --engine gliner-only --write-scorecard" in rendered
+    assert "autocab deid eval --engine gliner2-pii-only --write-scorecard" in rendered
+    assert "OK Corpus reproduces byte-for-byte: 316 records" in rendered
+
+
+def test_historical_baseline_must_match_current_corpus() -> None:
+    cards = [
+        _card("regex", 0.7),
+        _card("gliner", 0.9),
+        _card("gliner2-pii", 0.95),
+    ]
+    baseline = {
+        "corpus_fingerprint": "different-corpus",
+        "records": 10,
+        "gold_spans": 12,
+        "metrics": {
+            "safe_record_rate": 0.6,
+            "leaks_per_1000_records": 400.0,
+            "recall_strict_overall": 0.65,
+            "name_recall_gated": 0.5,
+            "name_recall_overall": 0.45,
+        },
+    }
+
+    with pytest.raises(ValueError, match="historical baseline"):
+        comparison.render_markdown(cards, historical_baseline=baseline)
+
+
+def test_accuracy_artifacts_use_phi_benchmark_names(tmp_path: Path) -> None:
+    scorecards = tmp_path / "scorecards"
+    docs = tmp_path / "docs"
+    scorecards.mkdir()
+    (scorecards / "scorecard.regex.json").write_text(
+        json.dumps(_card("regex", 0.7)), encoding="utf-8"
+    )
+
+    report_path, plot_path = comparison.write_accuracy_artifacts(scorecards, docs)
+
+    assert report_path == docs / "phi-redaction-benchmarking.md"
+    assert plot_path == docs / "figures" / "phi-redaction-accuracy.svg"
+    assert report_path.exists()
+    assert plot_path.exists()
 
 
 def test_scorecards_must_share_a_corpus(tmp_path: Path) -> None:

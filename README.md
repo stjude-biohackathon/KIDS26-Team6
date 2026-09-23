@@ -146,9 +146,11 @@ The dashboard cannot bypass CLI validation or approval rules. See the
 
 ## PHI Redaction
 
-Pattern-based redaction is enabled by default and requires no model download.
-It runs during capture and establishes the minimum redaction layer used by the
-supported model configurations.
+Protected health information (PHI) redaction is enabled by default through
+pattern matching and requires no model download. It runs during capture and
+establishes the minimum redaction layer used by the supported model
+configurations. Optional local named entity recognition (NER) models add
+contextual detection when a session is sealed.
 
 Select and fetch the local GLiNER model during setup:
 
@@ -156,7 +158,8 @@ Select and fetch the local GLiNER model during setup:
 autocab init --redaction gliner --fetch-model
 ```
 
-GLiNER2 PII requires its optional runtime:
+GLiNER2 PII, a personally identifiable information (PII) detector, requires its
+optional runtime:
 
 ```bash
 uv pip install -e '.[deid-gliner2]'
@@ -188,8 +191,9 @@ GLiNER2 PII configurations. These results are regression evidence for the test
 corpus. They are not a HIPAA Safe Harbor determination or validation on
 external clinical text.
 
-See the [de-identification evaluation](docs/deid-evaluation.md) for the figure,
-scorecards, label-level results, benchmark commands, and limitations.
+See the [PHI redaction benchmarking report](docs/phi-redaction-benchmarking.md)
+for the figure, scorecards, release comparison, label-level results, benchmark
+commands, and limitations.
 
 ## Storage and Migration
 
@@ -320,7 +324,7 @@ tests/             Python and JavaScript tests
 
 - [Integrated AutoCAB workflow](docs/integrated-workflow.md)
 - [Recording, platforms, and remote use](docs/recording.md)
-- [PHI redaction evaluation](docs/deid-evaluation.md)
+- [PHI redaction benchmarking report](docs/phi-redaction-benchmarking.md)
 - [Project framework](docs/biohackathon-framework.md)
 - [Challenge description](docs/proposal/AutoCAB-challenge-description.docx)
 - [Architecture and platform rationale](docs/mgatta42/plan.md)
