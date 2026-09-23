@@ -189,7 +189,7 @@ Each step ships. **Step 4 needs zero new dependencies and zero CI changes — sh
 | 1 | Spans + refactor | `labels.py`, `spans.py`, `policy.py`, `allowlist.py`, `engines/regex_rules.py::find_spans()`; `SensitiveDataRedactor` (`components.py:98`) reimplemented on top inside `try/except ImportError` falling back to current literals | `test_redaction.py` + `test_pipeline.py` pass **unmodified** |
 | 2 | Corpus **before** detector | `eval/generate.py`, `data/deid-eval/`, `test_deid_corpus.py` | `gen-corpus --check` reproduces byte-for-byte |
 | 3 | Scorer | `eval/scorer.py`, `test_deid_scorer.py` | clipped-span case asserts strict miss + partial hit |
-| 4 | **The measured claim** | `thresholds.json`, `test_deid_regex_recall.py`, `autocab deid eval`, `docs/deid-evaluation.md` | per-label floors + over-redaction ceiling + scorecard snapshot |
+| 4 | **The measured claim** | `thresholds.json`, `test_deid_regex_recall.py`, `autocab deid eval`, `docs/phi-redaction-benchmarking.md` | per-label floors + over-redaction ceiling + scorecard snapshot |
 | 5 | **Security boundary first** | `egress.py`, `llm_gate.py`, `test_deid_egress.py`, `test_deid_gate.py` (§5) | all 2⁵ layer combos per class; exactly one allows |
 | 6 | Seal, with a fake engine | `src/wfrec/seal.py` (§4); `DEID_SEALED`+`SessionSealed` in `events.py`; gates in `exporters/__init__.py:30` and `session_bundle.py:41`; `seal`/`deid` subparsers in `cli.py` routed **before** the daemon-preferring block (like `export`); `POST /sessions/seal`; detached spawn from `recorder.py:205` | `wfrec pull` on a sealed session raises |
 | 7 | Close the inline gaps | `files.py:{381-405,451-459,491}`, `remote.py:{131,198}` — written **verbatim** today, so the seal is their *only* control | extend `test_wfrec_collectors.py`, `test_wfrec_remote.py` |
@@ -283,7 +283,7 @@ with a diff naming the label that moved and the author reruns `--write-scorecard
 in the PR. **No nondeterministic fields** in the snapshot — no timestamp, hostname, or wall-clock
 latency, or it churns and gets ignored.
 
-`docs/deid-evaluation.md` is generated and committed, headed "do not hand-edit": headline numbers
+`docs/phi-redaction-benchmarking.md` is generated and committed, headed "do not hand-edit": headline numbers
 first; per-label table (`recall_strict`, `recall_partial`, the gap, `label_accuracy`, floor, margin)
 split by difficulty; a HIPAA 1–18 rollup (the language a compliance reviewer reads); a **per-channel**
 table (`notes` and `jobs` are the high-risk channels and a corpus-wide average hides them); the
@@ -684,7 +684,7 @@ on the isolated one — verifying every hash *before* placing files and refusing
 manifest revision differs from the pinned one.
 
 **int8's cost is measured, not assumed**: both variants registered, nightly scores both, the delta is
-a row in `docs/deid-evaluation.md`. If it's material on `notes` or `jobs`, fp32 becomes the default.
+a row in `docs/phi-redaction-benchmarking.md`. If it's material on `notes` or `jobs`, fp32 becomes the default.
 
 **CI must never download a weight**: `tests/conftest.py` sets `HF_HUB_OFFLINE=1` and points
 `HF_HUB_CACHE` at a `tmp_path_factory` dir, session-scoped and autouse. An accidental fetch then

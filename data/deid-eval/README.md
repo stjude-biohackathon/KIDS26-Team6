@@ -1,197 +1,309 @@
-# `data/deid-eval` — the de-identification evaluation corpus
+# De-identification evaluation corpus
 
-Generated, committed, and reproducible:
+This directory contains the generated synthetic corpus, scorecards, thresholds,
+and historical baseline used to evaluate AutoCAB's text de-identification
+engines.
+
+## Purpose
+
+The corpus is committed before detector changes are evaluated. This prevents a
+new pattern from being assessed only against examples written with that pattern
+in mind.
+
+The benchmark measures complete-span coverage and over-redaction across
+scientific and computational text. See the generated
+[PHI redaction benchmarking report](../../docs/phi-redaction-benchmarking.md)
+for current results, model comparisons, and limitations.
+
+## Install and setup
+
+Run all commands from the repository root. Install the optional GLiNER2 runtime
+to reproduce every detector configuration:
 
 ```bash
-autocab deid gen-corpus --seed 1337 --check    # must report no differences
-autocab deid eval --engine regex --write-scorecard
-autocab deid eval --engine gliner --write-scorecard
-# Diagnostic only; this is not a production sealing mode.
-autocab deid eval --engine gliner-only --write-scorecard
-# Experimental PII model. Install and fetch it explicitly first.
-autocab deid eval --engine gliner2-pii-only --write-scorecard
+uv sync --extra deid-gliner2
+```
+
+Fetch and verify the local model weights:
+
+```bash
+autocab deid fetch --model gliner
+autocab deid fetch --model gliner2-pii
+```
+
+The fetch commands require network access. Evaluation is local after the
+verified weights are available.
+
+## Reproduce the evaluation
+
+### Verify the corpus
+
+Confirm that the committed corpus matches deterministic generation from seed
+`1337`:
+
+```bash
+autocab deid gen-corpus --seed 1337 --check
+```
+
+Expected output:
+
+```text
+OK Corpus reproduces byte-for-byte: 316 records, fingerprint ccfbf64eb85ed302
+```
+
+### Generate the supported scorecards
+
+The supported sealing configurations retain the mandatory regex floor:
+
+```bash
+autocab deid eval --engine regex --write-scorecard --check-thresholds
+autocab deid eval --engine gliner --write-scorecard --check-thresholds
 autocab deid eval --engine gliner2-pii --write-scorecard
 ```
 
-The corpus exists **before** the detector, on purpose. A corpus written after
-the patterns measures the author's memory of the patterns.
+### Generate the diagnostic controls
 
-## Layout
+The model-only configurations measure what each model contributes without the
+regex floor. They are diagnostic controls and are not production sealing modes:
 
-| Path | What it is |
-| --- | --- |
-| `corpus/{shell,ocr,notes,agents,diffs,jobs,prescrubbed,negatives}.jsonl` | the fixtures, one JSON object per line |
-| `lexicons/{surnames,given-names,cities,gene-symbols}.txt` | public-domain draw pools |
-| `thresholds.json` | recall floors and the precision ceiling, keyed on `corpus_fingerprint` |
-| `scorecard.regex.json` | committed regex snapshot; CI asserts computed == this |
-| `scorecard.gliner.json` | committed Regex + GLiNER snapshot from the same corpus |
-| `scorecard.gliner2-pii-only.json` | experimental GLiNER2 PII-only snapshot |
-| `scorecard.gliner2-pii.json` | experimental Regex + GLiNER2 PII snapshot |
-
-## Comparing accuracy and runtime
+```bash
+autocab deid eval --engine gliner-only --write-scorecard
+autocab deid eval --engine gliner2-pii-only --write-scorecard
+```
 
 Each `eval --write-scorecard` run rebuilds the comparison report and accessible
-accuracy plot from every available scorecard. The last engine run cannot replace
-the other engine's results.
+SVG from every available scorecard. One engine run does not replace the other
+engines' results.
 
-Runtime is machine-specific, so it is measured separately and is not committed
-to a scorecard:
+The report displays a PNG for broad Markdown-renderer compatibility. Refresh it
+after regenerating the scorecards and SVG:
+
+```bash
+rsvg-convert docs/figures/phi-redaction-accuracy.svg \
+  --output docs/figures/phi-redaction-accuracy.png
+```
+
+## Repository layout
+
+| Path | Purpose |
+| --- | --- |
+| `corpus/{shell,ocr,notes,agents,diffs,jobs,prescrubbed,negatives}.jsonl` | Evaluation fixtures, one JSON object per line |
+| `lexicons/{surnames,given-names,cities,gene-symbols}.txt` | Public-domain draw pools |
+| `thresholds.json` | Recall floors and the precision ceiling, keyed on `corpus_fingerprint` |
+| `baselines/v0.2-regex.json` | Historical metrics used for the release comparison |
+| `scorecard.regex.json` | Committed regex snapshot checked by CI |
+| `scorecard.gliner-only.json` | Diagnostic GLiNER-only snapshot |
+| `scorecard.gliner.json` | Regex + GLiNER snapshot from the same corpus |
+| `scorecard.gliner2-pii-only.json` | Diagnostic GLiNER2 PII-only snapshot |
+| `scorecard.gliner2-pii.json` | Supported optional Regex + GLiNER2 PII snapshot |
+
+## Evaluation methodology
+
+### Coverage and scoring
+
+The CI gate requires full character coverage because partial masking can still
+expose an identifier. Exact typed-span metrics are secondary diagnostics.
+Production capture, export, and sealing always retain the regex floor.
+
+### Record structure
+
+Each JSONL record contains its input text, labelled spans, protected terms, and
+generation provenance. For example:
+
+```json
+{
+  "channel": "notes",
+  "difficulty": "easy",
+  "id": "notes-nt01-00",
+  "license": "CC0-1.0",
+  "must_survive": [],
+  "provenance": "generated:v1:seed=1337:tmpl=nt01",
+  "spans": [
+    {
+      "end": 15,
+      "hipaa": 18,
+      "label": "SUBJECT_ID",
+      "start": 8,
+      "text": "SJ-7040"
+    },
+    {
+      "end": 30,
+      "hipaa": 1,
+      "label": "NAME",
+      "start": 17,
+      "text": "Samuel Torres"
+    },
+    {
+      "end": 46,
+      "hipaa": 3,
+      "label": "DOB_LABELLED",
+      "start": 32,
+      "text": "DOB 1970-12-15"
+    },
+    {
+      "end": 71,
+      "hipaa": 3,
+      "label": "DATE_BARE",
+      "start": 61,
+      "text": "1976-08-11"
+    },
+    {
+      "end": 96,
+      "hipaa": 4,
+      "label": "PHONE",
+      "start": 81,
+      "text": "+1-555-555-0191"
+    }
+  ],
+  "text": "Subject SJ-7040 (Samuel Torres, DOB 1970-12-15) consented on 1976-08-11. Contact +1-555-555-0191."
+}
+```
+
+`span.text` duplicates `text[start:end]` intentionally.
+[`tests/test_deid_corpus.py`](../../tests/test_deid_corpus.py) verifies this
+relationship for every span in every record so manual edits cannot silently
+invalidate offsets.
+
+### Why the fixtures use JSONL
+
+The repository [`.gitignore`](../../.gitignore) ignores formats such as
+`*.vcf`, `*.fastq`, `*.bam`, and `*.log`. Storing a fixture as
+`slurm-4213.log`, for example, could silently remove an evaluation channel from
+the commit and inflate detector performance. The corpus therefore embeds these
+formats as strings inside tracked JSONL records.
+
+### Difficulty tiers
+
+| Tier | Definition | Included in the gate? |
+| --- | --- | --- |
+| `easy` | Canonical forms such as `MRN 4419902` and `DOB 2012-06-01` | Yes |
+| `medium` | Realistic variations such as `MRN:4419902`, `M.R.N.`, or `3/14/1972` | Yes |
+| `hard` | OCR corruption, collapsed whitespace, and run-together tokens | No, reported only |
+
+Gating only `easy` records would partly measure consistency between the regex
+table and the generator. Gating `hard` records would fail the suite for
+deliberately malformed inputs. Thresholds therefore use `easy` and `medium`;
+the report presents `hard` separately with a lower floor.
+
+### Gold-span boundaries
+
+Gold annotations use the smallest meaningful span. The path
+`/data/proj/SJALL018/smith_jane_R1.fastq.gz`, for example, contains two spans:
+`SJALL018` as `SUBJECT_ID` and `smith_jane` as `NAME`. Redacting the whole path
+earns recall credit but incurs an over-redaction penalty because it destroys
+useful directory structure.
+
+Label-anchored identifiers are the documented exception. `MRN 4419902` is one
+gold span that includes the `MRN` keyword. The same rule applies to `DOB`,
+`SSN`, `sample:`, and `specimen` labels.
+
+### Adversarial negatives
+
+`negatives.jsonl` prevents a broad pattern such as `.*` from appearing to have
+perfect performance. Its records have no gold spans, and each protected term is
+listed in `must_survive`.
+
+The negative fixtures include HGNC symbols that resemble surnames, HGVS
+variants, genomic coordinates, reference builds, public accessions, 10x index
+sets, sequencing barcodes, and container tags whose build stamps resemble
+clinical dates.
+
+## Synthetic data and PHI safeguards
+
+The generator uses two strategies to reduce the risk that synthetic fixtures
+encode linked information about real people.
+
+### Reserved identifier spaces
+
+Where a reserved space exists, the generator uses it and
+[`tests/test_deid_corpus.py`](../../tests/test_deid_corpus.py) enforces it:
+
+| Label | Reserved space | Authority or rationale |
+| --- | --- | --- |
+| `EMAIL`, `URL` | `example.org`, `example.com`, `example.net` | RFC 2606 |
+| `PHONE`, `FAX` | `555-555-01xx` | NANP fictitious range in an unassignable area code |
+| `SSN` | Areas `000`, `666`, and `9xx` | Never issued by the SSA |
+| `IP` (v4) | `192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24` | RFC 5737 |
+| `IP` (v6) | `2001:db8::/32` | RFC 3849 |
+| `ACCOUNT` | Published card test numbers | Card-network test data |
+| `MRN` | `44xxxxx` | Test-only band defined for this corpus |
+| `LICENSE` (NPI) | Checksum-invalid 10-digit numbers | Reserved by arithmetic |
+
+A checksum-valid NPI could belong to a real clinician. The generator therefore
+uses only numbers that fail the Luhn check with the `80840` issuer prefix. The
+detector still redacts them because validators can raise confidence but never
+reject an otherwise sensitive match. A mistyped identifier may still contain
+protected health information (PHI).
+
+### Independent-draw provenance
+
+Names, locations, dates, and ages have no reserved space. Each field is an
+independent seeded draw from a committed public-domain lexicon. The surname,
+given name, city, ZIP code, and date are sampled independently so their
+combination does not intentionally construct a real person's profile.
+
+`SUBJECT_ID`, `SAMPLE_ID`, and `ACCESSION` follow the same principle because no
+reserved institutional identifier bands exist. The source lexicons use US
+Census surname frequencies, Social Security Administration given-name
+frequencies, and USGS or Census place names. Their file headers document the
+sources.
+
+### Additional checks
+
+[`tests/test_deid_corpus.py`](../../tests/test_deid_corpus.py) verifies that the
+corpus excludes real institutional domains. It also ensures that `GIAB HG008`,
+the repository's `PipelineConfig.benchmark_dataset`, is never labelled as PHI.
+The term appears only in `must_survive` so a name detector cannot redact the
+benchmark dataset identifier.
+
+## Runtime benchmarking
+
+Runtime is machine-specific and is not committed to the scorecards. Measure
+model loading separately from warmed inference:
 
 ```bash
 autocab deid benchmark --engine regex --engine gliner-only --engine gliner \
   --output benchmark.json --plot benchmark-performance.svg
 
-# Compare the optional PII-tuned model after fetching its pinned weights.
 autocab deid benchmark --engine gliner2-pii-only --engine gliner2-pii
 ```
 
-The benchmark reports model load plus first inference as cold start. It then
-warms the loaded engine once and measures seven inference runs by default. The
-JSON records median and p95 ms/KB, records per second, peak process memory,
-corpus fingerprint, model revision, threshold, CPU, Python, ONNX Runtime, and
-measurement time. Exact typed span metrics are secondary diagnostics. The CI
-gate remains full character coverage because partial masking still leaks PHI.
-The `gliner-only` engine bypasses the regex floor only inside this evaluation
-harness. Production capture, export, and sealing continue to require regex.
+The benchmark records model loading plus first inference as cold start. It then
+warms each loaded engine once and measures seven inference runs by default. Its
+JSON output includes median and p95 milliseconds per kilobyte, records per
+second, peak process memory, corpus fingerprint, model revision, threshold,
+CPU, Python, ONNX Runtime, and measurement time.
 
-Record shape:
+## Maintaining the corpus
 
-```json
-{"id":"notes-nt01-00","channel":"notes","difficulty":"easy",
- "text":"Subject SJ-4817 (Mary Brooks, DOB 1972-03-14) consented on 2019-08-02. ...",
- "spans":[{"start":8,"end":15,"label":"SUBJECT_ID","text":"SJ-4817","hipaa":18}, ...],
- "must_survive":["GRCh38"],
- "provenance":"generated:v1:seed=1337:tmpl=nt01","license":"CC0-1.0"}
-```
+### Preserve regression fixtures
 
-`span.text` is a redundant copy of `text[start:end]`, and
-`tests/test_deid_corpus.py` asserts they are equal for **every span in every
-record**. It is the cheapest available defence against offset rot and it will
-fire the first time somebody edits a fixture by hand.
+`notes-nt06` contains the intentionally awkward phrase `Specimen specimen
+YO64-40805`. It exposed a scan-resume bug in `accession_labelled`: the first
+candidate lacked digits, and resuming after that rejected match skipped the
+actual accession. `RegexRules._apply` now resumes at `match.start() + 1`. Keep
+this fixture to protect that behavior.
 
-### Everything is `.jsonl`, and that is not a style preference
+### Add or update fixtures
 
-The repository `.gitignore` already ignores `*.vcf`, `*.fastq`, `*.bam` and
-`*.log`. A fixture file named `slurm-4213.log` would be silently dropped from
-the commit, and CI would then score a corpus with a missing channel and report a
-higher number than the detector deserves. Those shapes are embedded as strings
-inside JSONL instead.
-
-## Why none of this is real PHI
-
-Two tiers, because the two halves of the taxonomy have different options.
-
-### Tier 1 — structural reservation
-
-Where a reserved space exists, the generator uses it and
-`tests/test_deid_corpus.py` enforces it. A fixture in these classes physically
-cannot collide with a live value:
-
-| Label | Reserved space | Authority |
-| --- | --- | --- |
-| `EMAIL`, `URL` | `example.org`, `example.com`, `example.net` | RFC 2606 |
-| `PHONE`, `FAX` | `555-555-01xx` | NANP fictitious range, in an unassignable area code |
-| `SSN` | areas `000`, `666`, `9xx` | never issued by the SSA |
-| `IP` (v4) | `192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24` | RFC 5737 |
-| `IP` (v6) | `2001:db8::/32` | RFC 3849 |
-| `ACCOUNT` | published card test numbers | the card networks |
-| `MRN` | `44xxxxx` | **documented test-only band, defined here** |
-| `LICENSE` (NPI) | checksum-**invalid** 10-digit numbers | reserved by arithmetic |
-
-The NPI row is worth dwelling on. A checksum-*valid* NPI could belong to a real
-clinician, so the generator produces only numbers that fail the Luhn check with
-the `80840` issuer prefix. Recall on them is still 1.00 — which makes the corpus
-a live demonstration of the rule in `engines/validators.py` that **validators
-raise the score and never reject**. A mistyped SSN is still PHI.
-
-### Tier 2 — independent-draw provenance
-
-`NAME`, `LOCATION`, `DATE` and `AGE` have no reserved space: every surname is
-somebody's. So **every field of every record is an independent seeded draw**
-from a committed public-domain lexicon. The surname does not know the given
-name, which does not know the city, which does not know the ZIP, which does not
-know the date. A city is deliberately paired with an unrelated ZIP.
-
-The property that matters is that no *combination* maps to a real person. A lone
-surname in a synthetic shell command is not a disclosure; a surname next to a
-matching DOB and a matching address would be.
-
-`SUBJECT_ID`, `SAMPLE_ID` and `ACCESSION` are covered by the same reasoning —
-there is no reserved band for an institutional subject code, so they are
-independent draws carrying no linked attributes.
-
-The lexicons are US Census surname frequencies, SSA given-name frequencies and
-USGS/Census place names — all works of the US federal government and therefore
-public domain. See the header comment in each file.
-
-### What is also checked
-
-`tests/test_deid_corpus.py` asserts the corpus contains no real institutional
-domain (`stjude.org` and friends), and that `GIAB HG008` — this repository's own
-`PipelineConfig.benchmark_dataset` — is never labelled as PHI. It appears only
-in `must_survive`, which is the point: without the allowlist, a clinical name
-detector redacts the benchmark the pipeline is measured against.
-
-## Difficulty stratification is not optional
-
-| Tier | What it is | Gated? |
-| --- | --- | --- |
-| `easy` | canonical shapes: `MRN 4419902`, `DOB 2012-06-01` | yes |
-| `medium` | realistic variation: `MRN:4419902`, `M.R.N.`, `3/14/1972`, no separator | yes |
-| `hard` | OCR garble (`MRN 44S427O`), collapsed whitespace, run-together tokens | **no — reported only** |
-
-Gating `easy` alone would be a tautology: the regex table and the generator
-share one understanding of the same identifier shapes, so a high `easy` score is
-partly a measurement of internal consistency. Gating `hard` would fail the suite
-for the wrong reason. So the floors are computed over `easy`+`medium`, and
-`hard` is reported in `docs/deid-evaluation.md` with its own much lower floor.
-
-## Gold is minimal-span, with one documented exception
-
-`/data/proj/SJALL018/smith_jane_R1.fastq.gz` carries **two** gold spans —
-`SJALL018` → `SUBJECT_ID` and `smith_jane` → `NAME` — not one span over the
-whole path. A detector that redacts the entire path still earns full recall
-credit (`G ⊆ P`) but is charged for the difference as over-redaction. That is
-the right incentive: whole-path redaction is safe but destroys the directory
-structure an analyst needs.
-
-The exception is **label-anchored identifiers**. `MRN 4419902` is one gold span
-including the `MRN` keyword, matching what the detector has always emitted and
-what `[REDACTED_MRN]` / `MRN_a7f3c1` replace. Same for `DOB`, `SSN`, `sample:`
-and `specimen`.
-
-## `negatives.jsonl` is adversarial, and that is the whole point
-
-Without adversarial negatives, precision is meaningless and a `.*` patch scores
-perfect recall. These fixtures carry **zero** gold spans and every token in
-`must_survive`: HGNC symbols that read as surnames (`MET`, `SET`, `MAX`,
-`CLOCK`, `TIMELESS`), HGVS (`c.1521A>G`, `p.Phe508del`), coordinates
-(`chr7:117559590`), reference builds, `SRR12345678`, `PRJNA######`, 10x index
-sets, sequencing barcodes, and container tags whose build stamp looks exactly
-like a clinical date (`biocontainers/gatk:4.5.0.0--2024-01-15`).
-
-## Deliberately awkward fixtures
-
-`notes-nt06` reads `"Specimen specimen YO64-40805 from ..."`. The duplication is
-ugly and it stays: it is the fixture that caught a real bug. The
-`accession_labelled` rule first matched `"Specimen specimen"`, which its
-`require` predicate correctly rejected for containing no digits — and because
-the scan resumed after the rejected match, the *actual* accession was never
-seen. Measured `ACCESSION` recall sat at 0.500 and looked like a missing
-pattern. `RegexRules._apply` now resumes at `match.start() + 1` on rejection,
-and this record is what keeps it that way.
-
-## Adding fixtures
-
-1. Add or edit a `Template` in `src/autocab/deid/eval/generate.py`. Give it a
-   new `tid`; per-record seeds are derived from `(seed, tid, index)` so adding a
-   template does not reshuffle every record after it.
-2. Use only `{field}` markers from `FIELDS`. A marker with no field is a hard
+1. Add or edit a `Template` in
+   [`src/autocab/deid/eval/generate.py`](../../src/autocab/deid/eval/generate.py).
+   Assign a new `tid`. Per-record seeds derive from `(seed, tid, index)`, so a
+   new template does not reshuffle later records.
+2. Use only `{field}` markers defined in `FIELDS`. An unknown marker is an
    error, not a literal.
-3. `autocab deid gen-corpus --seed 1337` and commit the result.
-4. `autocab deid eval --engine regex --write-scorecard` and commit that too. The
-   scorecard diff names exactly which labels moved; put that in the PR.
-5. `pytest tests/test_deid_corpus.py tests/test_deid_regex_recall.py`.
+3. Regenerate the corpus with `autocab deid gen-corpus --seed 1337` and inspect
+   the diff.
+4. Regenerate the regex scorecard with
+   `autocab deid eval --engine regex --write-scorecard` and inspect which labels
+   changed.
+5. Run the focused tests:
 
-Never hand-edit a `corpus/*.jsonl` file. `--check` will catch it, but only after
-you have wasted the time.
+   ```bash
+   .venv/bin/python -m pytest \
+     tests/test_deid_corpus.py tests/test_deid_regex_recall.py
+   ```
+
+Do not hand-edit `corpus/*.jsonl`. The deterministic corpus check will reject
+manual changes, but only after the offsets or provenance have already been put
+at risk.

@@ -593,7 +593,7 @@ Three rules make this safe rather than merely possible:
   decision 9 exists.
 
 **The harness decides, not this document.** Every engine is scored on the same corpus by the
-same scorer and `docs/deid-evaluation.md` turns "which model" into a number. If GLiNER
+same scorer and `docs/phi-redaction-benchmarking.md` turns "which model" into a number. If GLiNER
 underperforms on `notes` and `jobs`, the fallback ships as the default and the plan was still
 right, because the plan's actual deliverable is the measurement. Re-verify every license on
 the model card at implementation time.
@@ -625,7 +625,7 @@ pinned one.
 **int8 is the default, and its cost is measured rather than assumed.** The quantized export is
 ~60–150 MB against fp32's several hundred. Quantization's effect on NER recall is usually small
 but it is real, so `models.py` registers **both** variants and the nightly harness scores both —
-the int8 delta becomes a row in `docs/deid-evaluation.md`, not an act of faith. If the delta is
+the int8 delta becomes a row in `docs/phi-redaction-benchmarking.md`, not an act of faith. If the delta is
 material on the `notes` or `jobs` channels, fp32 becomes the default. Same rule as above: the
 harness decides.
 
@@ -808,7 +808,7 @@ Expect the harness to earn its keep on day one: the current substring deny-term 
 
 ### Reporting
 
-`docs/deid-evaluation.md`, generated and committed, headed "do not hand-edit":
+`docs/phi-redaction-benchmarking.md`, generated and committed, headed "do not hand-edit":
 `safe_record_rate` and `leaks_per_1000_records` at the top; per-label table
 (`recall_strict`, `recall_partial`, the gap, `label_accuracy`, floor, margin) split by
 difficulty; a HIPAA 1–18 rollup, which is the language a compliance reviewer reads in; a
@@ -1149,7 +1149,7 @@ reachable with zero new dependencies and zero CI changes; ship at least that far
    it.
 3. **`eval/scorer.py` + `tests/test_deid_scorer.py`.**
 4. **`thresholds.json` + `tests/test_deid_regex_recall.py` + `autocab deid eval` +
-   `docs/deid-evaluation.md`.** This is where the claim becomes measured rather than asserted.
+   `docs/phi-redaction-benchmarking.md`.** This is where the claim becomes measured rather than asserted.
 5. **`egress.py` + `llm_gate.py` + `tests/test_deid_egress.py` + `tests/test_deid_gate.py`** —
    pure logic, no SDK, no network, no weights, injected resolver. The cheapest high-value step
    in the plan: it locks the security boundary *before* any transport exists to be tempted into

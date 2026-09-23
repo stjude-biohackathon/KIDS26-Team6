@@ -12,7 +12,7 @@ from .benchmark import RuntimeBenchmark
 GLINER_REFERENCE = (
     "Zaratiana U, Tomeh N, Holat P, Charnois T. "
     "GLiNER: Generalist Model for Named Entity Recognition using Bidirectional Transformer. "
-    "arXiv:2311.08526 (2023). https://arxiv.org/abs/2311.08526"
+    "NAACL 2024:5364-5376. https://doi.org/10.18653/v1/2024.naacl-long.300"
 )
 GLINER2_PII_REFERENCE = (
     "Zaratiana U, Lewis A, Hurn-Maloney G. GLiNER2-PII: A Multilingual Model for "
@@ -82,7 +82,114 @@ def _format(value: object, digits: int = 4) -> str:
     return f"{float(value):.{digits}f}"
 
 
-def render_markdown(cards: Sequence[Mapping[str, object]]) -> str:
+def load_historical_baseline(root: Path, release: str = "v0.2") -> dict[str, object] | None:
+    """Load a compact, versioned baseline without mixing it into current scorecards."""
+
+    path = root / "baselines" / f"{release}-regex.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _card_by_engine(
+    cards: Sequence[Mapping[str, object]], engine: str
+) -> Mapping[str, object] | None:
+    return next(
+        (card for card in cards if str(card["headline"]["engine"]) == engine),  # type: ignore[index]
+        None,
+    )
+
+
+def _historical_comparison(
+    cards: Sequence[Mapping[str, object]], baseline: Mapping[str, object] | None
+) -> list[str]:
+    if baseline is None:
+        return []
+
+    regex = _card_by_engine(cards, "regex")
+    gliner = _card_by_engine(cards, "gliner")
+    gliner2 = _card_by_engine(cards, "gliner2-pii")
+    if regex is None or gliner is None or gliner2 is None:
+        return []
+
+    current_headline = regex["headline"]  # type: ignore[index]
+    expected_identity = (
+        current_headline["corpus_fingerprint"],  # type: ignore[index]
+        current_headline["records"],  # type: ignore[index]
+        current_headline["gold_spans"],  # type: ignore[index]
+    )
+    baseline_identity = (
+        baseline.get("corpus_fingerprint"),
+        baseline.get("records"),
+        baseline.get("gold_spans"),
+    )
+    if baseline_identity != expected_identity:
+        raise ValueError("historical baseline does not describe the current evaluation corpus")
+
+    metrics = baseline["metrics"]  # type: ignore[index]
+    rows = (
+        ("Records with zero missed spans", "safe_record_rate", 4),
+        ("Missed spans per 1,000 records", "leaks_per_1000_records", 2),
+        ("Full-coverage recall, all", "recall_strict_overall", 4),
+    )
+    out = [
+        "## Improvement since v0.2",
+        "",
+        "The historical comparison uses the committed v0.2 regex scorecard and the same "
+        "synthetic corpus fingerprint as v0.3. The v0.3 regex column is included because "
+        "the pattern rules also changed between releases.",
+        "",
+        "| Metric | v0.2 regex | v0.3 regex | v0.3 Regex + GLiNER | v0.3 Regex + GLiNER2 PII |",
+        "| --- | ---: | ---: | ---: | ---: |",
+    ]
+    for label, key, digits in rows:
+        values = [
+            metrics[key],  # type: ignore[index]
+            regex["headline"][key],  # type: ignore[index]
+            gliner["headline"][key],  # type: ignore[index]
+            gliner2["headline"][key],  # type: ignore[index]
+        ]
+        out.append(f"| {label} | " + " | ".join(_format(value, digits) for value in values) + " |")
+
+    name_recall_gated = {
+        "v0.2": metrics["name_recall_gated"],  # type: ignore[index]
+        "regex": _table_map(regex, "by_label_gated")["NAME"]["recall_strict"],
+        "gliner": _table_map(gliner, "by_label_gated")["NAME"]["recall_strict"],
+        "gliner2": _table_map(gliner2, "by_label_gated")["NAME"]["recall_strict"],
+    }
+    name_recall_overall = {
+        "v0.2": metrics["name_recall_overall"],  # type: ignore[index]
+        "regex": _table_map(regex, "by_label")["NAME"]["recall_strict"],
+        "gliner": _table_map(gliner, "by_label")["NAME"]["recall_strict"],
+        "gliner2": _table_map(gliner2, "by_label")["NAME"]["recall_strict"],
+    }
+    out.extend(
+        [
+            f"| Name recall, gated | {_format(name_recall_gated['v0.2'])} | "
+            f"{_format(name_recall_gated['regex'])} | "
+            f"{_format(name_recall_gated['gliner'])} | "
+            f"{_format(name_recall_gated['gliner2'])} |",
+            f"| Name recall, all | {_format(name_recall_overall['v0.2'])} | "
+            f"{_format(name_recall_overall['regex'])} | "
+            f"{_format(name_recall_overall['gliner'])} | "
+            f"{_format(name_recall_overall['gliner2'])} |",
+            "",
+            "On this corpus, the principal NER contribution is contextual name detection: "
+            f"gated name recall increases from {_format(name_recall_gated['regex'])} with "
+            f"v0.3 regex alone to {_format(name_recall_gated['gliner'])} with either "
+            "additive model. "
+            "GLiNER2 PII also improves `SLURM_JOB_NAME` recall relative to the other "
+            "production configurations.",
+            "",
+        ]
+    )
+    return out
+
+
+def render_markdown(
+    cards: Sequence[Mapping[str, object]],
+    historical_baseline: Mapping[str, object] | None = None,
+) -> str:
     if not cards:
         raise ValueError("at least one scorecard is required")
     engines = [str(card["headline"]["engine"]) for card in cards]  # type: ignore[index]
@@ -91,23 +198,66 @@ def render_markdown(cards: Sequence[Mapping[str, object]]) -> str:
     rule = "| --- | " + " | ".join("---:" for _ in engines) + " |"
 
     metrics = (
-        ("Safe records", "safe_record_rate", 4),
-        ("Leaks per 1,000 records", "leaks_per_1000_records", 2),
+        ("Records with zero missed spans", "safe_record_rate", 4),
+        ("Missed spans per 1,000 records", "leaks_per_1000_records", 2),
         ("Full-coverage recall, gated", "recall_strict_gated", 4),
         ("Full-coverage recall, all", "recall_strict_overall", 4),
         ("Over-redaction rate", "over_redaction_rate", 4),
     )
     out = [
-        "# De-identification evaluation",
+        "# PHI redaction benchmarking",
         "",
         "<!-- Generated from every data/deid-eval/scorecard.*.json snapshot. Do not hand-edit. -->",
         "",
-        f"Corpus `{fingerprint[:16]}` · {cards[0]['headline']['records']} records · "  # type: ignore[index]
-        f"{cards[0]['headline']['gold_spans']} gold spans",  # type: ignore[index]
+        "## Executive summary",
         "",
-        "![Accuracy comparison for the available de-identification engines](deid-accuracy.svg)",
+        "AutoCAB combines mandatory pattern matching with optional local named entity "
+        "recognition (NER) models to detect text that may contain protected health information "
+        "(PHI) or other personally identifiable information (PII). On the committed synthetic "
+        "corpus, the additive configurations improve complete-span coverage and reduce records "
+        "containing at least one missed identifier. The model-only configurations perform "
+        "poorly and remain diagnostic controls, not production modes.",
         "",
-        "## Headline comparison",
+        "These measurements are regression evidence for AutoCAB's text detector. They do not "
+        "establish clinical performance, HIPAA Safe Harbor compliance, or end-to-end system "
+        "security.",
+        "",
+        "![Accuracy comparison for the available de-identification engines]"
+        "(figures/phi-redaction-accuracy.png)",
+        "",
+        "## Benchmark objective",
+        "",
+        "The benchmark measures whether each detector completely rewrites labelled synthetic "
+        "identifiers while preserving non-sensitive scientific and computational text. It also "
+        "tests whether an NER layer adds contextual coverage without replacing the mandatory "
+        "pattern-based floor.",
+        "",
+        "## Methods",
+        "",
+        f"The deterministic corpus has fingerprint `{fingerprint[:16]}` and contains "
+        f"{cards[0]['headline']['records']} records with "  # type: ignore[index]
+        f"{cards[0]['headline']['gold_spans']} labelled spans across shell, OCR, notes, "  # type: ignore[index]
+        "agent, diff, job, and pre-scrubbed channels. The labelled text spans cover the HIPAA "
+        "identifier categories represented by the text detector, plus workflow-specific "
+        "sensitive identifiers such as sample IDs, accessions, and Slurm job names. Values are "
+        "synthetic and generated from reserved ranges or independently sampled public-domain "
+        "lexicons.",
+        "",
+        "Five configurations are compared: regex alone; two model-only diagnostic controls; "
+        "and two production configurations in which regex runs before GLiNER or GLiNER2 PII. "
+        "The tested GLiNER2 PII configuration requests only `person` at a 0.97 threshold because "
+        "broader PII prompts increased false positives without improving additive redaction.",
+        "",
+        "Full-coverage recall counts a gold span only when every character is rewritten. Partial "
+        "overlap remains a missed span. The gated result uses the easy and medium tiers. "
+        "Records with zero missed spans is the fraction of records with no full-coverage miss. "
+        "Missed spans per 1,000 records scales the total number of full-coverage misses by the "
+        "corpus record count. Over-redaction is measured against all corpus characters and "
+        "protected `must_survive` terms.",
+        "",
+        "## Results",
+        "",
+        "### Headline comparison",
         "",
         header,
         rule,
@@ -118,19 +268,17 @@ def render_markdown(cards: Sequence[Mapping[str, object]]) -> str:
 
     out += [
         "",
-        "Full-coverage recall counts a gold span only when every character is rewritten. "
-        "Partial overlap remains a leak. The gated result uses the easy and medium tiers.",
         "`Regex + GLiNER` is additive: the regex rules always run, then GLiNER adds contextual "
         "findings.",
         "`GLiNER only` is a diagnostic evaluation mode. It is not available for production "
         "capture or sealing.",
         "`Regex + GLiNER2 PII` is a supported local sealing choice. The model-only mode is "
         "diagnostic and does not bypass the production regex floor.",
-        "The tested GLiNER2 PII configuration requests only `person` at a 0.97 threshold. "
-        "A local prompt and threshold sweep found that broader PII prompts increased false "
-        "positives without improving the additive redaction result.",
         "",
-        "## Recall by label",
+    ]
+    out.extend(_historical_comparison(cards, historical_baseline))
+    out += [
+        "### Recall by label",
         "",
         "| Label | " + " | ".join(display_name(engine) for engine in engines) + " |",
         rule,
@@ -145,7 +293,7 @@ def render_markdown(cards: Sequence[Mapping[str, object]]) -> str:
 
     out += [
         "",
-        "## Recall by channel",
+        "### Recall by channel",
         "",
         "| Channel | " + " | ".join(display_name(engine) for engine in engines) + " |",
         rule,
@@ -161,7 +309,7 @@ def render_markdown(cards: Sequence[Mapping[str, object]]) -> str:
 
     out += [
         "",
-        "## Remaining full-coverage misses",
+        "### Remaining full-coverage misses",
         "",
         "| Label | " + " | ".join(display_name(engine) for engine in engines) + " |",
         rule,
@@ -177,7 +325,18 @@ def render_markdown(cards: Sequence[Mapping[str, object]]) -> str:
 
     out += [
         "",
-        "## Runtime benchmark",
+        "## Interpretation",
+        "",
+        "The model-only controls show that neither NER model should replace deterministic "
+        "patterns for structured identifiers. Their value is additive. In this corpus, most of "
+        "the gain comes from contextual person-name detection, while regex retains coverage for "
+        "MRNs, dates, account numbers, network addresses, and other structured forms.",
+        "",
+        "These results compare detector configurations on one internal synthetic corpus. They "
+        "do not demonstrate that the same ranking or error rates will hold for external clinical "
+        "text, noisier OCR, or institution-specific identifiers.",
+        "",
+        "## Runtime benchmarking",
         "",
         "Runtime is not committed in scorecards because it depends on the machine. Measure model "
         "load separately from warmed inference:",
@@ -191,7 +350,7 @@ def render_markdown(cards: Sequence[Mapping[str, object]]) -> str:
         "The command warms each loaded engine once, then reports seven runs by default: median and "
         "p95 ms/KB, median records/second, peak process memory, and machine/model provenance.",
         "",
-        "## What this does not prove",
+        "## Limitations and security boundaries",
         "",
         "- The corpus is synthetic. It does not establish performance on external clinical corpora.",
         "- A text detector does not remove faces or identifiers embedded only in images.",
@@ -199,7 +358,39 @@ def render_markdown(cards: Sequence[Mapping[str, object]]) -> str:
         "- The scorecards measure the detector, not storage, key handling, or operator behavior.",
         "- Thresholds are regression controls, not claims that missed identifiers are acceptable.",
         "",
-        "## Reference",
+        "## Reproduction",
+        "",
+        "Install the optional local model runtime before reproducing all five detector "
+        "configurations. The two fetch commands require network access and store verified model "
+        "weights locally. Evaluation does not require network access after the weights are "
+        "available. The final image conversion requires `rsvg-convert`.",
+        "",
+        "```bash",
+        "uv sync --extra deid-gliner2",
+        "autocab deid fetch --model gliner",
+        "autocab deid fetch --model gliner2-pii",
+        "autocab deid gen-corpus --seed 1337 --check",
+        "autocab deid eval --engine regex --write-scorecard --check-thresholds",
+        "autocab deid eval --engine gliner-only --write-scorecard",
+        "autocab deid eval --engine gliner --write-scorecard --check-thresholds",
+        "autocab deid eval --engine gliner2-pii-only --write-scorecard",
+        "autocab deid eval --engine gliner2-pii --write-scorecard",
+        "rsvg-convert docs/figures/phi-redaction-accuracy.svg \\",
+        "  --output docs/figures/phi-redaction-accuracy.png",
+        "```",
+        "",
+        "The corpus check should report:",
+        "",
+        "```text",
+        "OK Corpus reproduces byte-for-byte: 316 records, fingerprint ccfbf64eb85ed302",
+        "```",
+        "",
+        "Each evaluation command writes its engine scorecard and rebuilds this report and the "
+        "canonical SVG. The final command creates the PNG shown above. Runtime results are "
+        "intentionally written to a separate machine-specific benchmark file rather than "
+        "committed scorecards.",
+        "",
+        "## References",
         "",
         f"- {GLINER_REFERENCE}",
         f"- {GLINER2_PII_REFERENCE}",
@@ -226,7 +417,7 @@ def render_accuracy_svg(cards: Sequence[Mapping[str, object]]) -> str:
     """Render a deterministic grouped bar chart from committed scorecards."""
 
     metrics = (
-        ("Safe records", "safe_record_rate"),
+        ("Zero missed spans", "safe_record_rate"),
         ("Gated full coverage", "recall_strict_gated"),
         ("Overall full coverage", "recall_strict_overall"),
     )
@@ -236,7 +427,8 @@ def render_accuracy_svg(cards: Sequence[Mapping[str, object]]) -> str:
     left, chart_width = 250, 620
     out = _svg_start(
         "De-identification accuracy comparison",
-        "Grouped bars compare safe-record rate and full-coverage recall from zero to one.",
+        "Grouped bars compare records with zero missed spans and full-coverage recall from zero "
+        "to one.",
         width,
         height,
     )
@@ -331,8 +523,11 @@ def render_performance_svg(results: Sequence[RuntimeBenchmark]) -> str:
 def write_accuracy_artifacts(root: Path, docs: Path) -> tuple[Path, Path]:
     cards = load_scorecards(root)
     docs.mkdir(parents=True, exist_ok=True)
-    report_path = docs / "deid-evaluation.md"
-    plot_path = docs / "deid-accuracy.svg"
-    report_path.write_text(render_markdown(cards), encoding="utf-8")
+    figures = docs / "figures"
+    figures.mkdir(parents=True, exist_ok=True)
+    report_path = docs / "phi-redaction-benchmarking.md"
+    plot_path = figures / "phi-redaction-accuracy.svg"
+    baseline = load_historical_baseline(root)
+    report_path.write_text(render_markdown(cards, historical_baseline=baseline), encoding="utf-8")
     plot_path.write_text(render_accuracy_svg(cards), encoding="utf-8")
     return report_path, plot_path

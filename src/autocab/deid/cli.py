@@ -52,7 +52,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
         help="De-identification corpus and evaluation harness.",
         description=(
             "Measure the de-identification detector against data/deid-eval. "
-            "See docs/deid-evaluation.md for what the numbers do and do not prove."
+            "See docs/phi-redaction-benchmarking.md for what the numbers do and do not prove."
         ),
     )
     verbs = deid.add_subparsers(dest="deid_command", required=True)

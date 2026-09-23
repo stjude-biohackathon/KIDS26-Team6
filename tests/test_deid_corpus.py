@@ -5,7 +5,7 @@ Step 2's gate. None of these assertions is decorative:
 * ``span.text == text[start:end]`` for every span in every record is the
   cheapest defence against offset rot;
 * the reserved-range checks are what let the leak table in
-  ``docs/deid-evaluation.md`` print gold text at all;
+  ``docs/phi-redaction-benchmarking.md`` print gold text at all;
 * byte-for-byte reproduction is what makes the committed fixtures reviewable.
 """
 

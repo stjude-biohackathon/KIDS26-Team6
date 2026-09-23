@@ -79,10 +79,10 @@ macos = [
 # delegate to `find_spans()` without making any of the below a hard requirement.
 #
 # GLiNER's runtime libraries are base dependencies, but its 183 MB weights are
-# not. Users opt into the model tier with `wfrec deid fetch`; ordinary installs
+# not. Users opt into the model tier with `autocab deid fetch`; ordinary installs
 # and the default regex redaction path never download model data.
 deid-torch = ["torch>=2.2", "transformers>=4.40"]
-# Experimental PII-tuned GLiNER2 evaluation. The base install keeps the much
+# Optional PII-tuned GLiNER2 sealing and evaluation. The base install keeps the
 # smaller ONNX engine; this extra brings in PyTorch only when explicitly chosen.
 deid-gliner2 = ["gliner2[local]>=2.0,<3"]
 # Presidio's *validators* are already adopted (see engines/validators.py); the

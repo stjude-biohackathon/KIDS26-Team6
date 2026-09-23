@@ -1,0 +1,15 @@
+{
+  "corpus_fingerprint": "ccfbf64eb85ed3027e7a038a7d052100c914b55411d37f599e1d4245a2547b91",
+  "engine": "regex",
+  "gold_spans": 572,
+  "metrics": {
+    "leaks_per_1000_records": 253.16,
+    "name_recall_gated": 0.45,
+    "name_recall_overall": 0.3462,
+    "recall_strict_overall": 0.8601,
+    "safe_record_rate": 0.7468
+  },
+  "records": 316,
+  "release": "v0.2",
+  "source": "git tag v0.2:data/deid-eval/scorecard.regex.json"
+}

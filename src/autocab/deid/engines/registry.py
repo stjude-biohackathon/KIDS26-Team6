@@ -121,7 +121,7 @@ def _factory(entry: EngineEntry) -> _Factory:
         hint = (
             f"pip install -e '.[{entry.extra}]'"
             if entry.extra and entry.extra != "provider-specific"
-            else "see docs/deid-evaluation.md"
+            else "see docs/phi-redaction-benchmarking.md"
         )
         raise EngineUnavailable(entry.name, f"{exc}; {hint}") from exc
     return cast(_Factory, getattr(module, entry.factory))

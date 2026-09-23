@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="649" viewBox="0 0 960 649" role="img" aria-labelledby="title desc">
   <title id="title">De-identification accuracy comparison</title>
-  <desc id="desc">Grouped bars compare safe-record rate and full-coverage recall from zero to one.</desc>
+  <desc id="desc">Grouped bars compare records with zero missed spans and full-coverage recall from zero to one.</desc>
   <style>text{font-family:system-ui,sans-serif;fill:#172033}.chart-title{font-size:18px;font-weight:700}.axis-title{font-size:13px;font-weight:600}.label{font-size:13px}.value{font-size:12px;font-weight:600}.legend{font-size:12px}.grid{stroke:#d8dee9}</style>
   <rect width="960" height="649" fill="#ffffff"/>
   <text class="chart-title" x="480.0" y="27" text-anchor="middle">PHI Redaction Accuracy</text>
@@ -28,7 +28,7 @@
   <text class="legend" x="60" y="73">GLiNER2 PII only (diagnostic)</text>
   <rect x="340" y="61" width="14" height="14" fill="#db2777"/>
   <text class="legend" x="360" y="73">Regex + GLiNER2 PII</text>
-  <text class="label" x="45" y="134">Safe records</text>
+  <text class="label" x="45" y="134">Zero missed spans</text>
   <rect x="250" y="116" width="470.9" height="22" fill="#2563eb" rx="3"/>
   <text class="value" x="727.9" y="132">0.759</text>
   <rect x="250" y="143" width="123.6" height="22" fill="#f59e0b" rx="3"/>

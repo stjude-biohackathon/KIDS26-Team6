@@ -103,7 +103,7 @@ several session folders, or use `wfrec merge`.
   `context` source only records what the user deliberately pastes or types.
 - Do not point the recorder at real patient data. The prototype is for
   synthetic and public datasets. De-identification is a **measured** control now
-  rather than a best-effort one -- `docs/deid-evaluation.md` carries per-label
+  rather than a best-effort one -- `docs/phi-redaction-benchmarking.md` carries per-label
   recall from `autocab deid eval` -- but a measured recall number is not a HIPAA
   Safe Harbor determination, name recall from the pattern tier is around 0.45,
   and HIPAA identifier 17 (full-face photographs) is uncovered entirely. Read
